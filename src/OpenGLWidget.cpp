@@ -26,21 +26,25 @@
 
 OpenGLWidget::OpenGLWidget( QWidget* parent_,
                             Qt::WindowFlags windowsFlags_ )
-  : QOpenGLWidget( parent_, windowsFlags_ )
-  , _fpsLabel( this )
-  , _showFps( false )
-  , _frameCount( 0 )
-  , _deltaTime( 0.0f )
-  , _mouseX( 0 )
-  , _mouseY( 0 )
-  , _rotation( false )
-  , _translation( false )
-  , _idleUpdate( true )
-  , _paint( true )
-  , _currentClearColor( 20, 20, 20, 0 )
-  , _particlesShader( nullptr )
-  , _particleSystem( nullptr )
-  , _elapsedTimeRenderAcc( 0.0f )
+: QOpenGLWidget( parent_, windowsFlags_ )
+, _fpsLabel( this )
+, _showFps( false )
+, _frameCount( 0 )
+, _deltaTime( 0.0f )
+, _mouseX( 0 )
+, _mouseY( 0 )
+, _rotation( false )
+, _translation( false )
+, _idleUpdate( true )
+, _paint( true )
+, _currentClearColor( 20, 20, 20, 0 )
+, _particlesShader( nullptr )
+, _particleSystem( nullptr )
+, _nlrenderer( nullptr )
+, _scene( nullptr )
+, _dataset( nullptr )
+, _elapsedTimeRenderAcc( 0.0f )
+, _alphaBlendingAccumulative( false )
 {
   _camera = new reto::Camera( );
 
@@ -94,6 +98,8 @@ void OpenGLWidget::initializeGL( void )
 
 
   QOpenGLWidget::initializeGL( );
+  nlrender::Config::init( );
+  _nlrenderer = new nlrender::Renderer( );
 
 }
 
@@ -116,7 +122,7 @@ void OpenGLWidget::createParticleSystem( unsigned int maxParticles, unsigned int
   prefr::Config::init( );
 
   _particleSystem = new prefr::ParticleSystem( maxParticles );
-  
+
   //TODO
   _particleSystem->parallel( true );
 
@@ -223,6 +229,19 @@ void OpenGLWidget::createParticleSystem( unsigned int maxParticles, unsigned int
 
 }
 
+void OpenGLWidget::paintMorphologies( void )
+{
+
+  Eigen::Matrix4f projection( _camera->projectionMatrix( ));
+  _nlrenderer->projectionMatrix( ) = projection;
+  Eigen::Matrix4f view( _camera->viewMatrix( ));
+  _nlrenderer->viewMatrix( ) = view;
+
+  _nlrenderer->render( std::get< synvis::MESH >( _renderConfig ),
+                       std::get< synvis::MATRIX >( _renderConfig ),
+                       std::get< synvis::COLOR >( _renderConfig ));
+}
+
 
 void OpenGLWidget::paintParticles( void )
 {
@@ -268,7 +287,7 @@ void OpenGLWidget::paintParticles( void )
                              _camera->position( )[ 2 ] );
 
   _particleSystem->updateCameraDistances( cameraPosition );
-  
+
   _lastCameraPosition = cameraPosition;
 
   _particleSystem->updateRender( );
@@ -312,7 +331,8 @@ void OpenGLWidget::paintGL( void )
         _elapsedTimeRenderAcc = 0.0f;
       }
 
-      paintParticles( );
+      paintMorphologies( );
+//      paintParticles( );
 
     }
     glUseProgram( 0 );
@@ -360,6 +380,46 @@ void OpenGLWidget::paintGL( void )
     _fpsLabel.setVisible( false );
   }
 
+}
+
+void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
+                                   const std::string& target )
+{
+
+  if( _dataset )
+    delete _dataset;
+
+  _dataset = new nsol::DataSet( );
+
+  std::cout << "Loading data hierarchy..." << std::endl;
+  _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
+
+  std::cout << "Loading morphologies..." << std::endl;
+  _dataset->loadAllMorphologies( );
+
+  std::cout << "Loading connectivity..." << std::endl;
+  _dataset->loadBlueConfigConnectivityWithMorphologies( );
+
+  _scene = new synvis::Scene( _dataset );
+  std::cout << "Generating meshes..." << std::endl;
+  _scene->generateMeshes( );
+
+  std::vector< unsigned int > gids;
+  for( auto neuron : _dataset->neurons( ))
+  {
+    gids.push_back( neuron.first );
+  }
+
+  _renderConfig = _scene->getRender( gids );
+  home( );
+}
+
+void OpenGLWidget::home( void )
+{
+  _scene->computeBoundingBox( );
+  _camera->targetPivot( _scene->boundingBox( ).center( ));
+  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
+                         sin( _camera->fov( )));
 }
 
 void OpenGLWidget::resizeGL( int w , int h )

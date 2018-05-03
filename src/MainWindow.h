@@ -34,6 +34,9 @@ public:
   ~MainWindow( void );
 
   void init( void );
+
+  void loadData( const std::string& dataset, const std::string& target );
+
   void showStatusBarMessage ( const QString& message );
 
 protected:

@@ -30,6 +30,8 @@ set(STREAMINAPP_SOURCES
   streaminApp.cpp
   MainWindow.cpp
   OpenGLWidget.cpp
+  Scene.cpp
+  
   CMakeSetup.rc
   streaminApp.ui
   resources.qrc
@@ -39,6 +41,9 @@ set(STREAMINAPP_HEADERS
   ${PROJECT_BINARY_DIR}/include/streaminapp/version.h
   OpenGLWidget.h
   MainWindow.h
+  
+  Scene.h
+  
   prefr/PrefrShaders.h
 )
 

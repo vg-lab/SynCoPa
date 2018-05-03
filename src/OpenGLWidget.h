@@ -15,6 +15,11 @@
 #include <QLabel>
 #include <chrono>
 #include <unordered_set>
+#include <unordered_map>
+
+#include <nlrender/nlrender.h>
+
+#include "Scene.h"
 
 #define VISIMPL_SKIP_GLEW_INCLUDE 1
 
@@ -40,6 +45,11 @@ public:
 
   void createParticleSystem( unsigned int maxParticles, unsigned int maxEmitters );
 
+  void loadBlueConfig( const std::string& blueConfigFilePath,
+                       const std::string& target );
+
+  void home( void );
+
   void idleUpdate( bool idleUpdate_ = true )
   {
     _idleUpdate = idleUpdate_;
@@ -64,6 +74,8 @@ protected:
   virtual void keyPressEvent( QKeyEvent* event );
 
   void paintParticles( void );
+  void paintMorphologies( void );
+
 
   QLabel _fpsLabel;
   bool _showFps;
@@ -87,6 +99,12 @@ protected:
 
   reto::ShaderProgram* _particlesShader;
   prefr::ParticleSystem* _particleSystem;
+  nlrender::Renderer* _nlrenderer;
+
+  synvis::Scene* _scene;
+  nsol::DataSet* _dataset;
+
+  synvis::TRenderMorpho _renderConfig;
 
   float _renderSpeed;
   float _maxFPS;

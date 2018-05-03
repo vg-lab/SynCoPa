@@ -38,6 +38,13 @@ MainWindow::MainWindow( QWidget* parent_,
 
 }
 
+
+MainWindow::~MainWindow( void )
+{
+    delete _ui;
+}
+
+
 void MainWindow::init( void )
 {
 
@@ -58,9 +65,10 @@ void MainWindow::init( void )
            _openGLWidget, SLOT( toggleShowFPS( )));
 }
 
-MainWindow::~MainWindow( void )
+void MainWindow::loadData( const std::string& dataset,
+                           const std::string& target )
 {
-    delete _ui;
+  _openGLWidget->loadBlueConfig( dataset, target );
 }
 
 

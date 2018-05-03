@@ -32,6 +32,9 @@ int main( int argc, char** argv )
   bool fullscreen = false, initWindowSize = false, initWindowMaximized = false;
   int initWindowWidth, initWindowHeight;
 
+  std::string blueConfig( "" );
+  std::string target( "" );
+
   for( int i = 1; i < argc; i++ )
   {
     if ( std::strcmp( argv[i], "--help" ) == 0 ||
@@ -44,6 +47,26 @@ int main( int argc, char** argv )
     {
       dumpVersion( );
       return 0;
+    }
+
+    if( strcmp( argv[ i ], "-bc") == 0 )
+    {
+      if( i + 1 <= argc )
+      {
+        blueConfig = argv[ ++i ];
+      }
+      else
+        usageMessage( argv[ 0 ]);
+    }
+
+    if( strcmp( argv[ i ], "-target") == 0 )
+    {
+      if( i + 1 <= argc )
+      {
+        target = argv[ ++i ];
+      }
+      else
+        usageMessage( argv[ 0 ]);
     }
 
     if ( strcmp( argv[i], "--fullscreen" ) == 0 ||
@@ -68,6 +91,13 @@ int main( int argc, char** argv )
     }
   }
 
+  std::cout << "Loading BlueConfig " << blueConfig
+            << " target " << target
+            << std::endl;
+
+
+
+
   setFormat( );
   MainWindow mainWindow;
   mainWindow.setWindowTitle("PReFr Editor");
@@ -83,6 +113,10 @@ int main( int argc, char** argv )
 
   mainWindow.show( );
   mainWindow.init( );
+
+  if( !blueConfig.empty( ) && !target.empty( ))
+    mainWindow.loadData( blueConfig, target );
+
 
   return application.exec();
 
