@@ -52,7 +52,13 @@ void MainWindow::init( void )
   this->setCentralWidget( _openGLWidget );
   qDebug( ) << _openGLWidget->format( );
 
-  _openGLWidget->createParticleSystem( 1000, 10);
+  if( _openGLWidget->format( ).version( ).first < 4 )
+  {
+    std::cerr << "This application requires at least OpenGL 4.0" << std::endl;
+    exit( -1 );
+  }
+
+  _openGLWidget->createParticleSystem( );
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
 
   connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),

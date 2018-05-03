@@ -7,10 +7,12 @@
  *          Do not distribute without further notice.
  */
 
+#include "types.h"
+
 #include <QApplication>
 #include "MainWindow.h"
 #include <QDebug>
-#include <QOpenGLWidget>
+
 
 #include <streaminapp/version.h>
 
@@ -158,6 +160,7 @@ void setFormat( void )
 
   int ctxOpenGLMajor = DEFAULT_CONTEXT_OPENGL_MAJOR;
   int ctxOpenGLMinor = DEFAULT_CONTEXT_OPENGL_MINOR;
+  int ctxOpenGLVSync = 1;
   int ctxOpenGLSamples = 0;
 
   if ( std::getenv("CONTEXT_OPENGL_MAJOR"))
@@ -169,6 +172,10 @@ void setFormat( void )
   if ( std::getenv("CONTEXT_OPENGL_SAMPLES"))
     ctxOpenGLSamples = std::stoi( std::getenv("CONTEXT_OPENGL_SAMPLES"));
 
+  if ( std::getenv("CONTEXT_OPENGL_VSYNC"))
+    ctxOpenGLVSync = std::stoi( std::getenv("CONTEXT_OPENGL_VSYNC"));
+
+
   std::cerr << "Setting OpenGL context to "
             << ctxOpenGLMajor << "." << ctxOpenGLMinor << std::endl;
 
@@ -179,6 +186,7 @@ void setFormat( void )
   if ( ctxOpenGLSamples != 0 )
     format.setSamples( ctxOpenGLSamples );
 
+  format.setSwapInterval( ctxOpenGLVSync );
 
   QSurfaceFormat::setDefaultFormat( format );
   if ( std::getenv("CONTEXT_OPENGL_COMPATIBILITY_PROFILE"))

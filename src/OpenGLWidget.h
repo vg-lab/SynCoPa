@@ -17,18 +17,18 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include <nlrender/nlrender.h>
-
-#include "Scene.h"
-
-#define VISIMPL_SKIP_GLEW_INCLUDE 1
-
 #define PREFR_SKIP_GLEW_INCLUDE 1
+#define NEUROLOTS_SKIP_GLEW_INCLUDE 1
 
 #define SIM_SLIDER_UPDATE_PERIOD 0.5f
 
+#include <nlrender/nlrender.h>
 #include <prefr/prefr.h>
 #include <reto/reto.h>
+
+#include "Scene.h"
+#include "PSManager.h"
+
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -41,21 +41,21 @@ public:
 
   OpenGLWidget( QWidget* parent = 0,
                 Qt::WindowFlags windowFlags = 0 );
+
   ~OpenGLWidget( void );
 
-  void createParticleSystem( unsigned int maxParticles, unsigned int maxEmitters );
+  void createParticleSystem( void );
 
   void loadBlueConfig( const std::string& blueConfigFilePath,
                        const std::string& target );
 
   void home( void );
 
-  void idleUpdate( bool idleUpdate_ = true )
-  {
-    _idleUpdate = idleUpdate_;
-  }
+  void idleUpdate( bool idleUpdate_ = true );
 
 public slots:
+
+  void timerUpdate( void );
 
   void changeClearColor( void );
   void toggleUpdateOnIdle( void );
@@ -72,6 +72,8 @@ protected:
   virtual void wheelEvent( QWheelEvent* event );
   virtual void mouseMoveEvent( QMouseEvent* event );
   virtual void keyPressEvent( QKeyEvent* event );
+
+  void setupSynapses( void );
 
   void paintParticles( void );
   void paintMorphologies( void );
@@ -98,11 +100,14 @@ protected:
   std::chrono::time_point< std::chrono::system_clock > _lastFrame;
 
   reto::ShaderProgram* _particlesShader;
-  prefr::ParticleSystem* _particleSystem;
+//  prefr::ParticleSystem* _particleSystem;
   nlrender::Renderer* _nlrenderer;
 
-  synvis::Scene* _scene;
   nsol::DataSet* _dataset;
+  synvis::Scene* _scene;
+  synvis::PSManager* _psManager;
+
+  QTimer* _cameraTimer;
 
   synvis::TRenderMorpho _renderConfig;
 

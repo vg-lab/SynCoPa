@@ -31,6 +31,9 @@ set(STREAMINAPP_SOURCES
   MainWindow.cpp
   OpenGLWidget.cpp
   Scene.cpp
+  PSManager.cpp
+  prefr/SourceMultiPosition.cpp
+  prefr/UpdaterStaticPosition.cpp
   
   CMakeSetup.rc
   streaminApp.ui
@@ -43,6 +46,9 @@ set(STREAMINAPP_HEADERS
   MainWindow.h
   
   Scene.h
+  PSManager.h
+  prefr/SourceMultiPosition.h
+  prefr/UpdaterStaticPosition.h
   
   prefr/PrefrShaders.h
 )
@@ -69,10 +75,10 @@ if ( GMRVLEX_FOUND )
 endif( )
 
 if ( NOT DEFAULT_CONTEXT_OPENGL_MAJOR )
-  set( DEFAULT_CONTEXT_OPENGL_MAJOR 3 )
+  set( DEFAULT_CONTEXT_OPENGL_MAJOR 4 )
 endif( )
 if ( NOT DEFAULT_CONTEXT_OPENGL_MINOR )
-  set( DEFAULT_CONTEXT_OPENGL_MINOR 3 )
+  set( DEFAULT_CONTEXT_OPENGL_MINOR 0 )
 endif( )
 
 add_definitions( "-DDEFAULT_CONTEXT_OPENGL_MAJOR=${DEFAULT_CONTEXT_OPENGL_MAJOR}" )

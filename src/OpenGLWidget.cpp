@@ -24,6 +24,8 @@
 
 #include "prefr/PrefrShaders.h"
 
+using namespace synvis;
+
 OpenGLWidget::OpenGLWidget( QWidget* parent_,
                             Qt::WindowFlags windowsFlags_ )
 : QOpenGLWidget( parent_, windowsFlags_ )
@@ -35,18 +37,23 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _mouseY( 0 )
 , _rotation( false )
 , _translation( false )
-, _idleUpdate( true )
+, _idleUpdate( false )
 , _paint( true )
 , _currentClearColor( 20, 20, 20, 0 )
 , _particlesShader( nullptr )
-, _particleSystem( nullptr )
 , _nlrenderer( nullptr )
-, _scene( nullptr )
 , _dataset( nullptr )
+, _scene( nullptr )
+, _psManager( nullptr )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( false )
 {
   _camera = new reto::Camera( );
+  _camera->farPlane( 50000 );
+
+  _cameraTimer = new QTimer( );
+  _cameraTimer->start(( 1.0f / 60.f ) * 100 );
+  connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
 
   _lastCameraPosition = glm::vec3( 0, 0, 0 );
 
@@ -74,8 +81,8 @@ OpenGLWidget::~OpenGLWidget( void )
   if( _particlesShader )
     delete _particlesShader;
 
-  if( _particleSystem )
-    delete _particleSystem;
+  if( _psManager )
+    delete _psManager;
 }
 
 
@@ -100,6 +107,9 @@ void OpenGLWidget::initializeGL( void )
   QOpenGLWidget::initializeGL( );
   nlrender::Config::init( );
   _nlrenderer = new nlrender::Renderer( );
+  _nlrenderer->tessCriteria( ) = nlrender::Renderer::LINEAR;
+  _nlrenderer->lod( ) = 4;
+  _nlrenderer->maximumDistance( ) = 10;
 
 }
 
@@ -116,23 +126,77 @@ void ExpandBoundingBox( glm::vec3& minBounds,
 }
 
 
-void OpenGLWidget::createParticleSystem( unsigned int maxParticles, unsigned int maxEmitters )
+void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
+                                   const std::string& target )
+{
+
+  if( _dataset )
+    delete _dataset;
+
+  _dataset = new nsol::DataSet( );
+
+  std::cout << "Loading data hierarchy..." << std::endl;
+  _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
+
+  std::cout << "Loading morphologies..." << std::endl;
+  _dataset->loadAllMorphologies( );
+
+  std::cout << "Loading connectivity..." << std::endl;
+//  _dataset->loadBlueConfigConnectivityWithMorphologies( );
+
+  _scene = new synvis::Scene( _dataset );
+  std::cout << "Generating meshes..." << std::endl;
+  _scene->generateMeshes( );
+
+  std::vector< unsigned int > gids;
+  for( auto neuron : _dataset->neurons( ))
+  {
+    gids.push_back( neuron.first );
+  }
+
+  _renderConfig = _scene->getRender( gids );
+
+//  createParticleSystem( );
+//  setupSynapses( );
+
+  home( );
+}
+
+void OpenGLWidget::setupSynapses( void )
+{
+  auto& circuit = _dataset->circuit( );
+  auto synapses = circuit.synapses( nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+  std::cout << " Loaded " << synapses.size( ) << " synapses." << std::endl;
+
+  std::vector< vec3 > positions;
+  positions.reserve( synapses.size( ));
+
+  for( auto syn : synapses )
+  {
+    auto position = ( dynamic_cast< nsol::MorphologySynapsePtr >( syn ))->
+        preSynapticSurfacePosition( );
+
+    positions.push_back( position );
+  }
+
+  _psManager->setupSynapses( positions, PRESYNAPTIC );
+}
+
+void OpenGLWidget::home( void )
+{
+  _scene->computeBoundingBox( );
+  _camera->targetPivot( _scene->boundingBox( ).center( ));
+  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
+                         sin( _camera->fov( )));
+}
+
+
+
+void OpenGLWidget::createParticleSystem( void )
 {
   makeCurrent( );
   prefr::Config::init( );
-
-  _particleSystem = new prefr::ParticleSystem( maxParticles );
-
-  //TODO
-  _particleSystem->parallel( true );
-
-  unsigned int i = 0;
-  std::vector< glm::vec3 >positions( maxEmitters );
-  for( auto& pos : positions )
-  {
-    pos = glm::vec3( i * 10.f, 0.0f, 0.0f );
-    i++;
-  }
 
   _particlesShader = new reto::ShaderProgram( );
   _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
@@ -140,92 +204,14 @@ void OpenGLWidget::createParticleSystem( unsigned int maxParticles, unsigned int
   _particlesShader->create( );
   _particlesShader->link( );
 
-  prefr::Model* model = new prefr::Model( 5.0f, 10.0f );
-
-  model->color.Insert( 0.0f, ( glm::vec4(0.1f, 0.1f, 0.1f, 0.5f)));
-
-  model->velocity.Insert( 0.0f, 0.0f );
-
-  model->size.Insert( 1.0f, 10.0f );
-
-  _particleSystem->addModel( model );
-
-  prefr::Updater* updater;
-
-  updater = new prefr::Updater( );
-
-  model->color.Insert( 0.0f, ( glm::vec4(0.f, 1.f, 0.f, 0.2)));
-  model->color.Insert( 0.35f, ( glm::vec4(1, 0, 0, 0.2 )));
-  model->color.Insert( 0.7f, ( glm::vec4(1.f, 1.f, 0, 0.2 )));
-  model->color.Insert( 1.0f, ( glm::vec4(0, 0, 1.f, 0.2 )));
-
-  model->velocity.Insert( 0.0f, 0.0f );
-  model->velocity.Insert( 1.0f, 10.0f );
-
-  model->size.Insert( 0.0f, 20.0f );
-  model->size.Insert( 1.0f, 10.0f );
+//  _psManager = new synvis::PSManager( );
+//  _psManager->init( 500000 );
+//
+//  //TODO add colors for different synapse tyoes
+//  _psManager->colorSynapses( vec4( 1, 0, 0, 0.4 ), ALL_CONNECTIONS );
+//  _psManager->sizeSynapses( 5.0, ALL_CONNECTIONS );
 
 
-  prefr::Cluster* cluster;
-  prefr::Source* source;
-  prefr::SphereSampler* sampler = new prefr::SphereSampler( 3.0f );
-
-  int partPerEmitter = maxParticles / maxEmitters;
-
-  unsigned int start;
-
-  glm::vec3 boundingBoxMin( std::numeric_limits< float >::max( ),
-                            std::numeric_limits< float >::max( ),
-                            std::numeric_limits< float >::max( ));
-  glm::vec3 boundingBoxMax( std::numeric_limits< float >::min( ),
-                            std::numeric_limits< float >::min( ),
-                            std::numeric_limits< float >::min( ));
-
-  i = 0;
-  glm::vec3 cameraPivot;
-  for ( auto position : positions )
-  {
-    cluster = new prefr::Cluster( );
-    cluster->model( model );
-    cluster->updater( updater );
-    cluster->active( true );
-
-    cameraPivot += position;
-    ExpandBoundingBox( boundingBoxMin, boundingBoxMax, position );
-    start = i * partPerEmitter;
-
-    source = new prefr::Source( 0.3f, position );
-
-    source->sampler( sampler );
-    cluster->source( source );
-
-    _particleSystem->addSource( source );
-    _particleSystem->addCluster( cluster, start, partPerEmitter );
-
-    i++;
-  }
-
-  cameraPivot /= i;
-
-  _camera->pivot( Eigen::Vector3f( cameraPivot.x,
-                                   cameraPivot.y,
-                                   cameraPivot.z ));
-
-  glm::vec3 center = ( boundingBoxMax + boundingBoxMin ) * 0.5f;
-  float radius = glm::length( boundingBoxMax - center );
-
-  _camera->targetPivotRadius( Eigen::Vector3f( center.x, center.y, center.z ), radius );
-
-
-  prefr::Sorter* sorter = new prefr::Sorter( );
-
-  prefr::GLRenderer* renderer = new prefr::GLRenderer( );
-
-  _particleSystem->addUpdater( updater );
-  _particleSystem->sorter( sorter );
-  _particleSystem->renderer( renderer );
-
-  _particleSystem->start();
 
 }
 
@@ -245,8 +231,6 @@ void OpenGLWidget::paintMorphologies( void )
 
 void OpenGLWidget::paintParticles( void )
 {
-  if( !_particleSystem )
-    return;
 
   glDepthMask(GL_FALSE);
   glEnable(GL_BLEND);
@@ -286,12 +270,12 @@ void OpenGLWidget::paintParticles( void )
                              _camera->position( )[ 1 ],
                              _camera->position( )[ 2 ] );
 
-  _particleSystem->updateCameraDistances( cameraPosition );
+  _psManager->particleSystem( )->updateCameraDistances( cameraPosition );
 
   _lastCameraPosition = cameraPosition;
 
-  _particleSystem->updateRender( );
-  _particleSystem->render( );
+  _psManager->particleSystem( )->updateRender( );
+  _psManager->particleSystem( )->render( );
 
   _particlesShader->unuse( );
 
@@ -299,48 +283,54 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
+  makeCurrent( );
   std::chrono::time_point< std::chrono::system_clock > now =
       std::chrono::system_clock::now( );
-
-  unsigned int elapsedMilliseconds =
-      std::chrono::duration_cast< std::chrono::milliseconds >
-        ( now - _lastFrame ).count( );
-
-  _lastFrame = now;
-
-  _deltaTime = elapsedMilliseconds * 0.001f;
-
-  _elapsedTimeRenderAcc += _deltaTime;
-
-  _frameCount++;
-  glDepthMask(GL_TRUE);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glDisable(GL_BLEND);
-  glEnable(GL_DEPTH_TEST);
-  glEnable(GL_CULL_FACE);
-
-  if ( _paint )
+//
+//  unsigned int elapsedMilliseconds =
+//      std::chrono::duration_cast< std::chrono::milliseconds >
+//        ( now - _lastFrame ).count( );
+//
+//  _lastFrame = now;
+//
+//  _deltaTime = elapsedMilliseconds * 0.001f;
+//
+//  _elapsedTimeRenderAcc += _deltaTime;
+//
+//  _frameCount++;
+//  glDepthMask(GL_TRUE);
+//  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//  glDisable(GL_BLEND);
+//  glEnable(GL_DEPTH_TEST);
+//  glEnable(GL_CULL_FACE);
+//
+//  if ( _paint )
   {
-    _camera->anim( );
+//    _camera->anim( );
 
-    if ( _particleSystem )
+//    if( _psManager && _psManager->particleSystem( ))
     {
 
-      if( _elapsedTimeRenderAcc >= _renderPeriod )
-      {_particleSystem->update( 0.1f );
+      if( //_psManager && _psManager->particleSystem( ) &&
+          _elapsedTimeRenderAcc >= _renderPeriod )
+      {
+//        _psManager->particleSystem( )->update( 0.1f );
         _elapsedTimeRenderAcc = 0.0f;
+
+
       }
 
       paintMorphologies( );
 //      paintParticles( );
 
     }
+
     glUseProgram( 0 );
     glFlush( );
 
   }
 
-  #define FRAMES_PAINTED_TO_MEASURE_FPS 10
+  #define FRAMES_PAINTED_TO_MEASURE_FPS 30
   if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS )
   {
 
@@ -382,44 +372,16 @@ void OpenGLWidget::paintGL( void )
 
 }
 
-void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
-                                   const std::string& target )
+void OpenGLWidget::timerUpdate( void )
 {
-
-  if( _dataset )
-    delete _dataset;
-
-  _dataset = new nsol::DataSet( );
-
-  std::cout << "Loading data hierarchy..." << std::endl;
-  _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
-
-  std::cout << "Loading morphologies..." << std::endl;
-  _dataset->loadAllMorphologies( );
-
-  std::cout << "Loading connectivity..." << std::endl;
-  _dataset->loadBlueConfigConnectivityWithMorphologies( );
-
-  _scene = new synvis::Scene( _dataset );
-  std::cout << "Generating meshes..." << std::endl;
-  _scene->generateMeshes( );
-
-  std::vector< unsigned int > gids;
-  for( auto neuron : _dataset->neurons( ))
-  {
-    gids.push_back( neuron.first );
-  }
-
-  _renderConfig = _scene->getRender( gids );
-  home( );
+  if( _camera->anim( ))
+    this->update( );
 }
 
-void OpenGLWidget::home( void )
+
+void OpenGLWidget::idleUpdate( bool idleUpdate_ )
 {
-  _scene->computeBoundingBox( );
-  _camera->targetPivot( _scene->boundingBox( ).center( ));
-  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
-                         sin( _camera->fov( )));
+  _idleUpdate = idleUpdate_;
 }
 
 void OpenGLWidget::resizeGL( int w , int h )
