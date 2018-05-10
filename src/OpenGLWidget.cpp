@@ -69,6 +69,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 
   _maxFPS = 60.0f;
   _renderPeriod = 1.0f / _maxFPS;
+  _renderPeriodMicroseconds = _renderPeriod * 1000000;
 
   _renderSpeed = 1.f;
 }
@@ -142,11 +143,11 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   _dataset->loadAllMorphologies( );
 
   std::cout << "Loading connectivity..." << std::endl;
-//  _dataset->loadBlueConfigConnectivityWithMorphologies( );
+  _dataset->loadBlueConfigConnectivityWithMorphologies( );
 
   _scene = new synvis::Scene( _dataset );
   std::cout << "Generating meshes..." << std::endl;
-  _scene->generateMeshes( );
+//  _scene->generateMeshes( );
 
   std::vector< unsigned int > gids;
   for( auto neuron : _dataset->neurons( ))
@@ -154,12 +155,33 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
     gids.push_back( neuron.first );
   }
 
-  _renderConfig = _scene->getRender( gids );
+//  _renderConfig = _scene->getRender( gids );
 
-//  createParticleSystem( );
-//  setupSynapses( );
+  createParticleSystem( );
+  setupSynapses( );
 
   home( );
+}
+
+void OpenGLWidget::createParticleSystem( void )
+{
+  makeCurrent( );
+  prefr::Config::init( );
+
+  _particlesShader = new reto::ShaderProgram( );
+  _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
+  _particlesShader->loadFragmentShaderFromText( prefr::prefrFragmentShader );
+  _particlesShader->create( );
+  _particlesShader->link( );
+  _particlesShader->autocatching( true );
+
+  _psManager = new synvis::PSManager( );
+  _psManager->init( 500000 );
+//
+//  //TODO add colors for different synapse tyoes
+  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), ALL_CONNECTIONS );
+  _psManager->sizeSynapses( 5.0, ALL_CONNECTIONS );
+
 }
 
 void OpenGLWidget::setupSynapses( void )
@@ -172,48 +194,42 @@ void OpenGLWidget::setupSynapses( void )
   std::vector< vec3 > positions;
   positions.reserve( synapses.size( ));
 
+  unsigned int counter = 0;
   for( auto syn : synapses )
+//  for( unsigned int i = 0; i < 500; ++i )
   {
-    auto position = ( dynamic_cast< nsol::MorphologySynapsePtr >( syn ))->
+//    Eigen::Vector3f position = Eigen::Vector3f(  i % 50 + (i % 2) * i * 0.5,
+//                                                 i % 50 + (i % 2) * i * 0.3, i % 500 );
+
+    vec3 position = ( dynamic_cast< nsol::MorphologySynapsePtr >( syn ))->
         preSynapticSurfacePosition( );
 
+
+//    std::cout << " (" << position.x( ) << " " << position.y( ) << " " << position.z( ) << ")";
+
     positions.push_back( position );
+    ++counter;
   }
+  std::cout << std::endl;
 
   _psManager->setupSynapses( positions, PRESYNAPTIC );
 }
 
 void OpenGLWidget::home( void )
 {
-  _scene->computeBoundingBox( );
-  _camera->targetPivot( _scene->boundingBox( ).center( ));
-  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
+//  _scene->computeBoundingBox( );
+//  _camera->targetPivot( _scene->boundingBox( ).center( ));
+//  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
+//                         sin( _camera->fov( )));
+  _camera->targetPivot( _psManager->boundingBox( ).center( ));
+  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
                          sin( _camera->fov( )));
-}
-
-
-
-void OpenGLWidget::createParticleSystem( void )
-{
-  makeCurrent( );
-  prefr::Config::init( );
-
-  _particlesShader = new reto::ShaderProgram( );
-  _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
-  _particlesShader->loadFragmentShaderFromText( prefr::prefrFragmentShader );
-  _particlesShader->create( );
-  _particlesShader->link( );
-
-//  _psManager = new synvis::PSManager( );
-//  _psManager->init( 500000 );
-//
-//  //TODO add colors for different synapse tyoes
-//  _psManager->colorSynapses( vec4( 1, 0, 0, 0.4 ), ALL_CONNECTIONS );
-//  _psManager->sizeSynapses( 5.0, ALL_CONNECTIONS );
-
-
 
 }
+
+
+
+
 
 void OpenGLWidget::paintMorphologies( void )
 {
@@ -254,6 +270,7 @@ void OpenGLWidget::paintParticles( void )
 
   unsigned int uModelViewProjM, cameraUp, cameraRight;
 
+//  _particlesShader->sendUniform4m( "modelViewProjM" )
   uModelViewProjM = glGetUniformLocation( shader, "modelViewProjM" );
   glUniformMatrix4fv( uModelViewProjM, 1, GL_FALSE,
                      _camera->viewProjectionMatrix( ));
@@ -270,6 +287,12 @@ void OpenGLWidget::paintParticles( void )
                              _camera->position( )[ 1 ],
                              _camera->position( )[ 2 ] );
 
+  if( cameraPosition != _lastCameraPosition )
+    std::cout << "Camera: " << cameraPosition.x
+              << " " << cameraPosition.y
+              << " " << cameraPosition.z
+              << std::endl;
+
   _psManager->particleSystem( )->updateCameraDistances( cameraPosition );
 
   _lastCameraPosition = cameraPosition;
@@ -283,45 +306,43 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
-  makeCurrent( );
+//  makeCurrent( );
   std::chrono::time_point< std::chrono::system_clock > now =
-      std::chrono::system_clock::now( );
-//
-//  unsigned int elapsedMilliseconds =
-//      std::chrono::duration_cast< std::chrono::milliseconds >
-//        ( now - _lastFrame ).count( );
-//
-//  _lastFrame = now;
-//
-//  _deltaTime = elapsedMilliseconds * 0.001f;
-//
-//  _elapsedTimeRenderAcc += _deltaTime;
-//
-//  _frameCount++;
-//  glDepthMask(GL_TRUE);
-//  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//  glDisable(GL_BLEND);
-//  glEnable(GL_DEPTH_TEST);
-//  glEnable(GL_CULL_FACE);
-//
-//  if ( _paint )
+           std::chrono::system_clock::now( );
+
+  unsigned int elapsedMicroseconds =
+      std::chrono::duration_cast< std::chrono::microseconds >
+  ( now - _lastFrame ).count( );
+
+  _lastFrame = now;
+
+  _deltaTime = elapsedMicroseconds * 0.000001;
+
+  _elapsedTimeRenderAcc += elapsedMicroseconds;
+
+  _frameCount++;
+  glDepthMask(GL_TRUE);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glDisable(GL_BLEND);
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_CULL_FACE);
+
+  if ( _paint )
   {
-//    _camera->anim( );
+    _camera->anim( );
 
 //    if( _psManager && _psManager->particleSystem( ))
     {
 
-      if( //_psManager && _psManager->particleSystem( ) &&
-          _elapsedTimeRenderAcc >= _renderPeriod )
+      if( _psManager && _psManager->particleSystem( ) &&
+          _elapsedTimeRenderAcc >= _renderPeriodMicroseconds )
       {
-//        _psManager->particleSystem( )->update( 0.1f );
+        _psManager->particleSystem( )->update( 0.1 );
         _elapsedTimeRenderAcc = 0.0f;
-
-
       }
 
-      paintMorphologies( );
-//      paintParticles( );
+//      paintMorphologies( );
+      paintParticles( );
 
     }
 
@@ -374,8 +395,8 @@ void OpenGLWidget::paintGL( void )
 
 void OpenGLWidget::timerUpdate( void )
 {
-  if( _camera->anim( ))
-    this->update( );
+//  if( _camera->anim( ))
+//    this->update( );
 }
 
 

@@ -13,8 +13,10 @@
 
 #include <prefr/prefr.h>
 #include <reto/reto.h>
+#include <nlgeometry/nlgeometry.h>
 
 #include "prefr/SourceMultiPosition.h"
+#include "prefr/UpdaterStaticPosition.h"
 
 namespace synvis
 {
@@ -51,6 +53,7 @@ public:
     vec4 colorPaths( TNeuronConnection type = PRESYNAPTIC ) const;
     void colorPaths( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
 
+    nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
 protected:
 
@@ -82,7 +85,9 @@ protected:
     prefr::Cluster* _clusterPathPre;
     prefr::Cluster* _clusterPathPost;
 
+    UpdaterStaticPosition* _updaterSynapses;
 
+    nlgeometry::AxisAlignedBoundingBox _boundingBox;
   };
 
 

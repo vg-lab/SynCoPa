@@ -19,8 +19,8 @@ namespace synvis
   {
   public:
 
-    UpdaterStaticPosition( );
-    ~UpdaterStaticPosition( );
+    UpdaterStaticPosition( void );
+    ~UpdaterStaticPosition( void );
 
     void updateParticle( prefr::tparticle current, float deltaTime );
 

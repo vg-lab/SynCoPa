@@ -15,6 +15,15 @@ namespace synvis
 {
   using namespace prefr;
 
+  UpdaterStaticPosition::UpdaterStaticPosition( void )
+  : prefr::Updater( )
+  { }
+
+  UpdaterStaticPosition::~UpdaterStaticPosition( void )
+  {
+
+  }
+
   void UpdaterStaticPosition::updateParticle( prefr::tparticle current,
                                               float /*deltaTime*/ )
     {

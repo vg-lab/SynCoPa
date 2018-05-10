@@ -90,6 +90,7 @@ endif( )
 common_find_package_post()
 
 add_subdirectory( src )
+add_subdirectory( src/prefr )
 
 include( CPackConfig )
 include( DoxygenRule )

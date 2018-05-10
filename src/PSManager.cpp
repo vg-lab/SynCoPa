@@ -26,6 +26,7 @@ namespace synvis
   , _clusterSynPost( nullptr )
   , _clusterPathPre( nullptr )
   , _clusterPathPost( nullptr )
+  , _updaterSynapses( nullptr)
   { }
 
   PSManager::~PSManager( void )
@@ -41,8 +42,6 @@ namespace synvis
 
   void PSManager::init( unsigned int maxParticles )
   {
-//    unsigned int maxParticles = 500000;
-
     _particleSystem = new prefr::ParticleSystem( maxParticles );
 
     _particleSystem->parallel( true );
@@ -63,10 +62,10 @@ namespace synvis
     _sourcePathPost = new SourceMultiPosition( );
 
     prefr::ParticleSet emptyParticleSet;
-    _particleSystem->addSource( _sourceSynPre, { 0, 1} );
-//    _particleSystem->addSource( _sourceSynPost );
-//    _particleSystem->addSource( _sourcePathPre );
-//    _particleSystem->addSource( _sourcePathPost );
+    _particleSystem->addSource( _sourceSynPre );
+    _particleSystem->addSource( _sourceSynPost );
+    _particleSystem->addSource( _sourcePathPre );
+    _particleSystem->addSource( _sourcePathPost );
 
     _clusterSynPre = new prefr::Cluster( );
     _clusterSynPost = new prefr::Cluster( );
@@ -77,6 +76,9 @@ namespace synvis
     _particleSystem->addCluster( _clusterSynPost );
     _particleSystem->addCluster( _clusterPathPre );
     _particleSystem->addCluster( _clusterPathPost );
+
+    _updaterSynapses = new UpdaterStaticPosition( );
+    _particleSystem->addUpdater( _updaterSynapses );
 
     prefr::Sorter* sorter = new prefr::Sorter( );
     prefr::GLRenderer* renderer = new prefr::GLRenderer( );
@@ -114,32 +116,56 @@ namespace synvis
   }
 
   void PSManager::setupSynapses( const std::vector< vec3 > positions,
-                                 TNeuronConnection /*type*/ )
+                                 TNeuronConnection type )
   {
     if( positions.empty( ))
       return;
 
     _particleSystem->run( false );
 
-//    std::cerr << "Requesting particles " << positions.size( ) << std::endl;
-//
-//    auto availableParticles =
-//        _particleSystem->retrieveUnused( positions.size( ));
-//
+    std::cerr << "Requesting particles " << positions.size( ) << std::endl;
+
+    auto availableParticles =
+        _particleSystem->retrieveUnused( positions.size( ));
+
+    Eigen::Array3f minimum =
+      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+    Eigen::Array3f maximum =
+      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+
+    for( auto pos : positions )
+    {
+      Eigen::Array3f aux( pos );
+      minimum = minimum.min( aux );
+      maximum = maximum.max( aux );
+    }
+
+    _boundingBox.minimum( ) = minimum;
+    _boundingBox.maximum( ) = maximum;
+
+    std::cout << "Bounding box min: " << minimum.x( )
+              << " " << minimum.y( )
+              << " " << minimum.z( ) << std::endl;
+
+    std::cout << "Bounding box max: " << maximum.x( )
+                  << " " << maximum.y( )
+                  << " " << maximum.z( ) << std::endl;
 //    if( availableParticles.size( ) != positions.size( ))
 //    {
 //      std::cerr << "There are no available particles " << positions.size( ) << std::endl;
 //      return;
 //    }
-//
-//    auto source = ( type == synvis::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
-//
-//    source->addPositions( availableParticles, positions );
-//
-////    _clusterSynPre->particles( ).addIndices( availableParticles );
-//    _clusterSynPre->setModel( _modelSynPre );
 
-//    _particleSystem->addSource( _)
+    auto source = ( type == synvis::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
+
+    source->addPositions( availableParticles, positions );
+
+    _clusterSynPre->particles( ).addIndices( availableParticles );
+    std::cout << "Cluster " << _clusterSynPre->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+    _clusterSynPre->setModel( _modelSynPre );
+    _clusterSynPre->setUpdater( _updaterSynapses );
+
+    _particleSystem->addSource( source, availableParticles );
 
     _particleSystem->run( true );
   }
@@ -203,6 +229,11 @@ namespace synvis
 
   }
 
+
+  nlgeometry::AxisAlignedBoundingBox PSManager::boundingBox( void ) const
+  {
+    return _boundingBox;
+  }
 
 
 

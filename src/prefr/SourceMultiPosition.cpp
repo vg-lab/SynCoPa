@@ -27,6 +27,11 @@ namespace synvis
     {
       if( _positions.find( idx ) == _positions.end( ))
       {
+//        std::cout << idx << " " << posIt->x( )
+//                         << " " << posIt->y( )
+//                         << " " << posIt->z( )
+//                         << std::endl;
+
         _positions.insert( std::make_pair( idx,  *posIt ));
       }
 

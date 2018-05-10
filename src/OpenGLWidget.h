@@ -115,6 +115,7 @@ protected:
   float _maxFPS;
   float _renderPeriod;
   float _elapsedTimeRenderAcc;
+  float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
 };
 
