@@ -43,7 +43,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _particlesShader( nullptr )
 , _nlrenderer( nullptr )
 , _dataset( nullptr )
-, _scene( nullptr )
+, _neuronScene( nullptr )
 , _psManager( nullptr )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( false )
@@ -145,20 +145,18 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   std::cout << "Loading connectivity..." << std::endl;
   _dataset->loadBlueConfigConnectivityWithMorphologies( );
 
-  _scene = new synvis::Scene( _dataset );
+  _neuronScene = new synvis::NeuronScene( _dataset );
   std::cout << "Generating meshes..." << std::endl;
-//  _scene->generateMeshes( );
+  _neuronScene->generateMeshes( );
 
-  std::vector< unsigned int > gids;
+  std::set< unsigned int > gids;
   for( auto neuron : _dataset->neurons( ))
   {
-    gids.push_back( neuron.first );
+    gids.insert( neuron.first );
   }
 
-//  _renderConfig = _scene->getRender( gids );
-
   createParticleSystem( );
-  setupSynapses( );
+  setupSynapses( gids );
 
   home( );
 }
@@ -179,55 +177,74 @@ void OpenGLWidget::createParticleSystem( void )
   _psManager->init( 500000 );
 //
 //  //TODO add colors for different synapse tyoes
-  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), ALL_CONNECTIONS );
-  _psManager->sizeSynapses( 5.0, ALL_CONNECTIONS );
+  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), PRESYNAPTIC );
+  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), POSTSYNAPTIC );
+  _psManager->sizeSynapses( 10.0, PRESYNAPTIC );
+  _psManager->sizeSynapses( 10.0, POSTSYNAPTIC );
 
 }
 
-void OpenGLWidget::setupSynapses( void )
+void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
 {
   auto& circuit = _dataset->circuit( );
-  auto synapses = circuit.synapses( nsol::Circuit::PRESYNAPTICCONNECTIONS );
+  auto synapses = circuit.synapses( *gids.begin( ), nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
   std::cout << " Loaded " << synapses.size( ) << " synapses." << std::endl;
 
-  std::vector< vec3 > positions;
-  positions.reserve( synapses.size( ));
+  std::vector< vec3 > positionsPre;
+  std::vector< vec3 > positionsPost;
+  positionsPre.reserve( synapses.size( ));
+  positionsPre.reserve( synapses.size( ));
 
   unsigned int counter = 0;
   for( auto syn : synapses )
-//  for( unsigned int i = 0; i < 500; ++i )
   {
-//    Eigen::Vector3f position = Eigen::Vector3f(  i % 50 + (i % 2) * i * 0.5,
-//                                                 i % 50 + (i % 2) * i * 0.3, i % 500 );
+    auto morphoSyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
 
-    vec3 position = ( dynamic_cast< nsol::MorphologySynapsePtr >( syn ))->
-        preSynapticSurfacePosition( );
+//    vec3 position = morphoSyn->preSynapticSurfacePosition( );
 
-
+//    std::cout << "Syn " << morphoSyn << " " << morphoSyn->preSynapticNeuron( )
+//              << " " << morphoSyn->postSynapticNeuron( );
 //    std::cout << " (" << position.x( ) << " " << position.y( ) << " " << position.z( ) << ")";
 
-    positions.push_back( position );
+    positionsPre.push_back( morphoSyn->preSynapticSurfacePosition( ));
+    positionsPost.push_back( morphoSyn->postSynapticSurfacePosition( ));
+
     ++counter;
   }
   std::cout << std::endl;
 
-  _psManager->setupSynapses( positions, PRESYNAPTIC );
+  _psManager->setupSynapses( positionsPre, PRESYNAPTIC );
+//  _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
 }
 
 void OpenGLWidget::home( void )
 {
-//  _scene->computeBoundingBox( );
-//  _camera->targetPivot( _scene->boundingBox( ).center( ));
-//  _camera->targetRadius( _scene->boundingBox( ).radius( ) /
-//                         sin( _camera->fov( )));
-  _camera->targetPivot( _psManager->boundingBox( ).center( ));
-  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+  _neuronScene->computeBoundingBox( );
+  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
+  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
                          sin( _camera->fov( )));
+//  _camera->targetPivot( _psManager->boundingBox( ).center( ));
+//  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+//                         sin( _camera->fov( )));
 
 }
 
+void OpenGLWidget::clear( void )
+{
+  _psManager->clear( );
+}
 
+void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
+{
+  std::set< unsigned int > gids = { gid };
+  std::vector< unsigned int > gidsv = { gid };
+  setupSynapses( gids );
+
+  _renderConfig = _neuronScene->getRender( gidsv );
+
+
+}
 
 
 
@@ -287,11 +304,11 @@ void OpenGLWidget::paintParticles( void )
                              _camera->position( )[ 1 ],
                              _camera->position( )[ 2 ] );
 
-  if( cameraPosition != _lastCameraPosition )
-    std::cout << "Camera: " << cameraPosition.x
-              << " " << cameraPosition.y
-              << " " << cameraPosition.z
-              << std::endl;
+//  if( cameraPosition != _lastCameraPosition )
+//    std::cout << "Camera: " << cameraPosition.x
+//              << " " << cameraPosition.y
+//              << " " << cameraPosition.z
+//              << std::endl;
 
   _psManager->particleSystem( )->updateCameraDistances( cameraPosition );
 
@@ -341,7 +358,7 @@ void OpenGLWidget::paintGL( void )
         _elapsedTimeRenderAcc = 0.0f;
       }
 
-//      paintMorphologies( );
+      paintMorphologies( );
       paintParticles( );
 
     }
@@ -363,14 +380,14 @@ void OpenGLWidget::paintGL( void )
     if ( mainWindow )
     {
 
-      unsigned int ellapsedMiliseconds = duration.count( );
+      if ( _showFps )
+      {
+        unsigned int ellapsedMiliseconds = duration.count( );
 
-      unsigned int fps = roundf( 1000.0f *
+        unsigned int fps = roundf( 1000.0f *
                                  float( FRAMES_PAINTED_TO_MEASURE_FPS ) /
                                  float( ellapsedMiliseconds ));
 
-      if ( _showFps )
-      {
         _fpsLabel.setVisible( true );
         _fpsLabel.setText( QString::number( fps ) + QString( " FPS" ));
         _fpsLabel.adjustSize( );
@@ -533,4 +550,9 @@ void OpenGLWidget::toggleShowFPS( void )
   _showFps = !_showFps;
   if ( _idleUpdate )
     update( );
+}
+
+nsol::DataSet* OpenGLWidget::dataset( void )
+{
+  return _dataset;
 }

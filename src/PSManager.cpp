@@ -72,6 +72,9 @@ namespace synvis
     _clusterPathPre = new prefr::Cluster( );
     _clusterPathPost = new prefr::Cluster( );
 
+    _clusterSynPre->setSource( _sourceSynPre );
+    _clusterSynPost->setSource( _sourceSynPost );
+
     _particleSystem->addCluster( _clusterSynPre );
     _particleSystem->addCluster( _clusterSynPost );
     _particleSystem->addCluster( _clusterPathPre );
@@ -91,14 +94,16 @@ namespace synvis
 
   void PSManager::clear( void )
   {
-    //TODO
+    clearSynapses( ALL_CONNECTIONS );
   }
 
   void PSManager::clearSynapses( TNeuronConnection type )
   {
     if( type == PRESYNAPTIC )
     {
+      _sourceSynPre->clear( );
       _particleSystem->detachSource( _sourceSynPre );
+
     }
     else if ( type == POSTSYNAPTIC )
     {
@@ -106,7 +111,8 @@ namespace synvis
     }
     else
     {
-
+      _sourceSynPre->clear( );
+      _particleSystem->detachSource( _sourceSynPre );
     }
   }
 
@@ -122,6 +128,8 @@ namespace synvis
       return;
 
     _particleSystem->run( false );
+
+    clearSynapses( type );
 
     std::cerr << "Requesting particles " << positions.size( ) << std::endl;
 
@@ -157,15 +165,19 @@ namespace synvis
 //    }
 
     auto source = ( type == synvis::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
+    auto cluster = ( type == synvis::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
 
-    source->addPositions( availableParticles, positions );
+    source->addPositions( availableParticles.indices( ), positions );
 
-    _clusterSynPre->particles( ).addIndices( availableParticles );
-    std::cout << "Cluster " << _clusterSynPre->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
-    _clusterSynPre->setModel( _modelSynPre );
-    _clusterSynPre->setUpdater( _updaterSynapses );
+    cluster->particles( availableParticles );
+    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
 
-    _particleSystem->addSource( source, availableParticles );
+    cluster->setModel( _modelSynPre );
+    cluster->setUpdater( _updaterSynapses );
+//    cluster->setSource( source );
+    _particleSystem->addSource( source, cluster->particles( ).indices( ) );
+
+    std::cout << "Source " << source->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
 
     _particleSystem->run( true );
   }

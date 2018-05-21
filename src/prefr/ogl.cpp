@@ -350,7 +350,7 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
 
   auto indices = particleSystem->retrieveUnused( maxParticles );
 
-  source->addPositions( indices, positions );
+  source->addPositions( indices.indices( ), positions );
 
 //  Sampler* sampler = new SphereSampler( 1.0f, 360 );
 
@@ -358,8 +358,8 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
 
   cluster = new Cluster( );
 
-  particleSystem->addSource( source, indices );
-  particleSystem->addCluster( cluster, indices );
+  particleSystem->addSource( source, indices.indices( ) );
+  particleSystem->addCluster( cluster, indices.indices( ) );
 
   cluster->setModel( model1 );
   cluster->setUpdater( updater );

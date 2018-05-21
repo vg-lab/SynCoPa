@@ -6,8 +6,8 @@
  * @remarks Copyright (c) GMRV/URJC. All rights reserved.
  *          Do not distribute without further notice.
  */
-#ifndef SRC_SCENE_H_
-#define SRC_SCENE_H_
+#ifndef SRC_NEURONSCENE_H_
+#define SRC_NEURONSCENE_H_
 
 #include "types.h"
 
@@ -42,13 +42,13 @@ namespace synvis
                       std::vector< mat4 >,
                       std::vector< vec3 >> TRenderMorpho;
 
-  class Scene
+  class NeuronScene
   {
 public:
 
-    Scene( nsol::DataSet* dataset );
+    NeuronScene( nsol::DataSet* dataset );
 
-    ~Scene( void );
+    ~NeuronScene( void );
 
     void clear( void );
 
@@ -56,14 +56,13 @@ public:
 
     void generateMeshes( void );
 
-    TRenderMorpho getRender( const std::vector< unsigned int >& gids );
+    TRenderMorpho getRender( const std::vector< unsigned int >& gids ) const;
 
     void computeBoundingBox( std::vector< unsigned int > indices_ );
 
     void computeBoundingBox( void );
 
-    nlgeometry::AxisAlignedBoundingBox boundingBox( void );
-
+    nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
 protected:
 
@@ -85,4 +84,4 @@ protected:
 
 
 
-#endif /* SRC_SCENE_H_ */
+#endif /* SRC_NEURONSCENE_H_ */

@@ -161,7 +161,7 @@ void setFormat( void )
   int ctxOpenGLMajor = DEFAULT_CONTEXT_OPENGL_MAJOR;
   int ctxOpenGLMinor = DEFAULT_CONTEXT_OPENGL_MINOR;
   int ctxOpenGLVSync = 1;
-  int ctxOpenGLSamples = 0;
+  int ctxOpenGLSamples = 16;
 
   if ( std::getenv("CONTEXT_OPENGL_MAJOR"))
     ctxOpenGLMajor = std::stoi( std::getenv("CONTEXT_OPENGL_MAJOR"));

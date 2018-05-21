@@ -9,13 +9,13 @@
 #ifndef SRC_SCENE_CPP_
 #define SRC_SCENE_CPP_
 
-#include "Scene.h"
+#include "NeuronScene.h"
 
 namespace synvis
 {
 
 
-  Scene::Scene( nsol::DataSet* dataset )
+  NeuronScene::NeuronScene( nsol::DataSet* dataset )
   : _dataset( dataset )
   {
     _attribsFormat.resize( 3 );
@@ -25,25 +25,25 @@ namespace synvis
 
   }
 
-  Scene::~Scene( void )
+  NeuronScene::~NeuronScene( void )
   {
     unload( );
   }
 
-  void Scene::unload( void )
+  void NeuronScene::unload( void )
   {
     if( _dataset )
       delete _dataset;
   }
 
-  void Scene::clear( void )
+  void NeuronScene::clear( void )
   {
     if( _dataset )
       _dataset->close( );
   }
 
 
-  void Scene::generateMeshes( void )
+  void NeuronScene::generateMeshes( void )
   {
     std::cout << "Generating " << _dataset->neurons( ).size( ) << std::endl;
     for ( auto neuronIt: _dataset->neurons( ))
@@ -66,7 +66,7 @@ namespace synvis
     }
   }
 
-  TRenderMorpho Scene::getRender( const std::vector< unsigned int >& gids )
+  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gids ) const
   {
     std::vector< nlgeometry::MeshPtr > meshes;
     std::vector< mat4 > matrices;
@@ -104,7 +104,7 @@ namespace synvis
     return std::make_tuple( gids, meshes, matrices, colors );
   }
 
-  void Scene::computeBoundingBox( std::vector< unsigned int > indices_ )
+  void NeuronScene::computeBoundingBox( std::vector< unsigned int > indices_ )
   {
     Eigen::Array3f minimum =
         Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
@@ -137,7 +137,7 @@ namespace synvis
     _boundingBox = nlgeometry::AxisAlignedBoundingBox( minimum, maximum );
   }
 
-  void Scene::computeBoundingBox( void )
+  void NeuronScene::computeBoundingBox( void )
   {
     std::vector< unsigned int > indices;
     for ( const auto& neuronIt: _dataset->neurons( ))
@@ -148,7 +148,7 @@ namespace synvis
     computeBoundingBox( indices );
   }
 
-  nlgeometry::AxisAlignedBoundingBox Scene::boundingBox( void )
+  nlgeometry::AxisAlignedBoundingBox NeuronScene::boundingBox( void ) const
   {
     return _boundingBox;
   }

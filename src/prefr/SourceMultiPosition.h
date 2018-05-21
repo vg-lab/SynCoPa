@@ -28,6 +28,8 @@ namespace synvis
 
     vec3 position( unsigned int idx );
 
+    void clear( void );
+
   protected:
 
     std::unordered_map< unsigned int, vec3 > _positions;

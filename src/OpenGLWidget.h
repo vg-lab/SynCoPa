@@ -26,7 +26,7 @@
 #include <prefr/prefr.h>
 #include <reto/reto.h>
 
-#include "Scene.h"
+#include "NeuronScene.h"
 #include "PSManager.h"
 
 
@@ -50,8 +50,11 @@ public:
                        const std::string& target );
 
   void home( void );
+  void clear( void );
 
   void idleUpdate( bool idleUpdate_ = true );
+
+  nsol::DataSet* dataset( void );
 
 public slots:
 
@@ -60,6 +63,8 @@ public slots:
   void changeClearColor( void );
   void toggleUpdateOnIdle( void );
   void toggleShowFPS( void );
+
+  void selectPresynapticNeuron( unsigned int gid );
 
 protected:
 
@@ -73,7 +78,7 @@ protected:
   virtual void mouseMoveEvent( QMouseEvent* event );
   virtual void keyPressEvent( QKeyEvent* event );
 
-  void setupSynapses( void );
+  void setupSynapses( const std::set< unsigned int >& gids );
 
   void paintParticles( void );
   void paintMorphologies( void );
@@ -104,7 +109,7 @@ protected:
   nlrender::Renderer* _nlrenderer;
 
   nsol::DataSet* _dataset;
-  synvis::Scene* _scene;
+  synvis::NeuronScene* _neuronScene;
   synvis::PSManager* _psManager;
 
   QTimer* _cameraTimer;

@@ -65,4 +65,8 @@ namespace synvis
     return pos->second;
   }
 
+  void SourceMultiPosition::clear( void )
+  {
+    _positions.clear( );
+  }
 }

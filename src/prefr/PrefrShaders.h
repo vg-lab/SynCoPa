@@ -43,8 +43,11 @@ void main()\n\
   vec2 p = -1.0 + 2.0 * uvCoord;\n\
   float l = sqrt(dot(p,p));\n \
   l = 1.0 - clamp(l, 0.0, 1.0);\n\
-  l *= color.a;\n\
-  outputColor = vec4(color.rgb, l);\n\
+  //l *= color.a;\n\
+  float margin = 0.8;\n\
+  float alpha = float(l <= margin) + (float(l > margin) * (1.0 -((l - margin) / (1.0 - margin))));\n\
+  alpha = 1.0 - alpha;\n\
+  outputColor = vec4(color.rgb, alpha );\n\
 }";
 
 }

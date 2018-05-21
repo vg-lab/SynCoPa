@@ -30,8 +30,10 @@ set(STREAMINAPP_SOURCES
   streaminApp.cpp
   MainWindow.cpp
   OpenGLWidget.cpp
-  Scene.cpp
+  
+  NeuronScene.cpp
   PSManager.cpp
+  
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
   
@@ -45,8 +47,9 @@ set(STREAMINAPP_HEADERS
   OpenGLWidget.h
   MainWindow.h
   
-  Scene.h
+  NeuronScene.h
   PSManager.h
+  
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h
   

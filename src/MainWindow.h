@@ -13,6 +13,9 @@
 #include <QSlider>
 #include <QTimer>
 #include <QRadioButton>
+#include <QListWidget>
+#include <QStandardItemModel>
+
 
 #include "OpenGLWidget.h"
 
@@ -29,6 +32,7 @@ class MainWindow
   Q_OBJECT
 
 public:
+
   explicit MainWindow( QWidget* parent = 0,
                        bool updateOnIdle = true );
   ~MainWindow( void );
@@ -39,8 +43,22 @@ public:
 
   void showStatusBarMessage ( const QString& message );
 
+protected slots:
+
+  void presynapticNeuronClicked( const QModelIndex& index );
+
+  void clear( void );
+
 protected:
+
+  void loadPresynapticList( void );
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
+
+//  QDockWidget* _dockList;
+  QDockWidget* _dockInfo;
+  QListView* _listPresynaptic;
+  QStandardItemModel* _modelListPre;
+
 };
