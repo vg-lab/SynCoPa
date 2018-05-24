@@ -153,8 +153,67 @@ namespace synvis
     return _boundingBox;
   }
 
+
+  nsol::Nodes NeuronScene::findPathToSoma( const nsol::MorphologySynapsePtr synapse,
+                                           synvis::TNeuronConnection type ) const
+  {
+
+    nsol::Nodes result;
+
+//    unsigned int gid;
+    nsol::NeuronMorphologySectionPtr section = nullptr;
+
+    std::vector< nsol::NeuronMorphologySection* > sections;
+
+    if( type == PRESYNAPTIC )
+    {
+//      gid = synapse->preSynapticNeuron( );
+      section =
+          dynamic_cast< nsol::NeuronMorphologySection* >(
+              synapse->preSynapticSection( ));
+    }
+    else
+    {
+//      gid = synapse->postSynapticNeuron( );
+      section =
+          dynamic_cast< nsol::NeuronMorphologySection* >(
+              synapse->postSynapticSection( ));
+    }
+
+//    auto morpho = _neuronMorphologies.find( gid );
+//    if( !morpho )
+//    {
+//      std::cerr << "Morphology " << gid << " not found." << std::endl;
+//      return result;
+//    }
+
+    while( section )
+    {
+      sections.push_back( section );
+
+      section = dynamic_cast< nsol::NeuronMorphologySection* >( section->parent( ));
+    }
+
+    for( auto sec : sections )
+    {
+      for( auto node : sec->nodes( ))
+        result.push_back( node );
+    }
+
+    return result;
+
+  }
+
+  mat4 NeuronScene::getTransform( unsigned int gid ) const
+  {
+    nsol::NeuronsMap& neurons = _dataset->neurons();
+    auto neuron = neurons.find( gid );
+    if( neuron == neurons.end( ))
+      return mat4::Ones( );
+
+    return neuron->second->transform( );
+  }
+
 }
-
-
 
 #endif /* SRC_SCENE_CPP_ */

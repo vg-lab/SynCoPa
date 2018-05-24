@@ -179,15 +179,24 @@ void OpenGLWidget::createParticleSystem( void )
 //  //TODO add colors for different synapse tyoes
   _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), PRESYNAPTIC );
   _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), POSTSYNAPTIC );
-  _psManager->sizeSynapses( 10.0, PRESYNAPTIC );
-  _psManager->sizeSynapses( 10.0, POSTSYNAPTIC );
+
+  _psManager->colorPaths( vec4( 0, 1, 0, 0.25 ), PRESYNAPTIC );
+  _psManager->colorPaths( vec4( 0, 1, 0, 0.25 ), POSTSYNAPTIC );
+
+  _psManager->sizeSynapses( 20.0, PRESYNAPTIC );
+  _psManager->sizeSynapses( 20.0, POSTSYNAPTIC );
+
+  _psManager->sizePaths( 10.0, PRESYNAPTIC );
+  _psManager->sizePaths( 10.0, POSTSYNAPTIC );
+
 
 }
 
 void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
 {
   auto& circuit = _dataset->circuit( );
-  auto synapses = circuit.synapses( *gids.begin( ), nsol::Circuit::PRESYNAPTICCONNECTIONS );
+  auto synapses = circuit.synapses( *gids.begin( ),
+                                    nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
   std::cout << " Loaded " << synapses.size( ) << " synapses." << std::endl;
 
@@ -212,10 +221,75 @@ void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
 
     ++counter;
   }
+
   std::cout << std::endl;
 
   _psManager->setupSynapses( positionsPre, PRESYNAPTIC );
 //  _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
+}
+
+void OpenGLWidget::setupPaths( unsigned int gidPre,
+                               const std::set< unsigned int >& /*gidsPost*/ )
+{
+  auto synapses =
+      _dataset->circuit( ).synapses( gidPre, nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+  std::cout << "Found " << synapses.size( ) << " synapses for " << gidPre << std::endl;
+
+  std::unordered_set< nsol::NodePtr > insertedNodes;
+
+  nsol::Nodes unrepeatedNodes;
+
+  std::vector< mat4 > transforms;
+  std::vector< nsol::Nodes > presynapticPaths;
+  std::vector< nsol::Nodes > postsynapticPaths;
+
+  for( auto syn : synapses )
+  {
+//    if( gidsPost.find( syn->postSynapticNeuron( )) != gidsPost.end( ))
+    {
+      auto msyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
+      if( !msyn )
+        std::cerr << "Error converting from Synapse to MorphologySynapse " << syn << std::endl;
+
+      auto sectionNodes = _neuronScene->findPathToSoma( msyn, PRESYNAPTIC );
+
+      unrepeatedNodes.clear( );
+
+      for( auto node : sectionNodes )
+      {
+        if( insertedNodes.find( node ) == insertedNodes.end( ))
+        {
+          unrepeatedNodes.push_back( node );
+          insertedNodes.insert( node );
+        }
+      }
+
+      presynapticPaths.push_back( unrepeatedNodes );
+      transforms.push_back( _neuronScene->getTransform( gidPre ));
+
+//      postsynapticPaths.push_back( _neuronScene->findPathToSoma( msyn, POSTSYNAPTIC ));
+    }
+  }
+
+
+  auto transformIt = transforms.begin( );
+  std::vector< vec3 > paths;
+  for( const auto& path : presynapticPaths )
+  {
+    for( auto node : path )
+    {
+      auto nodepos = node->point( );
+      ;
+      vec4 point = *transformIt * vec4( nodepos.x( ), nodepos.y( ), nodepos.z( ), 1 ) ;
+      paths.push_back( vec3( point.x( ), point.y( ), point.z( )));
+//      paths.push_back( node->point( ) );
+    }
+    ++transformIt;
+  }
+
+  _psManager->setupPath( paths, PRESYNAPTIC );
+
 }
 
 void OpenGLWidget::home( void )
@@ -240,6 +314,7 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
   std::set< unsigned int > gids = { gid };
   std::vector< unsigned int > gidsv = { gid };
   setupSynapses( gids );
+  setupPaths( gid, gids );
 
   _renderConfig = _neuronScene->getRender( gidsv );
 

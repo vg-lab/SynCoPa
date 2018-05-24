@@ -79,6 +79,8 @@ protected:
   virtual void keyPressEvent( QKeyEvent* event );
 
   void setupSynapses( const std::set< unsigned int >& gids );
+  void setupPaths( unsigned int gidPre,
+                   const std::set< unsigned int >& gidsPost );
 
   void paintParticles( void );
   void paintMorphologies( void );

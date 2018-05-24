@@ -36,7 +36,7 @@ public:
 
     void clearSynapses( TNeuronConnection type = ALL_CONNECTIONS );
 
-    void clearPaths( void );
+    void clearPaths( TNeuronConnection type = ALL_CONNECTIONS );
 
     void setupSynapses( const std::vector< vec3 > positions,
                         TNeuronConnection type = PRESYNAPTIC );
@@ -52,6 +52,10 @@ public:
 
     vec4 colorPaths( TNeuronConnection type = PRESYNAPTIC ) const;
     void colorPaths( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
+
+    float sizePaths( TNeuronConnection type = PRESYNAPTIC ) const;
+    void sizePaths( float size, TNeuronConnection type = PRESYNAPTIC );
+
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 

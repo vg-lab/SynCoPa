@@ -64,6 +64,11 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
+    nsol::Nodes findPathToSoma( const nsol::MorphologySynapsePtr synapse,
+                                TNeuronConnection type = PRESYNAPTIC ) const;
+
+    mat4 getTransform( unsigned int gid ) const;
+
 protected:
 
     nsol::DataSet* _dataset;

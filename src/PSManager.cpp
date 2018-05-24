@@ -74,6 +74,9 @@ namespace synvis
 
     _clusterSynPre->setSource( _sourceSynPre );
     _clusterSynPost->setSource( _sourceSynPost );
+    _clusterPathPre->setSource( _sourcePathPre );
+    _clusterPathPost->setSource( _sourcePathPost );
+
 
     _particleSystem->addCluster( _clusterSynPre );
     _particleSystem->addCluster( _clusterSynPost );
@@ -107,18 +110,40 @@ namespace synvis
     }
     else if ( type == POSTSYNAPTIC )
     {
-
+      _sourceSynPost->clear( );
+      _particleSystem->detachSource( _sourceSynPost );
     }
     else
     {
       _sourceSynPre->clear( );
       _particleSystem->detachSource( _sourceSynPre );
+
+      _sourceSynPost->clear( );
+      _particleSystem->detachSource( _sourceSynPost );
     }
   }
 
-  void PSManager::clearPaths( void )
+  void PSManager::clearPaths( TNeuronConnection type )
   {
-    //TODO
+    if( type == PRESYNAPTIC )
+    {
+      _sourcePathPre->clear( );
+      _particleSystem->detachSource( _sourcePathPre );
+
+    }
+    else if ( type == POSTSYNAPTIC )
+    {
+      _sourcePathPost->clear( );
+      _particleSystem->detachSource( _sourcePathPost );
+    }
+    else
+    {
+      _sourcePathPre->clear( );
+      _particleSystem->detachSource( _sourcePathPre );
+
+      _sourcePathPost->clear( );
+      _particleSystem->detachSource( _sourcePathPost );
+    }
   }
 
   void PSManager::setupSynapses( const std::vector< vec3 > positions,
@@ -166,13 +191,14 @@ namespace synvis
 
     auto source = ( type == synvis::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
     auto cluster = ( type == synvis::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
+    auto model = ( type == synvis::PRESYNAPTIC ? _modelSynPre : _modelSynPost );
 
     source->addPositions( availableParticles.indices( ), positions );
 
     cluster->particles( availableParticles );
     std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
 
-    cluster->setModel( _modelSynPre );
+    cluster->setModel( model );
     cluster->setUpdater( _updaterSynapses );
 //    cluster->setSource( source );
     _particleSystem->addSource( source, cluster->particles( ).indices( ) );
@@ -182,10 +208,66 @@ namespace synvis
     _particleSystem->run( true );
   }
 
-  void PSManager::setupPath( const std::vector< vec3 > /*nodePositions*/,
-                             TNeuronConnection /*type*/ )
+  void PSManager::setupPath( const std::vector< vec3 > positions,
+                             TNeuronConnection type )
   {
-    //TODO
+    if( positions.empty( ))
+      return;
+
+    _particleSystem->run( false );
+
+    clearPaths( type );
+
+    std::cerr << "Requesting particles " << positions.size( ) << std::endl;
+
+    auto availableParticles =
+        _particleSystem->retrieveUnused( positions.size( ));
+
+    Eigen::Array3f minimum =
+      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+    Eigen::Array3f maximum =
+      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+
+    for( auto pos : positions )
+    {
+      Eigen::Array3f aux( pos );
+      minimum = minimum.min( aux );
+      maximum = maximum.max( aux );
+    }
+
+    _boundingBox.minimum( ) = minimum;
+    _boundingBox.maximum( ) = maximum;
+
+    std::cout << "Bounding box min: " << minimum.x( )
+              << " " << minimum.y( )
+              << " " << minimum.z( ) << std::endl;
+
+    std::cout << "Bounding box max: " << maximum.x( )
+                  << " " << maximum.y( )
+                  << " " << maximum.z( ) << std::endl;
+//    if( availableParticles.size( ) != positions.size( ))
+//    {
+//      std::cerr << "There are no available particles " << positions.size( ) << std::endl;
+//      return;
+//    }
+
+    auto source = ( type == synvis::PRESYNAPTIC ? _sourcePathPre : _sourcePathPost );
+    auto cluster = ( type == synvis::PRESYNAPTIC ? _clusterPathPre : _clusterPathPost );
+    auto model = ( type == synvis::PRESYNAPTIC ? _modelPathPre : _modelPathPost );
+
+    source->addPositions( availableParticles.indices( ), positions );
+
+    cluster->particles( availableParticles );
+    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+
+    cluster->setModel( model );
+    cluster->setUpdater( _updaterSynapses );
+//    cluster->setSource( source );
+    _particleSystem->addSource( source, cluster->particles( ).indices( ) );
+
+    std::cout << "Source " << source->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+
+    _particleSystem->run( true );
   }
 
   vec4 PSManager::colorSynapses( TNeuronConnection type ) const
@@ -236,11 +318,37 @@ namespace synvis
       return glmToEigen( _modelPathPost->color.GetFirstValue( ));
   }
 
-  void PSManager::colorPaths( const vec4& /*color*/, TNeuronConnection /*type*/ )
+  void PSManager::colorPaths( const vec4& color, TNeuronConnection type )
   {
-
+    if( type == PRESYNAPTIC )
+      _modelPathPre->color.Insert( 0, eigenToGLM( color ));
+    else if( type == POSTSYNAPTIC )
+      _modelPathPost->color.Insert( 0, eigenToGLM( color ));
+    else
+    {
+      _modelPathPre->color.Insert( 0, eigenToGLM( color ));
+      _modelPathPost->color.Insert( 0, eigenToGLM( color ));
+    }
   }
 
+
+  float PSManager::sizePaths( TNeuronConnection type ) const
+  {
+    return ( type == PRESYNAPTIC ? _modelPathPre : _modelPathPost )->size.GetFirstValue( );
+  }
+
+  void PSManager::sizePaths( float size, TNeuronConnection type )
+  {
+    if( type == PRESYNAPTIC )
+      _modelPathPre->size.Insert( 0, size );
+    else if( type == POSTSYNAPTIC )
+      _modelPathPost->size.Insert( 0, size );
+    else
+    {
+      _modelPathPre->size.Insert( 0, size );
+      _modelPathPost->size.Insert( 0, size );
+    }
+  }
 
   nlgeometry::AxisAlignedBoundingBox PSManager::boundingBox( void ) const
   {
