@@ -98,6 +98,7 @@ namespace synvis
   void PSManager::clear( void )
   {
     clearSynapses( ALL_CONNECTIONS );
+    clearPaths( ALL_CONNECTIONS );
   }
 
   void PSManager::clearSynapses( TNeuronConnection type )
@@ -196,7 +197,7 @@ namespace synvis
     source->addPositions( availableParticles.indices( ), positions );
 
     cluster->particles( availableParticles );
-    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+//    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
 
     cluster->setModel( model );
     cluster->setUpdater( _updaterSynapses );
@@ -223,28 +224,30 @@ namespace synvis
     auto availableParticles =
         _particleSystem->retrieveUnused( positions.size( ));
 
-    Eigen::Array3f minimum =
-      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
-    Eigen::Array3f maximum =
-      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+//    Eigen::Array3f minimum =
+//      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+//    Eigen::Array3f maximum =
+//      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
 
-    for( auto pos : positions )
-    {
-      Eigen::Array3f aux( pos );
-      minimum = minimum.min( aux );
-      maximum = maximum.max( aux );
-    }
+//    for( auto pos : positions )
+//    {
+//      Eigen::Array3f aux( pos );
+//      minimum = minimum.min( aux );
+//      maximum = maximum.max( aux );
+//    }
+//
+//    _boundingBox.minimum( ) = minimum;
+//    _boundingBox.maximum( ) = maximum;
+//
+//    std::cout << "Bounding box min: " << minimum.x( )
+//              << " " << minimum.y( )
+//              << " " << minimum.z( ) << std::endl;
+//
+//    std::cout << "Bounding box max: " << maximum.x( )
+//                  << " " << maximum.y( )
+//                  << " " << maximum.z( ) << std::endl;
 
-    _boundingBox.minimum( ) = minimum;
-    _boundingBox.maximum( ) = maximum;
 
-    std::cout << "Bounding box min: " << minimum.x( )
-              << " " << minimum.y( )
-              << " " << minimum.z( ) << std::endl;
-
-    std::cout << "Bounding box max: " << maximum.x( )
-                  << " " << maximum.y( )
-                  << " " << maximum.z( ) << std::endl;
 //    if( availableParticles.size( ) != positions.size( ))
 //    {
 //      std::cerr << "There are no available particles " << positions.size( ) << std::endl;
@@ -258,7 +261,7 @@ namespace synvis
     source->addPositions( availableParticles.indices( ), positions );
 
     cluster->particles( availableParticles );
-    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+//    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
 
     cluster->setModel( model );
     cluster->setUpdater( _updaterSynapses );

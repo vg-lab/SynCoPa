@@ -66,22 +66,24 @@ namespace synvis
     }
   }
 
-  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gids ) const
+  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gidsPre,
+                                        const std::vector< unsigned int >& gidsPost ) const
   {
     std::vector< nlgeometry::MeshPtr > meshes;
     std::vector< mat4 > matrices;
     std::vector< vec3 > colors;
 
-    meshes.reserve( gids.size( ));
-    matrices.reserve( gids.size( ));
+    unsigned int totalMeshes = gidsPre.size( ) + gidsPost.size( );
+    meshes.reserve( totalMeshes );
+    matrices.reserve( totalMeshes);
+    colors.reserve( totalMeshes );
 
-    colors.resize( gids.size( ), Eigen::Vector3f::Ones( ));
+//    colors.resize( gidsPre.size( ), Eigen::Vector3f::Ones( ));
 
-    std::cout << "Creating render of " << gids.size( ) << std::endl;
+    std::cout << "Creating render of " << gidsPre.size( ) << std::endl;
     nsol::NeuronsMap& neurons = _dataset->neurons();
 
-
-    for( auto gid : gids )
+    for( auto gid : gidsPre )
     {
       auto neuron = neurons.find( gid );
       auto morphology = _neuronMorphologies.find( gid );
@@ -91,17 +93,39 @@ namespace synvis
   //      if( meshIt != _neuronMeshes.end( ))
         meshes.push_back( meshIt->second );
   //      auto morphIt = _neuronMorphologies.find( gid );
-
+        colors.push_back( _colorPre );
   //      if( morphIt != _neuronMorphologies.end( ))
   //      {
         auto matrix = neuron->second->transform( );
         matrices.push_back( matrix );
       }
+      else
+        std::cout << "Could not find " << gid << " morphology " << std::endl;
+    }
+
+    for( auto gid : gidsPost )
+    {
+      auto neuron = neurons.find( gid );
+      auto morphology = _neuronMorphologies.find( gid );
+      if( morphology != _neuronMorphologies.end( ))
+      {
+        auto meshIt = _neuronMeshes.find( morphology->second );
+  //      if( meshIt != _neuronMeshes.end( ))
+        meshes.push_back( meshIt->second );
+  //      auto morphIt = _neuronMorphologies.find( gid );
+        colors.push_back( _colorPost );
+  //      if( morphIt != _neuronMorphologies.end( ))
+  //      {
+        auto matrix = neuron->second->transform( );
+        matrices.push_back( matrix );
+      }
+      else
+        std::cout << "Could not find " << gid << " morphology " << std::endl;
     }
 
     std::cout << "Finished render config." << std::endl;
 
-    return std::make_tuple( gids, meshes, matrices, colors );
+    return std::make_tuple( gidsPre, meshes, matrices, colors );
   }
 
   void NeuronScene::computeBoundingBox( std::vector< unsigned int > indices_ )
@@ -154,65 +178,20 @@ namespace synvis
   }
 
 
-  nsol::Nodes NeuronScene::findPathToSoma( const nsol::MorphologySynapsePtr synapse,
-                                           synvis::TNeuronConnection type ) const
+  void NeuronScene::color( const vec3& color_, TNeuronConnection type )
   {
-
-    nsol::Nodes result;
-
-//    unsigned int gid;
-    nsol::NeuronMorphologySectionPtr section = nullptr;
-
-    std::vector< nsol::NeuronMorphologySection* > sections;
-
     if( type == PRESYNAPTIC )
-    {
-//      gid = synapse->preSynapticNeuron( );
-      section =
-          dynamic_cast< nsol::NeuronMorphologySection* >(
-              synapse->preSynapticSection( ));
-    }
+      _colorPre = color_;
+    else if( type == POSTSYNAPTIC )
+      _colorPost = color_;
     else
     {
-//      gid = synapse->postSynapticNeuron( );
-      section =
-          dynamic_cast< nsol::NeuronMorphologySection* >(
-              synapse->postSynapticSection( ));
+      _colorPre = color_;
+      _colorPost = color_;
     }
-
-//    auto morpho = _neuronMorphologies.find( gid );
-//    if( !morpho )
-//    {
-//      std::cerr << "Morphology " << gid << " not found." << std::endl;
-//      return result;
-//    }
-
-    while( section )
-    {
-      sections.push_back( section );
-
-      section = dynamic_cast< nsol::NeuronMorphologySection* >( section->parent( ));
-    }
-
-    for( auto sec : sections )
-    {
-      for( auto node : sec->nodes( ))
-        result.push_back( node );
-    }
-
-    return result;
 
   }
 
-  mat4 NeuronScene::getTransform( unsigned int gid ) const
-  {
-    nsol::NeuronsMap& neurons = _dataset->neurons();
-    auto neuron = neurons.find( gid );
-    if( neuron == neurons.end( ))
-      return mat4::Ones( );
-
-    return neuron->second->transform( );
-  }
 
 }
 

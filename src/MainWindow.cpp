@@ -30,6 +30,8 @@ MainWindow::MainWindow( QWidget* parent_,
 , _dockInfo( nullptr )
 , _listPresynaptic( nullptr )
 , _modelListPre( nullptr )
+, _listPostsynaptic( nullptr )
+, _modelListPost( nullptr )
 {
   _ui->setupUi( this );
 
@@ -67,6 +69,12 @@ void MainWindow::init( void )
   connect( _listPresynaptic, SIGNAL( clicked( const QModelIndex& )),
            this, SLOT( presynapticNeuronClicked( const QModelIndex& )));
 
+  _listPostsynaptic = new QListView( );
+
+  connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
+           this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
+
+
   QDockWidget* dockList = new QDockWidget( tr( "Data" ));
 
 
@@ -80,6 +88,7 @@ void MainWindow::init( void )
            this, SLOT( clear( void )));
 
   dockLayout->addWidget( _listPresynaptic );
+  dockLayout->addWidget( _listPostsynaptic );
   dockLayout->addWidget( clearButton );
 
 
@@ -135,6 +144,42 @@ void MainWindow::loadPresynapticList( void )
   update( );
 }
 
+void MainWindow::loadPostsynapticList( unsigned int gid )
+{
+  nsol::DataSet* nsolData = _openGLWidget->dataset( );
+
+  if( _modelListPost )
+    _modelListPost->clear( );
+  else
+    _modelListPost = new QStandardItemModel( );
+
+//  auto selection =
+//      _modelListPre->itemFromIndex( _listPresynaptic->selectionModel( )->selectedIndexes( ).first( ))->data().value< unsigned int >();
+
+  std::set< unsigned int > selection = { gid };
+  auto synapses = nsolData->circuit( ).synapses( selection, nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+  selection.clear( );
+
+  QStandardItem* item;
+  for( auto syn : synapses )
+  {
+    unsigned int postGid = syn->postSynapticNeuron( );
+    if( selection.find( postGid ) != selection.end( ))
+      continue;
+
+    item = new QStandardItem( );
+    item->setData( postGid, Qt::DisplayRole );
+
+    _modelListPost->appendRow( item );
+
+    selection.insert( postGid );
+  }
+
+  _listPostsynaptic->setModel( _modelListPost );
+  update( );
+}
+
 
 void MainWindow::showStatusBarMessage ( const QString& message )
 {
@@ -150,7 +195,25 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
 
   _openGLWidget->selectPresynapticNeuron( gid );
 
-  std::cout << "Selected " << gid << std::endl;
+  std::cout << "Selected pre: " << gid << std::endl;
+
+  loadPostsynapticList( gid );
+}
+
+void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
+{
+  std::vector< unsigned int > selection;
+  for( auto item : _listPostsynaptic->selectionModel( )->selectedIndexes( ))
+  {
+    selection.push_back( _modelListPost->itemFromIndex( item )->data( Qt::DisplayRole ).value< unsigned int >( ));
+  }
+
+  _openGLWidget->selectPostsynapticNeuron( selection );
+
+  std::cout << "Selected post: ";
+  for( auto gid : selection )
+    std::cout << " " << gid;
+  std::cout << std::endl;
 }
 
 void MainWindow::clear( void )

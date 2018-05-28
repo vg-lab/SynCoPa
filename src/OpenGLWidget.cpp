@@ -45,8 +45,11 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _dataset( nullptr )
 , _neuronScene( nullptr )
 , _psManager( nullptr )
+, _pathFinder( nullptr )
+, _particleSizeThreshold( 1.0f )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( false )
+, _selectedPre( 0 )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 50000 );
@@ -54,6 +57,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
   _cameraTimer = new QTimer( );
   _cameraTimer->start(( 1.0f / 60.f ) * 100 );
   connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
+
+  _pathFinder = new synvis::PathFinder( );
 
   _lastCameraPosition = glm::vec3( 0, 0, 0 );
 
@@ -84,6 +89,9 @@ OpenGLWidget::~OpenGLWidget( void )
 
   if( _psManager )
     delete _psManager;
+
+  if( _pathFinder )
+    delete _pathFinder;
 }
 
 
@@ -136,6 +144,8 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
 
   _dataset = new nsol::DataSet( );
 
+  _pathFinder->dataset( _dataset );
+
   std::cout << "Loading data hierarchy..." << std::endl;
   _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
 
@@ -148,6 +158,10 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   _neuronScene = new synvis::NeuronScene( _dataset );
   std::cout << "Generating meshes..." << std::endl;
   _neuronScene->generateMeshes( );
+
+  _neuronScene->color( vec3( 1, 1, 1 ), PRESYNAPTIC );
+  _neuronScene->color( vec3( 0, 1, 1 ), POSTSYNAPTIC );
+
 
   std::set< unsigned int > gids;
   for( auto neuron : _dataset->neurons( ))
@@ -177,28 +191,27 @@ void OpenGLWidget::createParticleSystem( void )
   _psManager->init( 500000 );
 //
 //  //TODO add colors for different synapse tyoes
-  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), PRESYNAPTIC );
-  _psManager->colorSynapses( vec4( 1, 0, 0, 0.25 ), POSTSYNAPTIC );
+  _psManager->colorSynapses( vec4( 1, 0, 0, 0.35 ), PRESYNAPTIC );
+  _psManager->colorSynapses( vec4( 1, 0, 1, 0.35 ), POSTSYNAPTIC );
 
-  _psManager->colorPaths( vec4( 0, 1, 0, 0.25 ), PRESYNAPTIC );
-  _psManager->colorPaths( vec4( 0, 1, 0, 0.25 ), POSTSYNAPTIC );
+  _psManager->colorPaths( vec4( 0, 1, 0, 0.1 ), PRESYNAPTIC );
+  _psManager->colorPaths( vec4( 0, 0, 1, 0.1 ), POSTSYNAPTIC );
 
-  _psManager->sizeSynapses( 20.0, PRESYNAPTIC );
-  _psManager->sizeSynapses( 20.0, POSTSYNAPTIC );
+  _psManager->sizeSynapses( 8.0, PRESYNAPTIC );
+  _psManager->sizeSynapses( 8.0, POSTSYNAPTIC );
 
-  _psManager->sizePaths( 10.0, PRESYNAPTIC );
-  _psManager->sizePaths( 10.0, POSTSYNAPTIC );
+  _psManager->sizePaths( 3.0, PRESYNAPTIC );
+  _psManager->sizePaths( 3.0, POSTSYNAPTIC );
 
 
 }
 
-void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
+void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gidsPre,
+                                  const std::set< unsigned int >& gidsPost)
 {
   auto& circuit = _dataset->circuit( );
-  auto synapses = circuit.synapses( *gids.begin( ),
+  auto synapses = circuit.synapses( gidsPre,
                                     nsol::Circuit::PRESYNAPTICCONNECTIONS );
-
-  std::cout << " Loaded " << synapses.size( ) << " synapses." << std::endl;
 
   std::vector< vec3 > positionsPre;
   std::vector< vec3 > positionsPost;
@@ -208,13 +221,10 @@ void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
   unsigned int counter = 0;
   for( auto syn : synapses )
   {
+    if( gidsPost.size( ) > 0 && gidsPost.find( syn->postSynapticNeuron( )) == gidsPost.end( ))
+      continue;
+
     auto morphoSyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
-
-//    vec3 position = morphoSyn->preSynapticSurfacePosition( );
-
-//    std::cout << "Syn " << morphoSyn << " " << morphoSyn->preSynapticNeuron( )
-//              << " " << morphoSyn->postSynapticNeuron( );
-//    std::cout << " (" << position.x( ) << " " << position.y( ) << " " << position.z( ) << ")";
 
     positionsPre.push_back( morphoSyn->preSynapticSurfacePosition( ));
     positionsPost.push_back( morphoSyn->postSynapticSurfacePosition( ));
@@ -222,85 +232,37 @@ void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gids )
     ++counter;
   }
 
-  std::cout << std::endl;
+  std::cout << " Loaded " << counter << " synapses." << std::endl;
 
   _psManager->setupSynapses( positionsPre, PRESYNAPTIC );
-//  _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
+  _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
 }
 
 void OpenGLWidget::setupPaths( unsigned int gidPre,
-                               const std::set< unsigned int >& /*gidsPost*/ )
+                               const std::set< unsigned int >& gidsPost )
 {
-  auto synapses =
-      _dataset->circuit( ).synapses( gidPre, nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
-  std::cout << "Found " << synapses.size( ) << " synapses for " << gidPre << std::endl;
+  float distance = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
 
-  std::unordered_set< nsol::NodePtr > insertedNodes;
+  auto points =
+      _pathFinder->getAllPathsPoints( gidPre, gidsPost, distance, PRESYNAPTIC );
 
-  nsol::Nodes unrepeatedNodes;
+  _psManager->setupPath( points, PRESYNAPTIC );
 
-  std::vector< mat4 > transforms;
-  std::vector< nsol::Nodes > presynapticPaths;
-  std::vector< nsol::Nodes > postsynapticPaths;
+  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, distance, POSTSYNAPTIC );
 
-  for( auto syn : synapses )
-  {
-//    if( gidsPost.find( syn->postSynapticNeuron( )) != gidsPost.end( ))
-    {
-      auto msyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
-      if( !msyn )
-        std::cerr << "Error converting from Synapse to MorphologySynapse " << syn << std::endl;
-
-      auto sectionNodes = _neuronScene->findPathToSoma( msyn, PRESYNAPTIC );
-
-      unrepeatedNodes.clear( );
-
-      for( auto node : sectionNodes )
-      {
-        if( insertedNodes.find( node ) == insertedNodes.end( ))
-        {
-          unrepeatedNodes.push_back( node );
-          insertedNodes.insert( node );
-        }
-      }
-
-      presynapticPaths.push_back( unrepeatedNodes );
-      transforms.push_back( _neuronScene->getTransform( gidPre ));
-
-//      postsynapticPaths.push_back( _neuronScene->findPathToSoma( msyn, POSTSYNAPTIC ));
-    }
-  }
-
-
-  auto transformIt = transforms.begin( );
-  std::vector< vec3 > paths;
-  for( const auto& path : presynapticPaths )
-  {
-    for( auto node : path )
-    {
-      auto nodepos = node->point( );
-      ;
-      vec4 point = *transformIt * vec4( nodepos.x( ), nodepos.y( ), nodepos.z( ), 1 ) ;
-      paths.push_back( vec3( point.x( ), point.y( ), point.z( )));
-//      paths.push_back( node->point( ) );
-    }
-    ++transformIt;
-  }
-
-  _psManager->setupPath( paths, PRESYNAPTIC );
-
+  _psManager->setupPath( points, POSTSYNAPTIC );
 }
 
 void OpenGLWidget::home( void )
 {
-  _neuronScene->computeBoundingBox( );
-  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
-  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
-                         sin( _camera->fov( )));
-//  _camera->targetPivot( _psManager->boundingBox( ).center( ));
-//  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+//  _neuronScene->computeBoundingBox( );
+//  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
+//  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
 //                         sin( _camera->fov( )));
+  _camera->targetPivot( _psManager->boundingBox( ).center( ));
+  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+                         sin( _camera->fov( )));
 
 }
 
@@ -311,16 +273,36 @@ void OpenGLWidget::clear( void )
 
 void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 {
-  std::set< unsigned int > gids = { gid };
+  _selectedPre = gid;
+
+  std::set< unsigned int > gidsPre = { gid };
+  std::set< unsigned int > gidsPost;
   std::vector< unsigned int > gidsv = { gid };
-  setupSynapses( gids );
-  setupPaths( gid, gids );
+  std::vector< unsigned int > gidsvPost;
 
-  _renderConfig = _neuronScene->getRender( gidsv );
+  setupSynapses( gidsPre, gidsPost );
+  setupPaths( gid, gidsPost );
 
+  _renderConfig = _neuronScene->getRender( gidsv, gidsvPost );
 
+  home( );
 }
 
+void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& gidsv )
+{
+  _selectedPost = std::set< unsigned int >( gidsv.begin( ), gidsv.end( ));
+
+  std::vector< unsigned int > selectedPre = { _selectedPre };
+
+  std::set< unsigned int > gidsPre = { _selectedPre };
+  setupSynapses( gidsPre, _selectedPost );
+  setupPaths( _selectedPre, _selectedPost );
+
+  _renderConfig = _neuronScene->getRender( selectedPre, gidsv );
+
+  home( );
+
+}
 
 
 void OpenGLWidget::paintMorphologies( void )
@@ -360,7 +342,10 @@ void OpenGLWidget::paintParticles( void )
   unsigned int shader;
   shader = _particlesShader->program( );
 
-  unsigned int uModelViewProjM, cameraUp, cameraRight;
+  unsigned int uModelViewProjM;
+  unsigned int cameraUp;
+  unsigned int cameraRight;
+  unsigned int threshold;
 
 //  _particlesShader->sendUniform4m( "modelViewProjM" )
   uModelViewProjM = glGetUniformLocation( shader, "modelViewProjM" );
@@ -370,10 +355,14 @@ void OpenGLWidget::paintParticles( void )
   cameraUp = glGetUniformLocation( shader, "cameraUp" );
   cameraRight = glGetUniformLocation( shader, "cameraRight" );
 
+  threshold = glGetUniformLocation( shader, "threshold" );
+
   float* viewM = _camera->viewMatrix( );
 
   glUniform3f( cameraUp, viewM[1], viewM[5], viewM[9] );
   glUniform3f( cameraRight, viewM[0], viewM[4], viewM[8] );
+  glUniform1f( threshold, _particleSizeThreshold );
+
 
   glm::vec3 cameraPosition ( _camera->position( )[ 0 ],
                              _camera->position( )[ 1 ],
@@ -487,8 +476,8 @@ void OpenGLWidget::paintGL( void )
 
 void OpenGLWidget::timerUpdate( void )
 {
-//  if( _camera->anim( ))
-//    this->update( );
+  if( _camera->anim( ))
+    this->update( );
 }
 
 

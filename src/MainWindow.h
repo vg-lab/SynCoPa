@@ -46,12 +46,15 @@ public:
 protected slots:
 
   void presynapticNeuronClicked( const QModelIndex& index );
+  void postsynapticNeuronClicked( const QModelIndex& index );
+
 
   void clear( void );
 
 protected:
 
   void loadPresynapticList( void );
+  void loadPostsynapticList( unsigned int gid );
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
@@ -61,4 +64,6 @@ protected:
   QListView* _listPresynaptic;
   QStandardItemModel* _modelListPre;
 
+  QListView* _listPostsynaptic;
+  QStandardItemModel* _modelListPost;
 };

@@ -33,6 +33,7 @@ set(STREAMINAPP_SOURCES
   
   NeuronScene.cpp
   PSManager.cpp
+  PathFinder.cpp
   
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
@@ -49,6 +50,7 @@ set(STREAMINAPP_HEADERS
   
   NeuronScene.h
   PSManager.h
+  PathFinder.h
   
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h

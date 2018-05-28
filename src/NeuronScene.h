@@ -56,7 +56,8 @@ public:
 
     void generateMeshes( void );
 
-    TRenderMorpho getRender( const std::vector< unsigned int >& gids ) const;
+    TRenderMorpho getRender( const std::vector< unsigned int >& gidsPre,
+                             const std::vector< unsigned int >& gidsPost) const;
 
     void computeBoundingBox( std::vector< unsigned int > indices_ );
 
@@ -64,10 +65,7 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
-    nsol::Nodes findPathToSoma( const nsol::MorphologySynapsePtr synapse,
-                                TNeuronConnection type = PRESYNAPTIC ) const;
-
-    mat4 getTransform( unsigned int gid ) const;
+    void color( const vec3& color_, TNeuronConnection type );
 
 protected:
 
@@ -81,6 +79,8 @@ protected:
     std::unordered_map< nsol::NeuronMorphologyPtr, nlgeometry::MeshPtr > _neuronMeshes;
     std::unordered_map< unsigned int, nsol::NeuronMorphologyPtr > _neuronMorphologies;
 
+    vec3 _colorPre;
+    vec3 _colorPost;
   };
 
 

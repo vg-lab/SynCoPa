@@ -28,7 +28,7 @@
 
 #include "NeuronScene.h"
 #include "PSManager.h"
-
+#include "PathFinder.h"
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -65,6 +65,8 @@ public slots:
   void toggleShowFPS( void );
 
   void selectPresynapticNeuron( unsigned int gid );
+  void selectPostsynapticNeuron( const std::vector< unsigned int >& gid );
+
 
 protected:
 
@@ -78,7 +80,8 @@ protected:
   virtual void mouseMoveEvent( QMouseEvent* event );
   virtual void keyPressEvent( QKeyEvent* event );
 
-  void setupSynapses( const std::set< unsigned int >& gids );
+  void setupSynapses( const std::set< unsigned int >& gidsPre,
+                      const std::set< unsigned int >& gidsPost = std::set< unsigned int >( ));
   void setupPaths( unsigned int gidPre,
                    const std::set< unsigned int >& gidsPost );
 
@@ -113,6 +116,9 @@ protected:
   nsol::DataSet* _dataset;
   synvis::NeuronScene* _neuronScene;
   synvis::PSManager* _psManager;
+  synvis::PathFinder* _pathFinder;
+
+  float _particleSizeThreshold;
 
   QTimer* _cameraTimer;
 
@@ -124,6 +130,9 @@ protected:
   float _elapsedTimeRenderAcc;
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
+
+  unsigned int _selectedPre;
+  std::set< unsigned int > _selectedPost;
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__
