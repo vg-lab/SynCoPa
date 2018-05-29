@@ -13,7 +13,8 @@
 #include <QSlider>
 #include <QTimer>
 #include <QRadioButton>
-#include <QListWidget>
+#include <QListView>
+#include <QTableView>
 #include <QStandardItemModel>
 
 
@@ -53,17 +54,23 @@ protected slots:
 
 protected:
 
+  void initListDock( void );
+  void initInfoDock( void );
+
   void loadPresynapticList( void );
   void loadPostsynapticList( unsigned int gid );
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
 
-//  QDockWidget* _dockList;
-  QDockWidget* _dockInfo;
+  QDockWidget* _dockList;
   QListView* _listPresynaptic;
   QStandardItemModel* _modelListPre;
 
   QListView* _listPostsynaptic;
   QStandardItemModel* _modelListPost;
+
+  QDockWidget* _dockInfo;
+  QTableView* _tableInfo;
+  QStandardItemModel* _modelTableInfo;
 };

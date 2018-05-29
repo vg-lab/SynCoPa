@@ -26,12 +26,12 @@ MainWindow::MainWindow( QWidget* parent_,
 : QMainWindow( parent_ )
 , _ui( new Ui::MainWindow )
 , _openGLWidget( nullptr )
-//, _dockList( nullptr )
-, _dockInfo( nullptr )
+, _dockList( nullptr )
 , _listPresynaptic( nullptr )
 , _modelListPre( nullptr )
 , _listPostsynaptic( nullptr )
 , _modelListPost( nullptr )
+, _dockInfo( nullptr )
 {
   _ui->setupUi( this );
 
@@ -64,39 +64,8 @@ void MainWindow::init( void )
     exit( -1 );
   }
 
-  _listPresynaptic = new QListView( );
-
-  connect( _listPresynaptic, SIGNAL( clicked( const QModelIndex& )),
-           this, SLOT( presynapticNeuronClicked( const QModelIndex& )));
-
-  _listPostsynaptic = new QListView( );
-
-  connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
-           this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
-
-
-  QDockWidget* dockList = new QDockWidget( tr( "Data" ));
-
-
-  QVBoxLayout* dockLayout = new QVBoxLayout( );
-//  dockList->setLayout( dockLayout );
-  QWidget* container = new QWidget( );
-  container->setLayout( dockLayout );
-
-  QPushButton* clearButton = new QPushButton( "clear" );
-  connect( clearButton, SIGNAL( clicked( void )),
-           this, SLOT( clear( void )));
-
-  dockLayout->addWidget( _listPresynaptic );
-  dockLayout->addWidget( _listPostsynaptic );
-  dockLayout->addWidget( clearButton );
-
-
-//  dockLayout->addWidget( _listPresynaptic );
-  dockList->setWidget( container );
-
-  addDockWidget( Qt::RightDockWidgetArea, dockList );
-
+  initListDock( );
+  initInfoDock( );
 
   _openGLWidget->createParticleSystem( );
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
@@ -112,6 +81,69 @@ void MainWindow::init( void )
 
   connect( _ui->actionShowFPSOnIdleUpdate, SIGNAL( triggered( )),
            _openGLWidget, SLOT( toggleShowFPS( )));
+}
+
+void MainWindow::initListDock( void )
+{
+  _listPresynaptic = new QListView( );
+  _listPresynaptic->setMaximumWidth( 100 );
+
+  connect( _listPresynaptic, SIGNAL( clicked( const QModelIndex& )),
+           this, SLOT( presynapticNeuronClicked( const QModelIndex& )));
+
+  _listPostsynaptic = new QListView( );
+  _listPostsynaptic->setMaximumWidth( 100 );
+
+  connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
+           this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
+
+
+  QDockWidget* dockList = new QDockWidget( tr( "Selection" ));
+
+  QGridLayout* dockLayout = new QGridLayout( );
+//  dockList->setLayout( dockLayout );
+  QWidget* container = new QWidget( );
+  container->setLayout( dockLayout );
+
+  QPushButton* clearButton = new QPushButton( "Clear selection" );
+  connect( clearButton, SIGNAL( clicked( void )),
+           this, SLOT( clear( void )));
+
+  dockLayout->addWidget( new QLabel( "Presynaptic:" ), 0, 0, 1, 1 );
+  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), 0, 1, 1, 1 );
+  dockLayout->addWidget( _listPresynaptic, 1, 0, 1, 1 );
+  dockLayout->addWidget( _listPostsynaptic, 1, 1, 1, 1);
+  dockLayout->addWidget( clearButton );
+
+  dockList->setWidget( container );
+
+  addDockWidget( Qt::RightDockWidgetArea, dockList );
+
+}
+
+void MainWindow::initInfoDock( void )
+{
+  _dockInfo = new QDockWidget( tr( "Information" ));
+
+  QWidget* container = new QWidget( );
+  QGridLayout* containerLayout = new QGridLayout( );
+
+  container->setLayout( containerLayout );
+
+  QStringList header = { "Neuron GID", "Total synapses", "Related synapses" };
+  _tableInfo = new QTableView( );
+
+  _modelTableInfo = new QStandardItemModel( );
+  _modelTableInfo->setHorizontalHeaderLabels( header );
+
+  _tableInfo->setModel( _modelTableInfo );
+
+  containerLayout->addWidget( _tableInfo );
+
+  _dockInfo->setWidget( container );
+
+  addDockWidget( Qt::RightDockWidgetArea, _dockInfo );
+
 }
 
 void MainWindow::loadData( const std::string& dataset,
@@ -219,4 +251,6 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
 void MainWindow::clear( void )
 {
   _openGLWidget->clear( );
+
+  _modelListPost->clear( );
 }
