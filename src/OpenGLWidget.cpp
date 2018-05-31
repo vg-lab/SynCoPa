@@ -69,6 +69,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showSynapsesPost( true )
 , _showPathsPre( true )
 , _showPathsPost( true )
+, _depthFrameBuffer( 0 )
+, _depthTexture( 0 )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 50000 );
@@ -96,6 +98,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
   _renderPeriodMicroseconds = _renderPeriod * 1000000;
 
   _renderSpeed = 1.f;
+
 }
 
 
@@ -139,7 +142,46 @@ void OpenGLWidget::initializeGL( void )
   _nlrenderer->lod( ) = 4;
   _nlrenderer->maximumDistance( ) = 10;
 
+
+  initDepthFrameBuffer( );
 }
+
+void OpenGLWidget::initDepthFrameBuffer( void )
+{
+  glGenFramebuffers( 1, &_depthFrameBuffer );
+  glBindFramebuffer( GL_FRAMEBUFFER, _depthFrameBuffer );
+
+
+
+  glGenTextures( 1, &_depthTexture );
+  glBindTexture( GL_TEXTURE_2D, _depthTexture );
+  glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+               width( ), height( ), 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL );
+
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depthTexture, 0);
+
+  if( glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE )
+  {
+    std::cout << "Created framebuffer" << std::endl;
+    glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
+  }
+
+}
+
+void OpenGLWidget::generateDepthTexture( int width_, int height_ )
+{
+  glBindTexture( GL_TEXTURE_2D, _depthTexture );
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+               width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+  glBindTexture( GL_TEXTURE_2D, 0 );
+}
+
 
 
 void ExpandBoundingBox( glm::vec3& minBounds,
@@ -403,6 +445,9 @@ void OpenGLWidget::paintMorphologies( void )
   Eigen::Matrix4f view( _camera->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
+  glBindFramebuffer(GL_FRAMEBUFFER, _depthFrameBuffer );
+  glClear(GL_DEPTH_BUFFER_BIT);
+
   // Render selected neurons with full morphology
   if( _showSelectedPre )
     _nlrenderer->render( std::get< syncopa::MESH >( _neuronsSelectedPre ),
@@ -423,8 +468,16 @@ void OpenGLWidget::paintMorphologies( void )
     _nlrenderer->render( std::get< syncopa::MESH >( _neuronsContext ),
                          std::get< syncopa::MATRIX >( _neuronsContext ),
                          std::get< syncopa::COLOR >( _neuronsContext ), true, false );
+
+  glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
+
 }
 
+
+void OpenGLWidget::extractDeph( void )
+{
+
+}
 
 void OpenGLWidget::paintParticles( void )
 {
@@ -453,6 +506,8 @@ void OpenGLWidget::paintParticles( void )
   unsigned int cameraUp;
   unsigned int cameraRight;
   unsigned int threshold;
+  unsigned int depthMap;
+  unsigned int invResolution;
 
 //  _particlesShader->sendUniform4m( "modelViewProjM" )
   uModelViewProjM = glGetUniformLocation( shader, "modelViewProjM" );
@@ -464,12 +519,17 @@ void OpenGLWidget::paintParticles( void )
 
   threshold = glGetUniformLocation( shader, "threshold" );
 
+  depthMap = glGetUniformLocation( shader, "depthMap" );
+
+  invResolution = glGetUniformLocation( shader, "invResolution" );
+
   float* viewM = _camera->viewMatrix( );
 
-  glUniform3f( cameraUp, viewM[1], viewM[5], viewM[9] );
-  glUniform3f( cameraRight, viewM[0], viewM[4], viewM[8] );
+  glUniform3f( cameraUp, viewM[ 1 ], viewM[ 5 ], viewM[ 9 ] );
+  glUniform3f( cameraRight, viewM[ 0 ], viewM[ 4 ], viewM[ 8 ] );
   glUniform1f( threshold, _particleSizeThreshold );
-
+  glUniform2f( invResolution, _inverseResolution.x( ), _inverseResolution.y( ));
+  glUniform1i( depthMap, 0 );
 
   glm::vec3 cameraPosition ( _camera->position( )[ 0 ],
                              _camera->position( )[ 1 ],
@@ -486,6 +546,9 @@ void OpenGLWidget::paintParticles( void )
   _lastCameraPosition = cameraPosition;
 
   _psManager->particleSystem( )->updateRender( );
+
+  glBindTexture( GL_TEXTURE_2D, _depthTexture );
+
   _psManager->particleSystem( )->render( );
 
   _particlesShader->unuse( );
@@ -530,6 +593,7 @@ void OpenGLWidget::paintGL( void )
       }
 
       paintMorphologies( );
+
       paintParticles( );
       update( );
     }
@@ -595,9 +659,19 @@ void OpenGLWidget::idleUpdate( bool idleUpdate_ )
 
 void OpenGLWidget::resizeGL( int w , int h )
 {
+  _currentWidth = w;
+  _currentHeight = h;
+
+  _inverseResolution =
+      Eigen::Vector2f(  1.0 / _currentWidth, 1.0 / _currentWidth );
+
   _camera->ratio((( double ) w ) / h );
   glViewport( 0, 0, w, h );
+
+  generateDepthTexture( w, h );
 }
+
+
 
 
 void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
@@ -732,7 +806,6 @@ const std::vector< nsol::MorphologySynapsePtr >& OpenGLWidget::currentSynapses( 
 {
   return _currentSynapses;
 }
-
 
 void OpenGLWidget::colorSelectedPre( const syncopa::vec3& color )
 {

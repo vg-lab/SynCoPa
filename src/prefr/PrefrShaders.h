@@ -36,6 +36,8 @@ void main()\n\
 
 const static std::string prefrFragmentShader = "#version 330\n\
 uniform float threshold;\n\
+uniform sampler2D depthMap;\
+uniform vec2 invResolution;\
 in vec4 color; \n\
 in vec2 uvCoord;\n\
 out vec4 outputColor;\n\
@@ -44,7 +46,10 @@ void main()\n\
   vec2 p = -1.0 + 2.0 * uvCoord;\n\
   float l = sqrt(dot(p,p));\n \
   l = 1.0 - clamp(l, 0.0, 1.0);\n\
-  //l *= color.a;\n\
+  vec2 coord = gl_FragCoord.xy * invResolution;\
+  float backGroundDepth = -texture2D( depthMap, coord ).z;\
+  float depth = gl_FragCoord.z / gl_FragCoord.w;\
+  float fade = clamp(( backGroundDepth - depth ) * 0.2f, 0.0, 1.0 );\
   float margin = 1.0 - threshold;\n\
   float alpha = float(l <= margin) + (float(l > margin) * (1.0 -((l - margin) / (1.0 - margin))));\n\
   alpha = 1.0 - alpha;\n\

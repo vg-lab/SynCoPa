@@ -120,6 +120,10 @@ protected:
                    const std::set< unsigned int >& gidsPost );
 
   void paintParticles( void );
+
+  void initDepthFrameBuffer( void );
+  void generateDepthTexture( int width_, int height_ );
+  void extractDeph( void );
   void paintMorphologies( void );
 
 
@@ -200,6 +204,16 @@ protected:
 
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
+
+  unsigned int _depthFrameBuffer;
+  unsigned int _depthTexture;
+
+  int _currentWidth;
+  int _currentHeight;
+
+  Eigen::Vector2f _inverseResolution;
+
+
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__
