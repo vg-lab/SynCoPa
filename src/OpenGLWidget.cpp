@@ -218,16 +218,21 @@ void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gidsPre,
   positionsPre.reserve( synapses.size( ));
   positionsPre.reserve( synapses.size( ));
 
+  _currentSynapses.clear( );
+
   unsigned int counter = 0;
   for( auto syn : synapses )
   {
-    if( gidsPost.size( ) > 0 && gidsPost.find( syn->postSynapticNeuron( )) == gidsPost.end( ))
+    unsigned int postGid = syn->postSynapticNeuron( );
+    if( gidsPost.size( ) > 0 && gidsPost.find( postGid ) == gidsPost.end( ))
       continue;
 
     auto morphoSyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
 
     positionsPre.push_back( morphoSyn->preSynapticSurfacePosition( ));
     positionsPost.push_back( morphoSyn->postSynapticSurfacePosition( ));
+
+    _currentSynapses.push_back( morphoSyn );
 
     ++counter;
   }
@@ -620,3 +625,9 @@ nsol::DataSet* OpenGLWidget::dataset( void )
 {
   return _dataset;
 }
+
+const std::vector< nsol::MorphologySynapsePtr >& OpenGLWidget::currentSynapses( void )
+{
+  return _currentSynapses;
+}
+

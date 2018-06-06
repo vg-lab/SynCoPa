@@ -16,6 +16,7 @@
 #include <QListView>
 #include <QTableView>
 #include <QStandardItemModel>
+#include <QGridLayout>
 
 
 #include "OpenGLWidget.h"
@@ -56,6 +57,8 @@ protected:
 
   void initListDock( void );
   void initInfoDock( void );
+  void updateInfoDock( void );
+  void clearInfoDock( void );
 
   void loadPresynapticList( void );
   void loadPostsynapticList( unsigned int gid );
@@ -71,6 +74,7 @@ protected:
   QStandardItemModel* _modelListPost;
 
   QDockWidget* _dockInfo;
-  QTableView* _tableInfo;
-  QStandardItemModel* _modelTableInfo;
+  QVBoxLayout* _layoutInfo;
+  QWidget* _widgetInfoPre;
+  QWidget* _widgetInfoPost;
 };

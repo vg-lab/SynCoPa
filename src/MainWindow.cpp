@@ -13,6 +13,7 @@
 #include <QInputDialog>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QScrollArea>
 // #include "qt/CustomSlider.h"
 
 #ifdef VISIMPL_USE_GMRVLEX
@@ -32,6 +33,9 @@ MainWindow::MainWindow( QWidget* parent_,
 , _listPostsynaptic( nullptr )
 , _modelListPost( nullptr )
 , _dockInfo( nullptr )
+, _layoutInfo( nullptr )
+, _widgetInfoPre( nullptr )
+, _widgetInfoPost( nullptr )
 {
   _ui->setupUi( this );
 
@@ -93,12 +97,14 @@ void MainWindow::initListDock( void )
 
   _listPostsynaptic = new QListView( );
   _listPostsynaptic->setMaximumWidth( 100 );
+  _listPostsynaptic->setSelectionMode( QAbstractItemView::ExtendedSelection );
 
   connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
            this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
 
 
   QDockWidget* dockList = new QDockWidget( tr( "Selection" ));
+  dockList->setMaximumHeight( 500 );
 
   QGridLayout* dockLayout = new QGridLayout( );
 //  dockList->setLayout( dockLayout );
@@ -126,24 +132,183 @@ void MainWindow::initInfoDock( void )
   _dockInfo = new QDockWidget( tr( "Information" ));
 
   QWidget* container = new QWidget( );
-  QGridLayout* containerLayout = new QGridLayout( );
 
-  container->setLayout( containerLayout );
+  _layoutInfo = new QVBoxLayout( );
+  container->setLayout( _layoutInfo );
 
-  QStringList header = { "Neuron GID", "Total synapses", "Related synapses" };
-  _tableInfo = new QTableView( );
+//  QStringList header = { "Neuron GID", "Total synapses", "Related synapses" };
 
-  _modelTableInfo = new QStandardItemModel( );
-  _modelTableInfo->setHorizontalHeaderLabels( header );
 
-  _tableInfo->setModel( _modelTableInfo );
 
-  containerLayout->addWidget( _tableInfo );
+//  _layoutInfo->addWidget(  );
 
   _dockInfo->setWidget( container );
 
   addDockWidget( Qt::RightDockWidgetArea, _dockInfo );
 
+}
+
+//static bool sortDescending ( const std::pair< unsigned int, unsigned int >& lhs,
+//                      const std::pair< unsigned int, unsigned int >& rhs )
+//{
+//  return lhs.first > rhs.first;
+//}
+
+static bool sortAscending ( const std::pair< unsigned int, unsigned int >& lhs,
+                     const std::pair< unsigned int, unsigned int >& rhs)
+{
+  return lhs.first < rhs.first;
+}
+
+void MainWindow::updateInfoDock( void )
+{
+  clearInfoDock( );
+
+  const auto& synapses = _openGLWidget->currentSynapses( );
+
+  std::unordered_map< unsigned int, unsigned int > presentSynapsesPre;
+  std::unordered_map< unsigned int, unsigned int > presentSynapsesPost;
+
+  std::vector< std::pair< unsigned int, unsigned int >> vecSynPre;
+  std::vector< std::pair< unsigned int, unsigned int >> vecSynPost;
+
+  for( auto syn : synapses )
+  {
+    unsigned int gidPre = syn->preSynapticNeuron( );
+    unsigned int gidPost = syn->postSynapticNeuron( );
+
+    auto synapseNumberPre = presentSynapsesPre.find( gidPre );
+    if( synapseNumberPre == presentSynapsesPre.end( ))
+    {
+      synapseNumberPre =
+          presentSynapsesPre.insert(
+              std::make_pair( gidPre, vecSynPre.size( ))).first;
+
+      vecSynPre.push_back( std::make_pair( gidPre, 0 ));
+    }
+
+    vecSynPre[ synapseNumberPre->second ].second++;
+
+    auto synapseNumberPost = presentSynapsesPost.find( gidPost );
+    if( synapseNumberPost == presentSynapsesPost.end( ))
+    {
+      synapseNumberPost =
+          presentSynapsesPost.insert(
+              std::make_pair( gidPost, vecSynPost.size( ) )).first;
+
+      vecSynPost.push_back( std::make_pair( gidPost, 0 ));
+    }
+
+    vecSynPost[ synapseNumberPost->second ].second++;
+
+  }
+
+  std::sort( vecSynPre.begin( ), vecSynPre.end( ), sortAscending );
+  std::sort( vecSynPost.begin( ), vecSynPost.end( ), sortAscending );
+
+  for( unsigned int i = 0; i < 2; ++i )
+  {
+    QWidget* widget = nullptr;
+    std::vector< std::pair< unsigned int, unsigned int >>* presentSynapses;
+
+    if( i == 0 )
+    {
+      _widgetInfoPre = new QGroupBox( tr( "Presynaptic neurons:") );
+      widget = _widgetInfoPre;
+      presentSynapses = &vecSynPre;
+    }
+    else
+    {
+      _widgetInfoPost = new QGroupBox( tr( "Postsynaptic neurons:") );
+      widget = _widgetInfoPost;
+      presentSynapses = &vecSynPost;
+    }
+
+    QGridLayout* upperLayout = new QGridLayout( );
+    widget->setLayout( upperLayout );
+
+    QWidget* container = new QWidget( );
+    QGridLayout* layoutWidget = new QGridLayout( );
+    container->setLayout( layoutWidget );
+
+    QScrollArea* scroll = new QScrollArea( );
+    scroll->setWidgetResizable( true );
+    scroll->setWidget( container );
+
+
+    unsigned int currentRow = 0;
+    unsigned int currentColumn = 0;
+
+    unsigned int maxColumns = 3;
+
+    QFrame* line = new QFrame( );
+    line->setFrameShape(QFrame::VLine);
+   line->setFrameShadow(QFrame::Sunken);
+
+    upperLayout->addWidget(
+        new QLabel( "GID" ), 0, currentColumn++, 1, 1 );
+
+    upperLayout->addWidget( line, 0, currentColumn++, 1, 1 );
+
+    upperLayout->addWidget(
+        new QLabel( "# synapses" ), 0, currentColumn, 1, 1 );
+
+    upperLayout->addWidget( scroll, 1, 0, 1, maxColumns );
+
+    currentColumn = 0;
+
+//    layoutWidget->addWidget( line, currentRow++, currentColumn, 1, maxColumns );
+  //  layoutPre->addWidget( new QLabel( "Total Synapses" ), currentRow, currentColumn++, 1, 1 );
+
+    for( auto syn : *presentSynapses )
+    {
+      currentColumn = 0;
+
+      auto gidString = QString::number( syn.first );
+
+      layoutWidget->addWidget(
+          new QLabel( gidString ), currentRow, currentColumn++, 1, 1 );
+
+      QFrame* vline = new QFrame( );
+      vline->setFrameShape(QFrame::VLine);
+      vline->setFrameShadow(QFrame::Sunken);
+
+      layoutWidget->addWidget(
+          vline, currentRow, currentColumn++, 1, 1);
+
+      auto usedSynapsesString = QString::number( syn.second );
+      layoutWidget->addWidget(
+          new QLabel( usedSynapsesString ), currentRow, currentColumn, 1, 1 );
+
+  //    layoutPre->addWidget( new QLabel( "Total Synapses" ), currentRow, currentColumn++, 1, 1 );
+
+//      std::cout << " " << gidString.toStdString( ) << "->" << usedSynapsesString.toStdString( ) << std::endl;
+
+      ++currentRow;
+    }
+
+    _layoutInfo->addWidget( widget );
+
+  }
+
+  update( );
+}
+
+void MainWindow::clearInfoDock( void )
+{
+  if( _widgetInfoPre )
+  {
+    _layoutInfo->removeWidget( _widgetInfoPre );
+    delete _widgetInfoPre;
+    _widgetInfoPre = nullptr;
+  }
+
+  if( _widgetInfoPost )
+  {
+    _layoutInfo->removeWidget( _widgetInfoPost );
+    delete _widgetInfoPost;
+    _widgetInfoPost = nullptr;
+  }
 }
 
 void MainWindow::loadData( const std::string& dataset,
@@ -230,6 +395,8 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
   std::cout << "Selected pre: " << gid << std::endl;
 
   loadPostsynapticList( gid );
+
+  updateInfoDock( );
 }
 
 void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
@@ -246,6 +413,8 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
   for( auto gid : selection )
     std::cout << " " << gid;
   std::cout << std::endl;
+
+  updateInfoDock( );
 }
 
 void MainWindow::clear( void )
@@ -253,4 +422,6 @@ void MainWindow::clear( void )
   _openGLWidget->clear( );
 
   _modelListPost->clear( );
+
+  updateInfoDock( );
 }

@@ -67,6 +67,7 @@ public slots:
   void selectPresynapticNeuron( unsigned int gid );
   void selectPostsynapticNeuron( const std::vector< unsigned int >& gid );
 
+  const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
 
 protected:
 
@@ -133,6 +134,8 @@ protected:
 
   unsigned int _selectedPre;
   std::set< unsigned int > _selectedPost;
+
+  std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__
