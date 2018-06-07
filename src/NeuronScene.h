@@ -56,8 +56,10 @@ public:
 
     void generateMeshes( void );
 
-    TRenderMorpho getRender( const std::vector< unsigned int >& gidsPre,
-                             const std::vector< unsigned int >& gidsPost) const;
+//    TRenderMorpho getRender( const std::vector< unsigned int >& gidsPre,
+//                             const std::vector< unsigned int >& gidsPost ) const;
+
+    TRenderMorpho getRender( const std::set< unsigned int >& gids ) const;
 
     void computeBoundingBox( std::vector< unsigned int > indices_ );
 

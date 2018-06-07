@@ -242,16 +242,14 @@ void MainWindow::updateInfoDock( void )
     unsigned int maxColumns = 3;
 
     QFrame* line = new QFrame( );
-    line->setFrameShape(QFrame::VLine);
-   line->setFrameShadow(QFrame::Sunken);
+    line->setFrameShape( QFrame::VLine );
+   line->setFrameShadow( QFrame::Sunken );
 
-    upperLayout->addWidget(
-        new QLabel( "GID" ), 0, currentColumn++, 1, 1 );
+    upperLayout->addWidget( new QLabel( "  GID" ), 0, currentColumn++, 1, 1 );
 
     upperLayout->addWidget( line, 0, currentColumn++, 1, 1 );
 
-    upperLayout->addWidget(
-        new QLabel( "# synapses" ), 0, currentColumn, 1, 1 );
+    upperLayout->addWidget( new QLabel( "# synapses" ), 0, currentColumn, 1, 1 );
 
     upperLayout->addWidget( scroll, 1, 0, 1, maxColumns );
 
@@ -270,8 +268,8 @@ void MainWindow::updateInfoDock( void )
           new QLabel( gidString ), currentRow, currentColumn++, 1, 1 );
 
       QFrame* vline = new QFrame( );
-      vline->setFrameShape(QFrame::VLine);
-      vline->setFrameShadow(QFrame::Sunken);
+      vline->setFrameShape( QFrame::VLine );
+      vline->setFrameShadow( QFrame::Sunken );
 
       layoutWidget->addWidget(
           vline, currentRow, currentColumn++, 1, 1);

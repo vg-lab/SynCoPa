@@ -66,34 +66,37 @@ namespace synvis
     }
   }
 
-  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gidsPre,
-                                        const std::vector< unsigned int >& gidsPost ) const
+  TRenderMorpho NeuronScene::getRender( const std::set< unsigned int >& gids_ ) const
   {
+    if( gids_.empty( ))
+      return TRenderMorpho( );
+
+    std::vector< unsigned int > gids;
     std::vector< nlgeometry::MeshPtr > meshes;
     std::vector< mat4 > matrices;
     std::vector< vec3 > colors;
 
-    unsigned int totalMeshes = gidsPre.size( ) + gidsPost.size( );
+    unsigned int totalMeshes = gids_.size( );
+
+    gids.reserve( totalMeshes );
     meshes.reserve( totalMeshes );
-    matrices.reserve( totalMeshes);
-    colors.reserve( totalMeshes );
+    matrices.reserve( totalMeshes );
+    colors.resize( totalMeshes, vec3( 0, 0, 0 ));
 
-//    colors.resize( gidsPre.size( ), Eigen::Vector3f::Ones( ));
-
-    std::cout << "Creating render of " << gidsPre.size( ) << std::endl;
     nsol::NeuronsMap& neurons = _dataset->neurons();
 
-    for( auto gid : gidsPre )
+    for( auto gid : gids_ )
     {
       auto neuron = neurons.find( gid );
       auto morphology = _neuronMorphologies.find( gid );
       if( morphology != _neuronMorphologies.end( ))
       {
+        gids.push_back( gid );
         auto meshIt = _neuronMeshes.find( morphology->second );
   //      if( meshIt != _neuronMeshes.end( ))
         meshes.push_back( meshIt->second );
   //      auto morphIt = _neuronMorphologies.find( gid );
-        colors.push_back( _colorPre );
+//        colors.push_back( _colorPre );
   //      if( morphIt != _neuronMorphologies.end( ))
   //      {
         auto matrix = neuron->second->transform( );
@@ -103,30 +106,74 @@ namespace synvis
         std::cout << "Could not find " << gid << " morphology " << std::endl;
     }
 
-    for( auto gid : gidsPost )
-    {
-      auto neuron = neurons.find( gid );
-      auto morphology = _neuronMorphologies.find( gid );
-      if( morphology != _neuronMorphologies.end( ))
-      {
-        auto meshIt = _neuronMeshes.find( morphology->second );
-  //      if( meshIt != _neuronMeshes.end( ))
-        meshes.push_back( meshIt->second );
-  //      auto morphIt = _neuronMorphologies.find( gid );
-        colors.push_back( _colorPost );
-  //      if( morphIt != _neuronMorphologies.end( ))
-  //      {
-        auto matrix = neuron->second->transform( );
-        matrices.push_back( matrix );
-      }
-      else
-        std::cout << "Could not find " << gid << " morphology " << std::endl;
-    }
-
-    std::cout << "Finished render config." << std::endl;
-
-    return std::make_tuple( gidsPre, meshes, matrices, colors );
+    return std::make_tuple( gids, meshes, matrices, colors );
   }
+
+//  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gidsPre,
+//                                        const std::vector< unsigned int >& gidsPost ) const
+//  {
+//    std::vector< nlgeometry::MeshPtr > meshes;
+//    std::vector< mat4 > matrices;
+//    std::vector< vec3 > colors;
+//
+//    unsigned int totalMeshes = gidsPre.size( ) + gidsPost.size( );
+//    meshes.reserve( totalMeshes );
+//    matrices.reserve( totalMeshes);
+//    colors.reserve( totalMeshes );
+//
+////    colors.resize( gidsPre.size( ), Eigen::Vector3f::Ones( ));
+//
+//    std::cout << "Creating render of " << gidsPre.size( ) << std::endl;
+//    nsol::NeuronsMap& neurons = _dataset->neurons();
+//
+//    for( auto gid : gidsPre )
+//    {
+//      auto neuron = neurons.find( gid );
+//      auto morphology = _neuronMorphologies.find( gid );
+//      if( morphology != _neuronMorphologies.end( ))
+//      {
+//        auto meshIt = _neuronMeshes.find( morphology->second );
+//  //      if( meshIt != _neuronMeshes.end( ))
+//        meshes.push_back( meshIt->second );
+//  //      auto morphIt = _neuronMorphologies.find( gid );
+//        colors.push_back( _colorPre );
+//  //      if( morphIt != _neuronMorphologies.end( ))
+//  //      {
+//        auto matrix = neuron->second->transform( );
+//        matrices.push_back( matrix );
+//      }
+//      else
+//        std::cout << "Could not find " << gid << " morphology " << std::endl;
+//    }
+//
+//    for( auto gid : gidsPost )
+//    {
+//      auto neuron = neurons.find( gid );
+//      auto morphology = _neuronMorphologies.find( gid );
+//      if( morphology != _neuronMorphologies.end( ))
+//      {
+//        auto meshIt = _neuronMeshes.find( morphology->second );
+//  //      if( meshIt != _neuronMeshes.end( ))
+//        meshes.push_back( meshIt->second );
+//  //      auto morphIt = _neuronMorphologies.find( gid );
+//        colors.push_back( _colorPost );
+//  //      if( morphIt != _neuronMorphologies.end( ))
+//  //      {
+//        auto matrix = neuron->second->transform( );
+//        matrices.push_back( matrix );
+//      }
+//      else
+//        std::cout << "Could not find " << gid << " morphology " << std::endl;
+//    }
+//
+//    std::cout << "Finished render config." << std::endl;
+//
+//    std::vector< unsigned int > gids;
+//    gids.insert( gids.end( ), gidsPre.begin( ), gidsPre.end( ));
+//    gids.insert( gids.end( ), gidsPost.begin( ), gidsPost.end( ));
+//
+//    return std::make_tuple( gids, meshes, matrices, colors );
+//  }
 
   void NeuronScene::computeBoundingBox( std::vector< unsigned int > indices_ )
   {

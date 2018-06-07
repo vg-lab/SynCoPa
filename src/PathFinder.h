@@ -27,6 +27,8 @@ namespace synvis
 
     mat4 getTransform( unsigned int gid ) const;
 
+    std::set< unsigned int > connectedTo( unsigned int gid ) const;
+
     std::vector< vec3 > getAllPathsPoints( unsigned int gid,
                                            const std::set< unsigned int >& gidsPost,
                                            float pointSize,

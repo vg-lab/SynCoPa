@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <set>
 
 // types.h should be the first file included to ensure
 // GLEW is included before any other GL file
@@ -34,6 +35,9 @@ namespace synvis
   typedef Eigen::Vector3f vec3;
   typedef Eigen::Vector4f vec4;
   typedef Eigen::Matrix4f mat4;
+
+  typedef std::vector< unsigned int > gidVec;
+  typedef std::set< unsigned int > gidSet;
 
   enum TNeuronConnection
   {

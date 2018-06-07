@@ -311,6 +311,21 @@ namespace synvis
     return neuron->second->transform( );
   }
 
+
+  std::set< unsigned int > PathFinder::connectedTo( unsigned int gid ) const
+  {
+    std::set< unsigned int > result;
+
+    auto synapses = _dataset->circuit( ).synapses( gid, nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+    for( auto syn : synapses )
+    {
+      result.insert( syn->postSynapticNeuron( ));
+    }
+
+    return result;
+  }
+
 }
 
 

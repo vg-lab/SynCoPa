@@ -25,6 +25,7 @@
 #include <nlrender/nlrender.h>
 #include <prefr/prefr.h>
 #include <reto/reto.h>
+#include <nsol/nsol.h>
 
 #include "NeuronScene.h"
 #include "PSManager.h"
@@ -81,9 +82,11 @@ protected:
   virtual void mouseMoveEvent( QMouseEvent* event );
   virtual void keyPressEvent( QKeyEvent* event );
 
+  void setupNeuronMorphologies( void );
+
   void setupSynapses( const std::set< unsigned int >& gidsPre,
                       const std::set< unsigned int >& gidsPost = std::set< unsigned int >( ));
-  void setupPaths( unsigned int gidPre,
+  void setupPaths( const std::set< unsigned int >& gidsPre,
                    const std::set< unsigned int >& gidsPost );
 
   void paintParticles( void );
@@ -123,7 +126,10 @@ protected:
 
   QTimer* _cameraTimer;
 
-  synvis::TRenderMorpho _renderConfig;
+  synvis::TRenderMorpho _neuronsSelectedPre;
+  synvis::TRenderMorpho _neuronsSelectedPost;
+  synvis::TRenderMorpho _neuronsRelated;
+  synvis::TRenderMorpho _neuronsContext;
 
   float _renderSpeed;
   float _maxFPS;
@@ -132,8 +138,16 @@ protected:
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
 
-  unsigned int _selectedPre;
-  std::set< unsigned int > _selectedPost;
+  std::set< unsigned int > _gidsAll;
+  std::set< unsigned int > _gidsSelectedPre;
+  std::set< unsigned int > _gidsSelectedPost;
+  std::set< unsigned int > _gidsRelated;
+  std::set< unsigned int > _gidsOther;
+
+  synvis::vec3 _colorSelectedPre;
+  synvis::vec3 _colorSelectedPost;
+  synvis::vec3 _colorRelated;
+  synvis::vec3 _colorContext;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 };
