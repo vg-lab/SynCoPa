@@ -70,11 +70,31 @@ public slots:
 
   const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
 
+  void colorSelectedPre( const synvis::vec3& color );
+  void colorSelectedPost( const synvis::vec3& color );
+  void colorRelated( const synvis::vec3& color );
+  void colorContext( const synvis::vec3& color );
+  void colorSynapsesPre( const synvis::vec3& color );
+  void colorSynapsesPost( const synvis::vec3& color );
+  void colorPathsPre( const synvis::vec3& color );
+  void colorPathsPost( const synvis::vec3& color );
+
+
+  const synvis::vec3& colorSelectedPre( void ) const;
+  const synvis::vec3& colorSelectedPost( void ) const;
+  const synvis::vec3& colorRelated( void ) const;
+  const synvis::vec3& colorContext( void ) const;
+  const synvis::vec3& colorSynapsesPre( void ) const;
+  const synvis::vec3& colorSynapsesPost( void ) const;
+  const synvis::vec3& colorPathsPre( void ) const;
+  const synvis::vec3& colorPathsPost( void ) const;
 protected:
 
   virtual void initializeGL( void );
   virtual void paintGL( void );
   virtual void resizeGL( int w, int h );
+
+//  bool showDialog( QColor& current, const std::string& message = "" );
 
   virtual void mousePressEvent( QMouseEvent* event );
   virtual void mouseReleaseEvent( QMouseEvent* event );
@@ -148,6 +168,16 @@ protected:
   synvis::vec3 _colorSelectedPost;
   synvis::vec3 _colorRelated;
   synvis::vec3 _colorContext;
+  synvis::vec3 _colorSynapsesPre;
+  synvis::vec3 _colorSynapsesPost;
+  synvis::vec3 _colorPathsPre;
+  synvis::vec3 _colorPathsPost;
+
+  float _alphaSynapsesPre;
+  float _alphaSynapsesPost;
+  float _alphaPathsPre;
+  float _alphaPathsPost;
+
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 };

@@ -14,6 +14,8 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QScrollArea>
+#include <QColorDialog>
+
 // #include "qt/CustomSlider.h"
 
 #ifdef VISIMPL_USE_GMRVLEX
@@ -21,6 +23,22 @@
 #endif
 
 #include <thread>
+
+static float invRGB = 1.0 / 255;
+
+synvis::vec3 colorQtToEigen( const QColor& color_ )
+{
+  return synvis::vec3( std::min( 1.0f, std::max( 0.0f, color_.red( ) * invRGB )),
+                       std::min( 1.0f, std::max( 0.0f, color_.green( ) * invRGB )),
+                       std::min( 1.0f, std::max( 0.0f, color_.blue( ) * invRGB )));
+}
+
+QColor colorEigenToQt( const synvis::vec3& color_ )
+{
+  return QColor( std::min( 255, std::max( 0, int( color_.x( ) * 255 ))),
+                 std::min( 255, std::max( 0, int( color_.y( ) * 255 ))),
+                 std::min( 255, std::max( 0, int( color_.z( ) * 255 ))));
+}
 
 MainWindow::MainWindow( QWidget* parent_,
                         bool updateOnIdle )
@@ -36,6 +54,7 @@ MainWindow::MainWindow( QWidget* parent_,
 , _layoutInfo( nullptr )
 , _widgetInfoPre( nullptr )
 , _widgetInfoPost( nullptr )
+, _dockColor( nullptr )
 {
   _ui->setupUi( this );
 
@@ -68,12 +87,13 @@ void MainWindow::init( void )
     exit( -1 );
   }
 
+  _openGLWidget->createParticleSystem( );
+
   initListDock( );
+  initColorDock( );
   initInfoDock( );
 
-  _openGLWidget->createParticleSystem( );
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
-
 
   connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),
            _openGLWidget, SLOT( toggleUpdateOnIdle( )));
@@ -125,6 +145,184 @@ void MainWindow::initListDock( void )
 
   addDockWidget( Qt::RightDockWidgetArea, dockList );
 
+}
+
+void MainWindow::initColorDock( void )
+{
+  _dockColor = new QDockWidget( "Aspect" );
+
+  QWidget* container = new QWidget( );
+
+  QVBoxLayout* layout = new QVBoxLayout( );
+
+  container->setLayout( layout );
+
+  QGroupBox* groupBoxMorphologies = new QGroupBox( "Morphologies" );
+  QGroupBox* groupBoxSynapses = new QGroupBox( "Synapses" );
+  QGroupBox* groupBoxPaths = new QGroupBox( "Paths" );
+
+  QGridLayout* morphoLayout = new QGridLayout( );
+  groupBoxMorphologies->setLayout( morphoLayout );
+
+  QGridLayout* synLayout = new QGridLayout( );
+  groupBoxSynapses->setLayout( synLayout );
+
+  QGridLayout* pathLayout = new QGridLayout( );
+  groupBoxPaths->setLayout( pathLayout );
+
+  QPalette palette;
+  QColor color;
+
+  _frameColorMorphoPre = new QPushButton( );
+  _frameColorMorphoPre->setMinimumSize( 20, 20 );
+  _frameColorMorphoPre->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorSelectedPre( ));
+  _frameColorMorphoPre->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorMorphoPost = new QPushButton( );
+  _frameColorMorphoPost->setMinimumSize( 20, 20 );
+  _frameColorMorphoPost->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorSelectedPost( ));
+  _frameColorMorphoPost->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorMorphoRelated = new QPushButton( );
+  _frameColorMorphoRelated->setMinimumSize( 20, 20 );
+  _frameColorMorphoRelated->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorRelated( ));
+  _frameColorMorphoRelated->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorMorphoContext = new QPushButton( );
+  _frameColorMorphoContext->setMinimumSize( 20, 20 );
+  _frameColorMorphoContext->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorContext( ));
+  _frameColorMorphoContext->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorSynapsesPre = new QPushButton( );
+  _frameColorSynapsesPre->setMinimumSize( 20, 20 );
+  _frameColorSynapsesPre->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorSynapsesPre( ));
+  _frameColorSynapsesPre->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorSynapsesPost = new QPushButton( );
+  _frameColorSynapsesPost->setMinimumSize( 20, 20 );
+  _frameColorSynapsesPost->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorSynapsesPost( ));
+  _frameColorSynapsesPost->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorPathsPre = new QPushButton( );
+  _frameColorPathsPre->setMinimumSize( 20, 20 );
+  _frameColorPathsPre->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorPathsPre( ));
+  _frameColorPathsPre->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorPathsPost = new QPushButton( );
+  _frameColorPathsPost->setMinimumSize( 20, 20 );
+  _frameColorPathsPost->setMaximumSize( 20, 20 );
+
+  color = colorEigenToQt(_openGLWidget->colorPathsPost( ));
+  _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
+
+  // Morphologies
+
+  unsigned int row = 0;
+  unsigned int col = 0;
+
+  morphoLayout->addWidget( _frameColorMorphoPre, row, col++, 1, 1 );
+  morphoLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  ++col;
+
+  morphoLayout->addWidget( _frameColorMorphoPost, row, col++, 1, 1 );
+  morphoLayout->addWidget( new QLabel( "Postsynaptic" ), row, col, 1, 2 );
+
+  ++row;
+  col = 0;
+
+  morphoLayout->addWidget( _frameColorMorphoRelated, row, col++, 1, 1 );
+  morphoLayout->addWidget( new QLabel( "Related" ), row, col++, 1, 2 );
+  ++col;
+
+  morphoLayout->addWidget( _frameColorMorphoContext, row, col++, 1, 1 );
+  morphoLayout->addWidget( new QLabel( "Other" ), row, col, 1, 2 );
+
+  // Synapses
+
+  row = 0;
+  col = 0;
+
+  synLayout->addWidget( _frameColorSynapsesPre, row, col++, 1, 1 );
+  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  ++col;
+  synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
+  synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+
+  ++row;
+  col = 0;
+
+  synLayout->addWidget( _frameColorSynapsesPost, row, col++, 1, 1 );
+  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
+  ++col;
+  synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
+  synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+
+  ++row;
+
+  // Paths
+
+  row = 0;
+  col = 0;
+
+  pathLayout->addWidget( _frameColorPathsPre, row, col++, 1, 1 );
+  pathLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  ++col;
+  pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
+  pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+
+  ++row;
+  col = 0;
+
+  pathLayout->addWidget( _frameColorPathsPost, row, col++, 1, 1 );
+  pathLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
+  ++col;
+  pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
+  pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+
+  layout->addWidget( groupBoxMorphologies );
+  layout->addWidget( groupBoxSynapses );
+  layout->addWidget( groupBoxPaths );
+
+  connect( _frameColorMorphoPre, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorMorphoPost, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorMorphoRelated, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorMorphoContext, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorSynapsesPre, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorSynapsesPost, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorPathsPre, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  connect( _frameColorPathsPost, SIGNAL( clicked( )),
+           this, SLOT( colorSelectionClicked()));
+
+  _dockColor->setWidget( container );
+  addDockWidget( Qt::RightDockWidgetArea, _dockColor );
 }
 
 void MainWindow::initInfoDock( void )
@@ -422,4 +620,75 @@ void MainWindow::clear( void )
   _modelListPost->clear( );
 
   updateInfoDock( );
+}
+
+bool MainWindow::showDialog( QColor& current, const QString& message )
+{
+  QColor result = QColorDialog::getColor( current, this,
+                                          QString( message ),
+                                          QColorDialog::DontUseNativeDialog);
+
+  if( result.isValid( ))
+  {
+    current = result;
+    return true;
+  }
+  else
+    return false;
+
+}
+
+void MainWindow::colorSelectionClicked( void )
+{
+  QPushButton* frame = dynamic_cast< QPushButton* >( sender( ));
+  if( frame )
+  {
+    QColor color;
+    QString message;
+
+    if( frame == _frameColorMorphoPre )
+      color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
+    else if( frame == _frameColorMorphoPost )
+      color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
+    else if( frame == _frameColorMorphoRelated )
+      color = colorEigenToQt( _openGLWidget->colorRelated( ));
+    else if( frame == _frameColorMorphoContext )
+      color = colorEigenToQt( _openGLWidget->colorContext( ));
+    else if( frame == _frameColorSynapsesPre )
+      color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
+    else if( frame == _frameColorSynapsesPost )
+      color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
+    else if( frame == _frameColorPathsPre )
+      color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
+    else if( frame == _frameColorPathsPost )
+      color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
+    else
+    {
+      std::cout << "Warning: Frame " << frame << " clicked not connected." << std::endl;
+      return;
+    }
+
+    if( showDialog( color, message ))
+    {
+      if( frame == _frameColorMorphoPre )
+        _openGLWidget->colorSelectedPre( colorQtToEigen( color ));
+      else if( frame == _frameColorMorphoPost )
+        _openGLWidget->colorSelectedPost( colorQtToEigen( color ));
+      else if( frame == _frameColorMorphoRelated )
+        _openGLWidget->colorRelated( colorQtToEigen( color ));
+      else if( frame == _frameColorMorphoContext )
+        _openGLWidget->colorContext( colorQtToEigen( color ));
+      else if( frame == _frameColorSynapsesPre )
+        _openGLWidget->colorSynapsesPre( colorQtToEigen( color ));
+      else if( frame == _frameColorSynapsesPost )
+        _openGLWidget->colorSynapsesPost( colorQtToEigen( color ));
+      else if( frame == _frameColorPathsPre )
+        _openGLWidget->colorPathsPre ( colorQtToEigen( color ));
+      else if( frame == _frameColorPathsPost )
+        _openGLWidget->colorPathsPost( colorQtToEigen( color ));
+    }
+
+    frame->setStyleSheet( "background-color: " + color.name( ));
+
+  }
 }

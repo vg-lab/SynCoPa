@@ -53,6 +53,14 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _colorSelectedPost( 0.8, 0.6, 0.6 )
 , _colorRelated( 0.7, 0.5, 0 )
 , _colorContext( 0.3, 0.3, 0.3 )
+, _colorSynapsesPre( 1, 0, 0 )
+, _colorSynapsesPost( 1, 0, 1 )
+, _colorPathsPre( 0, 1, 0 )
+, _colorPathsPost( 0, 0, 1 )
+, _alphaSynapsesPre( 0.35f )
+, _alphaSynapsesPost( 0.35f )
+, _alphaPathsPre( 0.1f )
+, _alphaPathsPost( 0.1f )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 50000 );
@@ -196,11 +204,21 @@ void OpenGLWidget::createParticleSystem( void )
   _psManager->init( 500000 );
 //
 //  //TODO add colors for different synapse tyoes
-  _psManager->colorSynapses( vec4( 1, 0, 0, 0.35 ), PRESYNAPTIC );
-  _psManager->colorSynapses( vec4( 1, 0, 1, 0.35 ), POSTSYNAPTIC );
+  _psManager->colorSynapses( vec4( _colorSynapsesPre.x( ), _colorSynapsesPre.y( ),
+                                   _colorSynapsesPre.z( ), _alphaSynapsesPre ),
+                             PRESYNAPTIC );
 
-  _psManager->colorPaths( vec4( 0, 1, 0, 0.1 ), PRESYNAPTIC );
-  _psManager->colorPaths( vec4( 0, 0, 1, 0.1 ), POSTSYNAPTIC );
+  _psManager->colorSynapses( vec4( _colorSynapsesPost.x( ), _colorSynapsesPost.y( ),
+                                   _colorSynapsesPost.z( ), _alphaSynapsesPost ),
+                             POSTSYNAPTIC );
+
+  _psManager->colorPaths( vec4( _colorPathsPre.x( ), _colorPathsPre.y( ),
+                                _colorPathsPre.z( ), _alphaPathsPre ),
+                          PRESYNAPTIC );
+
+  _psManager->colorPaths( vec4( _colorPathsPost.x( ), _colorPathsPost.y( ),
+                                _colorPathsPost.z( ), _alphaPathsPost ),
+                          POSTSYNAPTIC );
 
   _psManager->sizeSynapses( 8.0, PRESYNAPTIC );
   _psManager->sizeSynapses( 8.0, POSTSYNAPTIC );
@@ -730,3 +748,126 @@ const std::vector< nsol::MorphologySynapsePtr >& OpenGLWidget::currentSynapses( 
   return _currentSynapses;
 }
 
+
+void OpenGLWidget::colorSelectedPre( const synvis::vec3& color )
+{
+  _colorSelectedPre = color;
+
+  setColor( _neuronsSelectedPre, _colorSelectedPre );
+}
+
+void OpenGLWidget::colorSelectedPost( const synvis::vec3& color )
+{
+  _colorSelectedPost = color;
+
+  setColor( _neuronsSelectedPost, _colorSelectedPost );
+}
+
+void OpenGLWidget::colorRelated( const synvis::vec3& color )
+{
+  _colorRelated = color;
+
+  setColor( _neuronsRelated, _colorRelated );
+}
+
+void OpenGLWidget::colorContext( const synvis::vec3& color )
+{
+  _colorContext = color;
+
+  setColor( _neuronsContext, _colorContext );
+}
+
+void OpenGLWidget::colorSynapsesPre( const synvis::vec3& color )
+{
+  _colorSynapsesPre = color;
+
+  synvis::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaSynapsesPre );
+  _psManager->colorSynapses( composedColor, synvis::PRESYNAPTIC );
+}
+
+void OpenGLWidget::colorSynapsesPost( const synvis::vec3& color )
+{
+  _colorSynapsesPost = color;
+
+  synvis::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaSynapsesPre );
+  _psManager->colorSynapses( composedColor, synvis::POSTSYNAPTIC );
+}
+
+void OpenGLWidget::colorPathsPre( const synvis::vec3& color )
+{
+  _colorPathsPre = color;
+
+  synvis::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaPathsPre );
+  _psManager->colorPaths( composedColor, synvis::PRESYNAPTIC );
+}
+
+void OpenGLWidget::colorPathsPost( const synvis::vec3& color )
+{
+  _colorPathsPost = color;
+
+  synvis::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaPathsPost );
+  _psManager->colorPaths( composedColor, synvis::POSTSYNAPTIC );
+}
+
+
+const synvis::vec3& OpenGLWidget::colorSelectedPre( void ) const
+{
+  return _colorSelectedPre;
+}
+
+const synvis::vec3& OpenGLWidget::colorSelectedPost( void ) const
+{
+  return _colorSelectedPost;
+}
+
+const synvis::vec3& OpenGLWidget::colorRelated( void ) const
+{
+  return _colorRelated;
+}
+
+const synvis::vec3& OpenGLWidget::colorContext( void ) const
+{
+  return _colorContext;
+}
+
+const synvis::vec3& OpenGLWidget::colorSynapsesPre( void ) const
+{
+//  synvis::vec4 result = _psManager->colorSynapses( synvis::PRESYNAPTIC );
+//
+//  return synvis::vec3( result.block< 3, 1 >( 0, 0 ));
+  return _colorSynapsesPre;
+}
+
+const synvis::vec3& OpenGLWidget::colorSynapsesPost( void ) const
+{
+//  synvis::vec4 result = _psManager->colorSynapses( synvis::POSTSYNAPTIC );
+//
+//  return synvis::vec3( result.block< 3, 1 >( 0, 0 ));
+  return _colorSynapsesPost;
+}
+
+const synvis::vec3& OpenGLWidget::colorPathsPre( void ) const
+{
+  return _colorPathsPre;
+}
+
+const synvis::vec3& OpenGLWidget::colorPathsPost( void ) const
+{
+  return _colorPathsPost;
+}
+
+//bool OpenGLWidget::showDialog( QColor& current, const std::string& message )
+//{
+//  QColor result = QColorDialog::getColor( current, this,
+//                                          QString( message ),
+//                                          QColorDialog::DontUseNativeDialog);
+//
+//  if( result.isValid( ))
+//  {
+//    current = result;
+//    return true;
+//  }
+//  else
+//    return false;
+//
+//}

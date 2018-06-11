@@ -50,12 +50,16 @@ protected slots:
   void presynapticNeuronClicked( const QModelIndex& index );
   void postsynapticNeuronClicked( const QModelIndex& index );
 
+  void colorSelectionClicked( void );
 
   void clear( void );
 
 protected:
 
+  bool showDialog( QColor& current, const QString& message = "" );
+
   void initListDock( void );
+  void initColorDock( void );
   void initInfoDock( void );
   void updateInfoDock( void );
   void clearInfoDock( void );
@@ -77,4 +81,19 @@ protected:
   QVBoxLayout* _layoutInfo;
   QWidget* _widgetInfoPre;
   QWidget* _widgetInfoPost;
+
+  QDockWidget* _dockColor;
+  QPushButton* _frameColorMorphoPre;
+  QPushButton* _frameColorMorphoPost;
+  QPushButton* _frameColorMorphoRelated;
+  QPushButton* _frameColorMorphoContext;
+  QPushButton* _frameColorSynapsesPre;
+  QPushButton* _frameColorSynapsesPost;
+  QPushButton* _frameColorPathsPre;
+  QPushButton* _frameColorPathsPost;
+
+  QSlider* _sliderAlphaSynapsesPre;
+  QSlider* _sliderAlphaSynapsesPost;
+  QSlider* _sliderAlphaPathsPre;
+  QSlider* _sliderAlphaPathsPost;
 };

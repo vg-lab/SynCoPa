@@ -29,7 +29,6 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-
 namespace synvis
 {
   typedef Eigen::Vector3f vec3;
@@ -68,6 +67,7 @@ namespace synvis
     return vec4( value.x, value.y, value.z, value.w );
   }
 }
+
 
 
 #endif /* SRC_TYPES_H_ */

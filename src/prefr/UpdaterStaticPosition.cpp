@@ -47,15 +47,14 @@ namespace synvis
         current.set_position( eigenToGLM( source->position( id )));
         current.set_velocity( glm::vec3( 0, 1, 0 ) );
 
-        current.set_color( model->color.GetFirstValue( ));
-        current.set_size( model->size.GetFirstValue( ));
         current.set_velocityModule( 0 );
         current.set_acceleration( glm::vec3( 0, 0, 0 ));
 
         _updateConfig->setEmitted( id, false );
       }
 
-
+      current.set_color( model->color.GetFirstValue( ));
+      current.set_size( model->size.GetFirstValue( ));
 //      if( current.alive( ))
 //      {
 //        if( current.life( ) <= 0.0f )
