@@ -95,6 +95,16 @@ namespace synvis
     _particleSystem->start();
   }
 
+  void PSManager::run ( void )
+  {
+    _particleSystem->run( true );
+  }
+
+  void PSManager::stop( void )
+  {
+    _particleSystem->run( false );
+  }
+
   void PSManager::clear( void )
   {
     clearSynapses( ALL_CONNECTIONS );
@@ -342,15 +352,11 @@ namespace synvis
 
   void PSManager::sizePaths( float size, TNeuronConnection type )
   {
-    if( type == PRESYNAPTIC )
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
       _modelPathPre->size.Insert( 0, size );
-    else if( type == POSTSYNAPTIC )
+
+    if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS)
       _modelPathPost->size.Insert( 0, size );
-    else
-    {
-      _modelPathPre->size.Insert( 0, size );
-      _modelPathPost->size.Insert( 0, size );
-    }
   }
 
   nlgeometry::AxisAlignedBoundingBox PSManager::boundingBox( void ) const
@@ -358,6 +364,32 @@ namespace synvis
     return _boundingBox;
   }
 
+  void PSManager::showSynapses( bool state, TNeuronConnection type )
+  {
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+    {
+      _sourceSynPre->active( state );
+    }
+
+    if ( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+    {
+      _sourceSynPost->active( state );
+    }
+
+  }
+
+  void PSManager::showPaths( bool state, TNeuronConnection type )
+  {
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+    {
+      _sourcePathPre->active( state );
+    }
+
+    if ( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+    {
+      _sourcePathPost->active( state );
+    }
+  }
 
 
 }

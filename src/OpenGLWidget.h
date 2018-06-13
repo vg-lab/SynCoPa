@@ -88,6 +88,16 @@ public slots:
   const synvis::vec3& colorSynapsesPost( void ) const;
   const synvis::vec3& colorPathsPre( void ) const;
   const synvis::vec3& colorPathsPost( void ) const;
+
+  void showSelectedPre( int state );
+  void showSelectedPost( int state );
+  void showRelated( int state );
+  void showContext( int state );
+  void showSynapsesPre( int state );
+  void showSynapsesPost( int state );
+  void showPathsPre( int state );
+  void showPathsPost( int state );
+
 protected:
 
   virtual void initializeGL( void );
@@ -144,7 +154,7 @@ protected:
 
   float _particleSizeThreshold;
 
-  QTimer* _cameraTimer;
+//  QTimer* _cameraTimer;
 
   synvis::TRenderMorpho _neuronsSelectedPre;
   synvis::TRenderMorpho _neuronsSelectedPost;
@@ -177,6 +187,16 @@ protected:
   float _alphaSynapsesPost;
   float _alphaPathsPre;
   float _alphaPathsPost;
+
+  bool _showSelectedPre;
+  bool _showSelectedPost;
+  bool _showRelated;
+  bool _showContext;
+  bool _showSynapsesPre;
+  bool _showSynapsesPost;
+  bool _showPathsPre;
+  bool _showPathsPost;
+
 
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;

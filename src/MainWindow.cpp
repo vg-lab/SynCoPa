@@ -15,6 +15,7 @@
 #include <QGroupBox>
 #include <QScrollArea>
 #include <QColorDialog>
+#include <QCheckBox>
 
 // #include "qt/CustomSlider.h"
 
@@ -161,6 +162,24 @@ void MainWindow::initColorDock( void )
   QGroupBox* groupBoxSynapses = new QGroupBox( "Synapses" );
   QGroupBox* groupBoxPaths = new QGroupBox( "Paths" );
 
+  QCheckBox* checkMorphoPre = new QCheckBox( "Presynaptic" );
+  QCheckBox* checkMorphoPost = new QCheckBox( "Postsynaptic" );
+  QCheckBox* checkMorphoRelated = new QCheckBox( "Related" );
+  QCheckBox* checkMorphoContext = new QCheckBox( "Context" );
+  QCheckBox* checkSynapsesPre = new QCheckBox( "Presynaptic" );
+  QCheckBox* checkSynapsesPost = new QCheckBox( "Postsynaptic" );
+  QCheckBox* checkPathsPre = new QCheckBox( "Presynaptic" );
+  QCheckBox* checkPathsPost = new QCheckBox( "Postsynaptic" );
+
+  checkMorphoPre->setChecked( true );
+  checkMorphoPost->setChecked( true );
+  checkMorphoRelated->setChecked( true );
+  checkMorphoContext->setChecked( true );
+  checkSynapsesPre->setChecked( true );
+  checkSynapsesPost->setChecked( true );
+  checkPathsPre->setChecked( true );
+  checkPathsPost->setChecked( true );
+
   QGridLayout* morphoLayout = new QGridLayout( );
   groupBoxMorphologies->setLayout( morphoLayout );
 
@@ -235,21 +254,25 @@ void MainWindow::initColorDock( void )
   unsigned int col = 0;
 
   morphoLayout->addWidget( _frameColorMorphoPre, row, col++, 1, 1 );
-  morphoLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  morphoLayout->addWidget( checkMorphoPre, row, col++, 1, 2 );
+//  morphoLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
 
   morphoLayout->addWidget( _frameColorMorphoPost, row, col++, 1, 1 );
-  morphoLayout->addWidget( new QLabel( "Postsynaptic" ), row, col, 1, 2 );
+  morphoLayout->addWidget( checkMorphoPost, row, col++, 1, 2 );
+//  morphoLayout->addWidget( new QLabel( "Postsynaptic" ), row, col, 1, 2 );
 
   ++row;
   col = 0;
 
   morphoLayout->addWidget( _frameColorMorphoRelated, row, col++, 1, 1 );
-  morphoLayout->addWidget( new QLabel( "Related" ), row, col++, 1, 2 );
+  morphoLayout->addWidget( checkMorphoRelated, row, col++, 1, 2 );
+//  morphoLayout->addWidget( new QLabel( "Related" ), row, col++, 1, 2 );
   ++col;
 
   morphoLayout->addWidget( _frameColorMorphoContext, row, col++, 1, 1 );
-  morphoLayout->addWidget( new QLabel( "Other" ), row, col, 1, 2 );
+  morphoLayout->addWidget( checkMorphoContext, row, col++, 1, 2 );
+//  morphoLayout->addWidget( new QLabel( "Other" ), row, col, 1, 2 );
 
   // Synapses
 
@@ -257,7 +280,8 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   synLayout->addWidget( _frameColorSynapsesPre, row, col++, 1, 1 );
-  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  synLayout->addWidget( checkSynapsesPre, row, col++, 1, 2 );
+//  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
   synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
   synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
@@ -266,7 +290,8 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   synLayout->addWidget( _frameColorSynapsesPost, row, col++, 1, 1 );
-  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
+  synLayout->addWidget( checkSynapsesPost, row, col++, 1, 2 );
+//  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
   ++col;
   synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
   synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
@@ -279,7 +304,8 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   pathLayout->addWidget( _frameColorPathsPre, row, col++, 1, 1 );
-  pathLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
+  pathLayout->addWidget( checkPathsPre, row, col++, 1, 2 );
+//  pathLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
   pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
   pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
@@ -288,7 +314,8 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   pathLayout->addWidget( _frameColorPathsPost, row, col++, 1, 1 );
-  pathLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
+  pathLayout->addWidget( checkPathsPost, row, col++, 1, 2 );
+//  pathLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
   ++col;
   pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
   pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
@@ -321,6 +348,24 @@ void MainWindow::initColorDock( void )
   connect( _frameColorPathsPost, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
 
+
+  connect( checkMorphoPre, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showSelectedPre( int )));
+  connect( checkMorphoPost, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showSelectedPost( int )));
+  connect( checkMorphoRelated, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showRelated( int )));
+  connect( checkMorphoContext, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showContext( int )));
+  connect( checkSynapsesPre, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showSynapsesPre( int )));
+  connect( checkSynapsesPost, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showSynapsesPost( int )));
+  connect( checkPathsPre, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showPathsPre( int )));
+  connect( checkPathsPost, SIGNAL( stateChanged( int )),
+             _openGLWidget, SLOT( showPathsPost( int )));
+
   _dockColor->setWidget( container );
   addDockWidget( Qt::RightDockWidgetArea, _dockColor );
 }
@@ -328,6 +373,7 @@ void MainWindow::initColorDock( void )
 void MainWindow::initInfoDock( void )
 {
   _dockInfo = new QDockWidget( tr( "Information" ));
+  _dockInfo->setMinimumHeight( 100 );
 
   QWidget* container = new QWidget( );
 

@@ -61,13 +61,21 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _alphaSynapsesPost( 0.35f )
 , _alphaPathsPre( 0.1f )
 , _alphaPathsPost( 0.1f )
+, _showSelectedPre( true )
+, _showSelectedPost( true )
+, _showRelated( true )
+, _showContext( true )
+, _showSynapsesPre( true )
+, _showSynapsesPost( true )
+, _showPathsPre( true )
+, _showPathsPost( true )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 50000 );
-
-  _cameraTimer = new QTimer( );
-  _cameraTimer->start(( 1.0f / 60.f ) * 100 );
-  connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
+//
+//  _cameraTimer = new QTimer( );
+//  _cameraTimer->start(( 1.0f / 60.f ) * 100 );
+//  connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
 
   _pathFinder = new synvis::PathFinder( );
 
@@ -202,8 +210,7 @@ void OpenGLWidget::createParticleSystem( void )
 
   _psManager = new synvis::PSManager( );
   _psManager->init( 500000 );
-//
-//  //TODO add colors for different synapse tyoes
+
   _psManager->colorSynapses( vec4( _colorSynapsesPre.x( ), _colorSynapsesPre.y( ),
                                    _colorSynapsesPre.z( ), _alphaSynapsesPre ),
                              PRESYNAPTIC );
@@ -225,8 +232,6 @@ void OpenGLWidget::createParticleSystem( void )
 
   _psManager->sizePaths( 3.0, PRESYNAPTIC );
   _psManager->sizePaths( 3.0, POSTSYNAPTIC );
-
-
 }
 
 void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gidsPre,
@@ -398,46 +403,26 @@ void OpenGLWidget::paintMorphologies( void )
   Eigen::Matrix4f view( _camera->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
-//  std::cout << "Selected PRE " << std::get< synvis::MESH >( _neuronsSelectedPre ).size( )
-//            << " == " << std::get< synvis::MATRIX >( _neuronsSelectedPre ).size( )
-//            << " == " << std::get< synvis::COLOR >( _neuronsSelectedPre ).size( )
-//            << std::endl;
-
-
   // Render selected neurons with full morphology
-  _nlrenderer->render( std::get< synvis::MESH >( _neuronsSelectedPre ),
-                       std::get< synvis::MATRIX >( _neuronsSelectedPre ),
-                       std::get< synvis::COLOR >( _neuronsSelectedPre ));
+  if( _showSelectedPre )
+    _nlrenderer->render( std::get< synvis::MESH >( _neuronsSelectedPre ),
+                         std::get< synvis::MATRIX >( _neuronsSelectedPre ),
+                         std::get< synvis::COLOR >( _neuronsSelectedPre ));
 
+  if( _showSelectedPost )
+    _nlrenderer->render( std::get< synvis::MESH >( _neuronsSelectedPost ),
+                         std::get< synvis::MATRIX >( _neuronsSelectedPost ),
+                         std::get< synvis::COLOR >( _neuronsSelectedPost ));
 
-//  std::cout << "Selected POST " << std::get< synvis::MESH >( _neuronsSelectedPost ).size( )
-//            << " == " << std::get< synvis::MATRIX >( _neuronsSelectedPost ).size( )
-//            << " == " << std::get< synvis::COLOR >( _neuronsSelectedPost ).size( )
-//            << std::endl;
+  if( _showRelated )
+    _nlrenderer->render( std::get< synvis::MESH >( _neuronsRelated ),
+                         std::get< synvis::MATRIX >( _neuronsRelated ),
+                         std::get< synvis::COLOR >( _neuronsRelated ), true, false );
 
-  _nlrenderer->render( std::get< synvis::MESH >( _neuronsSelectedPost ),
-                       std::get< synvis::MATRIX >( _neuronsSelectedPost ),
-                       std::get< synvis::COLOR >( _neuronsSelectedPost ));
-
-
-//  std::cout << "Related " << std::get< synvis::MESH >( _neuronsRelated ).size( )
-//            << " == " << std::get< synvis::MATRIX >( _neuronsRelated ).size( )
-//            << " == " << std::get< synvis::COLOR >( _neuronsRelated ).size( )
-//            << std::endl;
-
-  _nlrenderer->render( std::get< synvis::MESH >( _neuronsRelated ),
-                       std::get< synvis::MATRIX >( _neuronsRelated ),
-                       std::get< synvis::COLOR >( _neuronsRelated ), true, false );
-
-
-//  std::cout << "Context " << std::get< synvis::MESH >( _neuronsContext ).size( )
-//            << " == " << std::get< synvis::MATRIX >( _neuronsContext ).size( )
-//            << " == " << std::get< synvis::COLOR >( _neuronsContext ).size( )
-//            << std::endl;
-
-  _nlrenderer->render( std::get< synvis::MESH >( _neuronsContext ),
-                       std::get< synvis::MATRIX >( _neuronsContext ),
-                       std::get< synvis::COLOR >( _neuronsContext ), true, false );
+  if( _showContext )
+    _nlrenderer->render( std::get< synvis::MESH >( _neuronsContext ),
+                         std::get< synvis::MATRIX >( _neuronsContext ),
+                         std::get< synvis::COLOR >( _neuronsContext ), true, false );
 }
 
 
@@ -546,7 +531,7 @@ void OpenGLWidget::paintGL( void )
 
       paintMorphologies( );
       paintParticles( );
-
+      update( );
     }
 
     glUseProgram( 0 );
@@ -871,3 +856,46 @@ const synvis::vec3& OpenGLWidget::colorPathsPost( void ) const
 //    return false;
 //
 //}
+
+void OpenGLWidget::showSelectedPre( int state )
+{
+  _showSelectedPre = state;
+}
+
+void OpenGLWidget::showSelectedPost( int state )
+{
+  _showSelectedPost = state;
+}
+
+void OpenGLWidget::showRelated( int state )
+{
+  _showRelated = state;
+}
+
+void OpenGLWidget::showContext( int state )
+{
+  _showContext = state;
+}
+
+void OpenGLWidget::showSynapsesPre( int state )
+{
+  _showSynapsesPre = state;
+  _psManager->showSynapses( state, synvis::PRESYNAPTIC );
+}
+void OpenGLWidget::showSynapsesPost( int state )
+{
+  _showSynapsesPost = state;
+  _psManager->showSynapses( state, synvis::POSTSYNAPTIC );
+}
+
+void OpenGLWidget::showPathsPre( int state )
+{
+  _showPathsPre = state;
+  _psManager->showPaths( state, synvis::PRESYNAPTIC );
+}
+
+void OpenGLWidget::showPathsPost( int state )
+{
+  _showPathsPost = state;
+  _psManager->showPaths( state, synvis::POSTSYNAPTIC );
+}

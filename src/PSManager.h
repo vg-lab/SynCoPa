@@ -56,6 +56,11 @@ public:
     float sizePaths( TNeuronConnection type = PRESYNAPTIC ) const;
     void sizePaths( float size, TNeuronConnection type = PRESYNAPTIC );
 
+    void showSynapses( bool state, TNeuronConnection type = PRESYNAPTIC );
+    void showPaths( bool state, TNeuronConnection type = PRESYNAPTIC );
+
+    void run( void );
+    void stop( void );
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 

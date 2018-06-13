@@ -38,7 +38,7 @@ namespace synvis
       assert( source );
 
 
-      if( _updateConfig->emitted( id ))
+      if( _updateConfig->emitted( id ) && !current.alive( ))
       {
         current.set_life( 1 );
 

@@ -140,53 +140,6 @@ namespace synvis
 
           std::vector< vec3 > positions;
 
-//          if( counter == 0 )
-//          {
-//            std::cout << "Section " << counter << " nodes " << nodes.size( ) << std::endl;
-//
-//            unsigned int closestPoint = nodes.size( ) - 1;
-//            float minDist = std::numeric_limits< float >::max( );
-//
-//            vec3 synPos = msyn->preSynapticSurfacePosition( );
-//
-//            std::cout << "Distances: ";
-//            unsigned int idx = 0;
-//            vec3 initPos = nodes.front( )->point( );
-//            float synDist = ( synPos - initPos ).norm( );
-//            for( auto node : nodes )
-//            {
-//              if( idx == 0 )
-//                continue;
-//
-//              float distance = ( node->point( ) - initPos ).norm( );
-//              if( distance <= synDist )
-//              {
-//                std::cout << " " << idx << ": " << distance;
-//                closestPoint = idx;
-//                minDist = distance;
-//
-//              }
-//              else
-//                break;
-//
-//              ++idx;
-//            }
-//            std::cout << std::endl;
-//
-//            std::cout << "Closest distance " << minDist << " from node " << closestPoint << std::endl;
-//
-//            for( unsigned int i = 0; i < closestPoint + 1; ++i )
-//              positions.push_back( nodes[ i ]->point( ));
-//
-//          }
-//          else
-//          {
-//            positions.reserve( nodes.size( ));
-//            for( auto node : nodes )
-//              positions.push_back( node->point( ));
-
-//          }
-
           float accDist = 0;
 
           vec3 currentPoint;
@@ -195,7 +148,7 @@ namespace synvis
           utils::PolylineInterpolation pathPoints;
           pathPoints.insert( 0, nodes.back( )->point( ), vec3( 0, 0, 0 ));
 
-          for( unsigned int i = nodes.size( ) - 1; i > 1; --i )
+          for( unsigned int i = nodes.size( ) - 1; i > 0; --i )
           {
             currentPoint = nodes[ i ]->point( );
             nextPoint = nodes[ i - 1 ]->point( );
@@ -220,29 +173,12 @@ namespace synvis
             result.push_back( transPoint.block< 3, 1 >( 0, 0  ));
 
             currentDist += pointSize;
-          }
+          } // while
 
           ++counter;
+        } // for section
       }
-    }
-    }
-
-
-//    auto transformIt = transforms.begin( );
-//    std::vector< vec3 > paths;
-//    for( const auto& path : presynapticPaths )
-//    {
-//      for( auto node : path )
-//      {
-//        auto nodepos = node->point( );
-//        ;
-//        vec4 point = *transformIt * vec4( nodepos.x( ), nodepos.y( ), nodepos.z( ), 1 ) ;
-//        paths.push_back( vec3( point.x( ), point.y( ), point.z( )));
-//  //      paths.push_back( node->point( ) );
-//      }
-//      ++transformIt;
-//    }
-
+    } // for synapses
 
     return result;
 
