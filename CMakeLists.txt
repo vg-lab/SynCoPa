@@ -1,16 +1,16 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#   ViSimpl
-#   2015-2016 (c) ViSimpl / Universidad Rey Juan Carlos
+#   SynCoPa
+#   2015-2016 (c) SynCoPa / Universidad Rey Juan Carlos
 #   sergio.galindo@urjc.es
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# ViSimpl project and version
+# SynCoPa project and version
 cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
 
-# streaminapp project and version
-project( streaminapp VERSION 0.1.0 )
-set( streaminapp_VERSION_ABI 1 )
+# syncopa project and version
+project( syncopa VERSION 0.1.0 )
+set( syncopa_VERSION_ABI 1 )
 
 # Disable in source building
 if( "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}" )
@@ -35,7 +35,7 @@ endif()
 include(GitExternal)
 
 # description
-set(PREFREDITOR_DESCRIPTION "Streaming")
+set(SYNCOPA_DESCRIPTION "SynCoPa - SYNapses and COnnectivity PAths visualizer")
 set(COMMON_PROJECT_DOMAIN gmrv.es)
 
 include(Common)
@@ -56,7 +56,7 @@ common_find_package( OpenMP )
 common_find_package( gmrvlex )
 
 
-list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES
+list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
   OpenGL
   GLEW
   Eigen3
@@ -68,28 +68,30 @@ list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES
 )
 
 if( QT5CORE_FOUND )
-  list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES Qt5Core )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5Core )
 endif( )
 
 if( QT5WIDGETS_FOUND )
-  list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES Qt5Widgets )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5Widgets )
 endif( )
 
 if( QT5OPENGL_FOUND )
-  list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES Qt5OpenGL )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5OpenGL )
 endif( )
 
 if( OPENMP_FOUND )
-  list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES OpenMP )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES OpenMP )
 endif( )
+
 if( GMRVLEX_FOUND )
-  list( APPEND PREFREDITOR_DEPENDENT_LIBRARIES gmrvlex )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES gmrvlex )
 endif( )
 
 
 common_find_package_post()
 
 add_subdirectory( src )
+add_subdirectory( src/prefr )
 
 include( CPackConfig )
 include( DoxygenRule )
