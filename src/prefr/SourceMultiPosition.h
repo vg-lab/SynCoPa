@@ -12,7 +12,7 @@
 #include "../types.h"
 #include <prefr/prefr.h>
 
-namespace synvis
+namespace syncopa
 {
   class SourceMultiPosition : public prefr::Source
   {

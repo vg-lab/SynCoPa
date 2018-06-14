@@ -5,6 +5,6 @@
   include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
   set( STATICPREFR_HEADERS )
-  set( STATICPREFR_SOURCES ogl.cpp SourceMultiPosition.cpp UpdaterStaticPosition.cpp )
+  set( STATICPREFR_SOURCES prefrStatic.cpp SourceMultiPosition.cpp UpdaterStaticPosition.cpp )
   set( STATICPREFR_LINK_LIBRARIES prefr )
   common_application( staticPReFr )

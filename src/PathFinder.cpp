@@ -13,7 +13,7 @@
 
 #include <unordered_set>
 
-namespace synvis
+namespace syncopa
 {
 
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
@@ -186,7 +186,7 @@ namespace synvis
 
 
   std::vector< nsol::NeuronMorphologySectionPtr > PathFinder::findPathToSoma( const nsol::MorphologySynapsePtr synapse,
-                                          synvis::TNeuronConnection type ) const
+                                          syncopa::TNeuronConnection type ) const
   {
 
     nsol::Nodes result;

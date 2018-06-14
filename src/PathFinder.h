@@ -14,7 +14,7 @@
 
 #include <nsol/nsol.h>
 
-namespace synvis
+namespace syncopa
 {
   class PathFinder
   {

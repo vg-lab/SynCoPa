@@ -14,7 +14,7 @@
 #include <QDebug>
 
 
-#include <streaminapp/version.h>
+#include <syncopa/version.h>
 
 
 void setFormat( void );
@@ -146,11 +146,11 @@ void dumpVersion( void )
 {
 
   std::cerr << std::endl
-            << "prefr editor "
-            << streaminapp::Version::getMajor( ) << "."
-            << streaminapp::Version::getMinor( ) << "."
-            << streaminapp::Version::getPatch( )
-            << " (" << streaminapp::Version::getRevision( ) << ")"
+            << "SynCoPa - SYNapses and COnnectivity PAths visualizer"
+            << syncopa::Version::getMajor( ) << "."
+            << syncopa::Version::getMinor( ) << "."
+            << syncopa::Version::getPatch( )
+            << " (" << syncopa::Version::getRevision( ) << ")"
             << std::endl << std::endl;
 }
 

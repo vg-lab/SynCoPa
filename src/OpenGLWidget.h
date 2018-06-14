@@ -70,24 +70,24 @@ public slots:
 
   const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
 
-  void colorSelectedPre( const synvis::vec3& color );
-  void colorSelectedPost( const synvis::vec3& color );
-  void colorRelated( const synvis::vec3& color );
-  void colorContext( const synvis::vec3& color );
-  void colorSynapsesPre( const synvis::vec3& color );
-  void colorSynapsesPost( const synvis::vec3& color );
-  void colorPathsPre( const synvis::vec3& color );
-  void colorPathsPost( const synvis::vec3& color );
+  void colorSelectedPre( const syncopa::vec3& color );
+  void colorSelectedPost( const syncopa::vec3& color );
+  void colorRelated( const syncopa::vec3& color );
+  void colorContext( const syncopa::vec3& color );
+  void colorSynapsesPre( const syncopa::vec3& color );
+  void colorSynapsesPost( const syncopa::vec3& color );
+  void colorPathsPre( const syncopa::vec3& color );
+  void colorPathsPost( const syncopa::vec3& color );
 
 
-  const synvis::vec3& colorSelectedPre( void ) const;
-  const synvis::vec3& colorSelectedPost( void ) const;
-  const synvis::vec3& colorRelated( void ) const;
-  const synvis::vec3& colorContext( void ) const;
-  const synvis::vec3& colorSynapsesPre( void ) const;
-  const synvis::vec3& colorSynapsesPost( void ) const;
-  const synvis::vec3& colorPathsPre( void ) const;
-  const synvis::vec3& colorPathsPost( void ) const;
+  const syncopa::vec3& colorSelectedPre( void ) const;
+  const syncopa::vec3& colorSelectedPost( void ) const;
+  const syncopa::vec3& colorRelated( void ) const;
+  const syncopa::vec3& colorContext( void ) const;
+  const syncopa::vec3& colorSynapsesPre( void ) const;
+  const syncopa::vec3& colorSynapsesPost( void ) const;
+  const syncopa::vec3& colorPathsPre( void ) const;
+  const syncopa::vec3& colorPathsPost( void ) const;
 
   void showSelectedPre( int state );
   void showSelectedPost( int state );
@@ -148,18 +148,18 @@ protected:
   nlrender::Renderer* _nlrenderer;
 
   nsol::DataSet* _dataset;
-  synvis::NeuronScene* _neuronScene;
-  synvis::PSManager* _psManager;
-  synvis::PathFinder* _pathFinder;
+  syncopa::NeuronScene* _neuronScene;
+  syncopa::PSManager* _psManager;
+  syncopa::PathFinder* _pathFinder;
 
   float _particleSizeThreshold;
 
 //  QTimer* _cameraTimer;
 
-  synvis::TRenderMorpho _neuronsSelectedPre;
-  synvis::TRenderMorpho _neuronsSelectedPost;
-  synvis::TRenderMorpho _neuronsRelated;
-  synvis::TRenderMorpho _neuronsContext;
+  syncopa::TRenderMorpho _neuronsSelectedPre;
+  syncopa::TRenderMorpho _neuronsSelectedPost;
+  syncopa::TRenderMorpho _neuronsRelated;
+  syncopa::TRenderMorpho _neuronsContext;
 
   float _renderSpeed;
   float _maxFPS;
@@ -174,14 +174,14 @@ protected:
   std::set< unsigned int > _gidsRelated;
   std::set< unsigned int > _gidsOther;
 
-  synvis::vec3 _colorSelectedPre;
-  synvis::vec3 _colorSelectedPost;
-  synvis::vec3 _colorRelated;
-  synvis::vec3 _colorContext;
-  synvis::vec3 _colorSynapsesPre;
-  synvis::vec3 _colorSynapsesPost;
-  synvis::vec3 _colorPathsPre;
-  synvis::vec3 _colorPathsPost;
+  syncopa::vec3 _colorSelectedPre;
+  syncopa::vec3 _colorSelectedPost;
+  syncopa::vec3 _colorRelated;
+  syncopa::vec3 _colorContext;
+  syncopa::vec3 _colorSynapsesPre;
+  syncopa::vec3 _colorSynapsesPost;
+  syncopa::vec3 _colorPathsPre;
+  syncopa::vec3 _colorPathsPost;
 
   float _alphaSynapsesPre;
   float _alphaSynapsesPost;

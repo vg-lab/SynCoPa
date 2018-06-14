@@ -11,7 +11,7 @@
 
 #include "SourceMultiPosition.h"
 
-namespace synvis
+namespace syncopa
 {
   using namespace prefr;
 

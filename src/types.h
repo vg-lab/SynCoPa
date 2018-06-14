@@ -16,7 +16,7 @@
 
 // types.h should be the first file included to ensure
 // GLEW is included before any other GL file
-//#ifndef SYNVIS_SKIP_GLEW_INCLUDE
+//#ifndef syncopa_SKIP_GLEW_INCLUDE
 //#include <GL/glew.h>
 //#endif
 
@@ -29,7 +29,7 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-namespace synvis
+namespace syncopa
 {
   typedef Eigen::Vector3f vec3;
   typedef Eigen::Vector4f vec4;

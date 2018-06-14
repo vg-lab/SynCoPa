@@ -16,7 +16,7 @@
 #include <nlgenerator/nlgenerator.h>
 #include <nlgeometry/nlgeometry.h>
 
-namespace synvis
+namespace syncopa
 {
   struct MeshConfig
   {

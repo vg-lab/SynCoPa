@@ -21,7 +21,7 @@
 
 #include "OpenGLWidget.h"
 
-#include "ui_streaminApp.h"
+#include "ui_syncopa.h"
 
 namespace Ui
 {

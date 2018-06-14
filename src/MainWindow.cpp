@@ -27,14 +27,14 @@
 
 static float invRGB = 1.0 / 255;
 
-synvis::vec3 colorQtToEigen( const QColor& color_ )
+syncopa::vec3 colorQtToEigen( const QColor& color_ )
 {
-  return synvis::vec3( std::min( 1.0f, std::max( 0.0f, color_.red( ) * invRGB )),
+  return syncopa::vec3( std::min( 1.0f, std::max( 0.0f, color_.red( ) * invRGB )),
                        std::min( 1.0f, std::max( 0.0f, color_.green( ) * invRGB )),
                        std::min( 1.0f, std::max( 0.0f, color_.blue( ) * invRGB )));
 }
 
-QColor colorEigenToQt( const synvis::vec3& color_ )
+QColor colorEigenToQt( const syncopa::vec3& color_ )
 {
   return QColor( std::min( 255, std::max( 0, int( color_.x( ) * 255 ))),
                  std::min( 255, std::max( 0, int( color_.y( ) * 255 ))),

@@ -18,7 +18,7 @@
 #include "prefr/SourceMultiPosition.h"
 #include "prefr/UpdaterStaticPosition.h"
 
-namespace synvis
+namespace syncopa
 {
 
   class PSManager

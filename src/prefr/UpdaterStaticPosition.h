@@ -13,7 +13,7 @@
 
 #include <prefr/prefr.h>
 
-namespace synvis
+namespace syncopa
 {
   class UpdaterStaticPosition : public prefr::Updater
   {

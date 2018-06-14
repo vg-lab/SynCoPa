@@ -11,7 +11,7 @@
 
 #include "NeuronScene.h"
 
-namespace synvis
+namespace syncopa
 {
 
 

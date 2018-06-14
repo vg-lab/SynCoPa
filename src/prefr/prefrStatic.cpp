@@ -321,11 +321,11 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
   model2->velocity.Insert( 1.0f, 30.0f );
   particleSystem->addModel( model2 );
 
-  synvis::UpdaterStaticPosition* updater = new synvis::UpdaterStaticPosition( );
+  syncopa::UpdaterStaticPosition* updater = new syncopa::UpdaterStaticPosition( );
   particleSystem->addUpdater( updater );
 
   Cluster* cluster;
-  synvis::SourceMultiPosition* source = new synvis::SourceMultiPosition( );
+  syncopa::SourceMultiPosition* source = new syncopa::SourceMultiPosition( );
 
 
   Eigen::Vector3f boundingBoxMin( std::numeric_limits< float >::max( ),

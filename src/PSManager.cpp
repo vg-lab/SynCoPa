@@ -8,7 +8,7 @@
  */
 #include "PSManager.h"
 
-namespace synvis
+namespace syncopa
 {
 
   PSManager::PSManager( void )
@@ -200,9 +200,9 @@ namespace synvis
 //      return;
 //    }
 
-    auto source = ( type == synvis::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
-    auto cluster = ( type == synvis::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
-    auto model = ( type == synvis::PRESYNAPTIC ? _modelSynPre : _modelSynPost );
+    auto source = ( type == syncopa::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
+    auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
+    auto model = ( type == syncopa::PRESYNAPTIC ? _modelSynPre : _modelSynPost );
 
     source->addPositions( availableParticles.indices( ), positions );
 
@@ -264,9 +264,9 @@ namespace synvis
 //      return;
 //    }
 
-    auto source = ( type == synvis::PRESYNAPTIC ? _sourcePathPre : _sourcePathPost );
-    auto cluster = ( type == synvis::PRESYNAPTIC ? _clusterPathPre : _clusterPathPost );
-    auto model = ( type == synvis::PRESYNAPTIC ? _modelPathPre : _modelPathPost );
+    auto source = ( type == syncopa::PRESYNAPTIC ? _sourcePathPre : _sourcePathPost );
+    auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterPathPre : _clusterPathPost );
+    auto model = ( type == syncopa::PRESYNAPTIC ? _modelPathPre : _modelPathPost );
 
     source->addPositions( availableParticles.indices( ), positions );
 

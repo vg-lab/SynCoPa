@@ -8,7 +8,7 @@
  */
 #include "SourceMultiPosition.h"
 
-namespace synvis
+namespace syncopa
 {
   SourceMultiPosition::SourceMultiPosition( void )
   : Source( -1, glm::vec3( 0, 0, 0))
