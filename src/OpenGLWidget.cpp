@@ -26,6 +26,34 @@
 
 using namespace syncopa;
 
+std::string vertexShaderCode = "\
+#version 400\n\
+\
+in vec2 inPosition;\
+out vec2 uv;\
+\
+void main( void )\n\
+{\n\
+  uv = (inPosition + vec2( 1.0, 1.0 )) * 0.5;\
+  gl_Position = vec4( inPosition,  0.1, 1.0 );\
+}\n";
+
+std::string screenFragment = "\
+#version 400\n\
+out vec3 FragColor;\
+\
+in vec2 uv;\
+\
+uniform sampler2D screenTexture;\
+\
+void main()\
+{\
+  FragColor = texture(screenTexture, uv).rgb;\n\
+  //FragColor = vec3(vec3(1.0), 1.0);\n\
+}";
+
+
+
 OpenGLWidget::OpenGLWidget( QWidget* parent_,
                             Qt::WindowFlags windowsFlags_ )
 : QOpenGLWidget( parent_, windowsFlags_ )
@@ -70,7 +98,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showPathsPre( true )
 , _showPathsPost( true )
 , _depthFrameBuffer( 0 )
-, _depthTexture( 0 )
+, _textureDepth( 0 )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 50000 );
@@ -142,46 +170,11 @@ void OpenGLWidget::initializeGL( void )
   _nlrenderer->lod( ) = 4;
   _nlrenderer->maximumDistance( ) = 10;
 
+  _currentWidth = width( );
+  _currentHeight = height( );
 
-  initDepthFrameBuffer( );
+  initRenderToTexture( );
 }
-
-void OpenGLWidget::initDepthFrameBuffer( void )
-{
-  glGenFramebuffers( 1, &_depthFrameBuffer );
-  glBindFramebuffer( GL_FRAMEBUFFER, _depthFrameBuffer );
-
-
-
-  glGenTextures( 1, &_depthTexture );
-  glBindTexture( GL_TEXTURE_2D, _depthTexture );
-  glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-               width( ), height( ), 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL );
-
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
-
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _depthTexture, 0);
-
-  if( glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE )
-  {
-    std::cout << "Created framebuffer" << std::endl;
-    glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
-  }
-
-}
-
-void OpenGLWidget::generateDepthTexture( int width_, int height_ )
-{
-  glBindTexture( GL_TEXTURE_2D, _depthTexture );
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-               width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-
-  glBindTexture( GL_TEXTURE_2D, 0 );
-}
-
 
 
 void ExpandBoundingBox( glm::vec3& minBounds,
@@ -333,13 +326,13 @@ void OpenGLWidget::setupPaths( const std::set< unsigned int >& gidsPre,
 
 void OpenGLWidget::home( void )
 {
-//  _neuronScene->computeBoundingBox( );
-//  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
-//  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
-//                         sin( _camera->fov( )));
-  _camera->targetPivot( _psManager->boundingBox( ).center( ));
-  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+  _neuronScene->computeBoundingBox( );
+  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
+  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
                          sin( _camera->fov( )));
+//  _camera->targetPivot( _psManager->boundingBox( ).center( ));
+//  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+//                         sin( _camera->fov( )));
 
 }
 
@@ -436,17 +429,132 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
 
 }
 
+void OpenGLWidget::initRenderToTexture( void )
+{
+  _oglFunctions = context( )->versionFunctions< QOpenGLFunctions_4_0_Core >( );
+  _oglFunctions->initializeOpenGLFunctions( );
+
+  glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
+
+  _screenPlaneShader = new reto::ShaderProgram( );
+  _screenPlaneShader->loadVertexShaderFromText( vertexShaderCode );
+  _screenPlaneShader->loadFragmentShaderFromText( screenFragment );
+  _screenPlaneShader->create( );
+  _screenPlaneShader->link( );
+  _screenPlaneShader->autocatching( true );
+
+//  _screenPlaneShader->use();
+//  glActiveTexture( GL_TEXTURE0 );
+//  glBindTexture( GL_TEXTURE_2D, _textureColor );
+//  _screenPlaneShader->sendUniformi( "screenTexture", 0);
+
+  glActiveTexture( GL_TEXTURE0 );
+  glGenTextures( 1, &_textureColor );
+  glBindTexture( GL_TEXTURE_2D, _textureColor );
+  glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, width( ), height( ), 0, GL_RGB,
+                GL_UNSIGNED_BYTE, 0 );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+
+
+  // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+//  unsigned int rbo;
+//  glGenRenderbuffers(1, &rbo);
+//  glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+//  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width( ), height( )); // use a single renderbuffer object for both a depth AND stencil buffer.
+//  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+  glGenTextures( 1, &_textureDepth );
+  glBindTexture( GL_TEXTURE_2D, _textureDepth );
+  glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+               width( ), height( ), 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL );
+
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+//  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+//  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+
+  glGenFramebuffers( 1, &_depthFrameBuffer );
+  glBindFramebuffer( GL_FRAMEBUFFER, _depthFrameBuffer );
+
+  glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                          _textureColor, 0);
+
+  glFramebufferTexture2D( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                          _textureDepth, 0 );
+
+  if( glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE )
+  {
+    std::cout << "Error creating framebuffer" << std::endl;
+  }
+
+  glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
+
+  static const float quadBufferData[ ] =
+  {
+    -1.0f, 1.0f,
+    -1.0f, -1.0f,
+    1.0f,  -1.0f,
+    1.0f,  1.0f,
+  };
+
+  static const unsigned int quadIndices[ ] =
+  {
+    0, 1, 2,
+    0, 2, 3,
+  };
+
+  _oglFunctions->glGenVertexArrays( 1, &_screenPlaneVao );
+  _oglFunctions->glBindVertexArray( _screenPlaneVao );
+
+  unsigned int vbo[2];
+  glGenBuffers( 2, vbo );
+  glBindBuffer( GL_ARRAY_BUFFER, vbo[0]);
+  glBufferData( GL_ARRAY_BUFFER, sizeof( quadBufferData ), quadBufferData,
+                GL_STATIC_DRAW );
+  glVertexAttribPointer( 0, 2, GL_FLOAT, GL_FALSE, 0, 0 );
+  glEnableVertexAttribArray( 0 );
+  glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, vbo[1] );
+  glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( quadIndices ), quadIndices,
+                GL_STATIC_DRAW );
+
+}
+
+void OpenGLWidget::generateDepthTexture( int width_, int height_ )
+{
+  glBindTexture( GL_TEXTURE_2D, _textureColor );
+  glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, width_, height_, 0,
+                GL_RGB, GL_UNSIGNED_BYTE, 0 );
+
+  glBindTexture( GL_TEXTURE_2D, _textureDepth );
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+               width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+  glBindTexture( GL_TEXTURE_2D, 0 );
+}
+
+
 
 void OpenGLWidget::paintMorphologies( void )
 {
+//  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+
+  glEnable( GL_DEPTH_TEST );
+
+
+  glBindFramebuffer(GL_FRAMEBUFFER, _depthFrameBuffer );
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+
+//  std::cout << "Size " << size( ).width( ) << ""
+  glViewport( 0, 0, size( ).width( ), size( ).height( ));
 
   Eigen::Matrix4f projection( _camera->projectionMatrix( ));
   _nlrenderer->projectionMatrix( ) = projection;
   Eigen::Matrix4f view( _camera->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
-  glBindFramebuffer(GL_FRAMEBUFFER, _depthFrameBuffer );
-  glClear(GL_DEPTH_BUFFER_BIT);
 
   // Render selected neurons with full morphology
   if( _showSelectedPre )
@@ -469,8 +577,32 @@ void OpenGLWidget::paintMorphologies( void )
                          std::get< syncopa::MATRIX >( _neuronsContext ),
                          std::get< syncopa::COLOR >( _neuronsContext ), true, false );
 
+  glFlush( );
+
   glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
 
+  glViewport( 0, 0, width( ), height( ));
+
+  glDisable( GL_DEPTH_TEST );
+
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+  _screenPlaneShader->use( );
+  glActiveTexture( GL_TEXTURE0 );
+  glBindTexture( GL_TEXTURE_2D, _textureColor );
+
+  GLuint texID = glGetUniformLocation( _screenPlaneShader->program( ),
+                                       "screenTexture" );
+
+  glUniform1i( texID, 0);
+  _screenPlaneShader->sendUniformi( "screenTexture", 0 );
+
+  _oglFunctions->glBindVertexArray( _screenPlaneVao );
+
+//  glBindTexture(GL_TEXTURE_2D, _textureDepth );
+  glDrawElements( GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0 );
+
+  glUseProgram( 0 );
 }
 
 
@@ -547,7 +679,7 @@ void OpenGLWidget::paintParticles( void )
 
   _psManager->particleSystem( )->updateRender( );
 
-  glBindTexture( GL_TEXTURE_2D, _depthTexture );
+//  glBindTexture( GL_TEXTURE_2D, _textureDepth );
 
   _psManager->particleSystem( )->render( );
 
@@ -599,7 +731,7 @@ void OpenGLWidget::paintGL( void )
     }
 
     glUseProgram( 0 );
-    glFlush( );
+//    glFlush( );
 
   }
 
