@@ -45,10 +45,23 @@ out vec3 FragColor;\
 in vec2 uv;\
 \
 uniform sampler2D screenTexture;\
+uniform sampler2D depthTexture;\
 \
-void main()\
+uniform float zNear;\
+uniform float zFar;\
+\
+float LinearizeDepth(float depth)\
 {\
+  float z = depth * 2.0 - 1.0;\
+  return (2.0 * zNear * zFar) / (zFar + zNear - z * (zFar - zNear));\
+}\
+\
+void main( void )\
+{\
+  //float depthValue = LinearizeDepth( texture( screenTexture, uv ).r ) / zFar;\n\
+  //FragColor = vec3( depthValue, depthValue, depthValue );\n\
   FragColor = texture(screenTexture, uv).rgb;\n\
+  gl_FragDepth = texture( depthTexture, uv ).r;\
   //FragColor = vec3(vec3(1.0), 1.0);\n\
 }";
 
@@ -101,7 +114,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _textureDepth( 0 )
 {
   _camera = new reto::Camera( );
-  _camera->farPlane( 50000 );
+  _camera->farPlane( 5000 );
 //
 //  _cameraTimer = new QTimer( );
 //  _cameraTimer->start(( 1.0f / 60.f ) * 100 );
@@ -238,7 +251,7 @@ void OpenGLWidget::createParticleSystem( void )
 
   _particlesShader = new reto::ShaderProgram( );
   _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
-  _particlesShader->loadFragmentShaderFromText( prefr::prefrFragmentShader );
+  _particlesShader->loadFragmentShader( "/home/sgalindo/dev/newsynvis/src/prefr/softParticles.fs" );
   _particlesShader->create( );
   _particlesShader->link( );
   _particlesShader->autocatching( true );
@@ -528,7 +541,7 @@ void OpenGLWidget::generateDepthTexture( int width_, int height_ )
 
   glBindTexture( GL_TEXTURE_2D, _textureDepth );
   glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-               width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+               width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
 
   glBindTexture( GL_TEXTURE_2D, 0 );
 }
@@ -585,7 +598,7 @@ void OpenGLWidget::paintMorphologies( void )
 
   glDisable( GL_DEPTH_TEST );
 
-  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+  glClear( GL_COLOR_BUFFER_BIT );
 
   _screenPlaneShader->use( );
   glActiveTexture( GL_TEXTURE0 );
@@ -593,9 +606,21 @@ void OpenGLWidget::paintMorphologies( void )
 
   GLuint texID = glGetUniformLocation( _screenPlaneShader->program( ),
                                        "screenTexture" );
-
   glUniform1i( texID, 0);
-  _screenPlaneShader->sendUniformi( "screenTexture", 0 );
+
+  glActiveTexture( GL_TEXTURE1 );
+  glBindTexture( GL_TEXTURE_2D, _textureColor );
+
+  GLuint depthID = glGetUniformLocation( _screenPlaneShader->program( ),
+                                       "depthTexture" );
+  glUniform1i( depthID, 1);
+
+  GLuint nearID = glGetUniformLocation( _screenPlaneShader->program( ), "zNear" );
+  glUniform1f( nearID, _camera->nearPlane( ));
+
+  GLuint farID = glGetUniformLocation( _screenPlaneShader->program( ), "zFar" );
+  glUniform1f( farID, _camera->farPlane( ));
+//  _screenPlaneShader->sendUniformi( "screenTexture", 0 );
 
   _oglFunctions->glBindVertexArray( _screenPlaneVao );
 
@@ -638,7 +663,6 @@ void OpenGLWidget::paintParticles( void )
   unsigned int cameraUp;
   unsigned int cameraRight;
   unsigned int threshold;
-  unsigned int depthMap;
   unsigned int invResolution;
 
 //  _particlesShader->sendUniform4m( "modelViewProjM" )
@@ -651,8 +675,6 @@ void OpenGLWidget::paintParticles( void )
 
   threshold = glGetUniformLocation( shader, "threshold" );
 
-  depthMap = glGetUniformLocation( shader, "depthMap" );
-
   invResolution = glGetUniformLocation( shader, "invResolution" );
 
   float* viewM = _camera->viewMatrix( );
@@ -661,7 +683,6 @@ void OpenGLWidget::paintParticles( void )
   glUniform3f( cameraRight, viewM[ 0 ], viewM[ 4 ], viewM[ 8 ] );
   glUniform1f( threshold, _particleSizeThreshold );
   glUniform2f( invResolution, _inverseResolution.x( ), _inverseResolution.y( ));
-  glUniform1i( depthMap, 0 );
 
   glm::vec3 cameraPosition ( _camera->position( )[ 0 ],
                              _camera->position( )[ 1 ],
@@ -678,6 +699,20 @@ void OpenGLWidget::paintParticles( void )
   _lastCameraPosition = cameraPosition;
 
   _psManager->particleSystem( )->updateRender( );
+
+  GLuint nearID = glGetUniformLocation( _particlesShader->program( ), "zNear" );
+  glUniform1f( nearID, _camera->nearPlane( ));
+
+  GLuint farID = glGetUniformLocation( _particlesShader->program( ), "zFar" );
+  glUniform1f( farID, _camera->farPlane( ));
+
+  glActiveTexture( GL_TEXTURE1 );
+  glBindTexture( GL_TEXTURE_2D, _textureDepth );
+
+  GLuint texID = glGetUniformLocation( _particlesShader->program( ),
+                                       "depthMap" );
+
+  glUniform1i( texID, 1 );
 
 //  glBindTexture( GL_TEXTURE_2D, _textureDepth );
 
@@ -795,7 +830,7 @@ void OpenGLWidget::resizeGL( int w , int h )
   _currentHeight = h;
 
   _inverseResolution =
-      Eigen::Vector2f(  1.0 / _currentWidth, 1.0 / _currentWidth );
+      Eigen::Vector2f(  1.0 / _currentWidth, 1.0 / _currentHeight );
 
   _camera->ratio((( double ) w ) / h );
   glViewport( 0, 0, w, h );
