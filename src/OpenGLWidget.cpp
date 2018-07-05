@@ -98,8 +98,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _colorSynapsesPost( 1, 0, 1 )
 , _colorPathsPre( 0, 1, 0 )
 , _colorPathsPost( 0, 0, 1 )
-, _alphaSynapsesPre( 0.35f )
-, _alphaSynapsesPost( 0.35f )
+, _alphaSynapsesPre( 0.85f )
+, _alphaSynapsesPost( 0.85f )
 , _alphaPathsPre( 0.1f )
 , _alphaPathsPost( 0.1f )
 , _showSelectedPre( true )
@@ -349,13 +349,13 @@ void OpenGLWidget::setupPaths( const std::set< unsigned int >& gidsPre,
 
 void OpenGLWidget::home( void )
 {
-  _neuronScene->computeBoundingBox( );
-  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
-  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
-                         sin( _camera->fov( )));
-//  _camera->targetPivot( _psManager->boundingBox( ).center( ));
-//  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+//  _neuronScene->computeBoundingBox( );
+//  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
+//  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
 //                         sin( _camera->fov( )));
+  _camera->targetPivot( _psManager->boundingBox( ).center( ));
+  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
+                         sin( _camera->fov( )));
 
 }
 

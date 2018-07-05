@@ -33,9 +33,9 @@ namespace utils
     PolylineInterpolation( const std::vector< vec3 >& nodes )
     : _size( nodes.size( ) )
     {
-      distances.reserve( _size );
-      positions.reserve( _size );
-      directions.reserve( _size );
+      _distances.reserve( _size );
+      _positions.reserve( _size );
+      _directions.reserve( _size );
 
       insert( nodes );
     }
@@ -64,6 +64,26 @@ namespace utils
       }
     }
 
+    void insert( const vec3 node )
+    {
+      if( _size == 0 )
+      {
+        insert( 0, node, vec3( 0, 0, 0 ));
+      }
+      else
+      {
+        vec3 prevPoint = _positions.back( );
+        float accDist = _distances.back( );
+
+        vec3 dir = node - prevPoint;
+        float module = dir.norm( );
+        accDist += module;
+        dir = dir / module;
+
+        insert( accDist, node, dir );
+      }
+    }
+
     inline void insert( float distance, vec3 position, vec3 direction )
     {
 
@@ -73,23 +93,23 @@ namespace utils
       while (i < _size && _size > 0)
       {
         // Overwrite position
-        if (distance == distances[i])
+        if (distance == _distances[i])
         {
-          positions[i] = position;
+          _positions[i] = position;
           return;
         }
         // New intermediate position
-        else if (distance < distances[i])
+        else if (distance < _distances[i])
         {
-          distances.emplace( distances.begin() + i, distance);
-          positions.emplace( positions.begin() + i, position);
-          directions.emplace( directions.begin() + i, direction);
+          _distances.emplace( _distances.begin() + i, distance);
+          _positions.emplace( _positions.begin() + i, position);
+          _directions.emplace( _directions.begin() + i, direction);
 
 //          precision = GetPrecision(distance);
 //          precisionValues.emplace(precisionValues.begin() + i,
 //                                  precision);
 
-          _size = (unsigned int) distances.size();
+          _size = (unsigned int) _distances.size();
 //          UpdateQuickReference(precision);
           return;
         }
@@ -97,32 +117,89 @@ namespace utils
       }
 
       // New highest position
-      distances.push_back(distance);
-      positions.push_back(position);
-      directions.push_back(direction);
+      _distances.push_back(distance);
+      _positions.push_back(position);
+      _directions.push_back(direction);
 
 //      precision = GetPrecision(distance);
 //      precisionValues.push_back(precision);
 
-      _size = (unsigned int) distances.size();
+      _size = (unsigned int) _distances.size();
 
 //      UpdateQuickReference(precision);
     }
 
     inline void Clear()
     {
-      distances.clear();
-      positions.clear();
-      directions.clear();
+      _distances.clear();
+      _positions.clear();
+      _directions.clear();
       _size = 0;
     }
 
-    inline const vec3& GetFirstValue()
+    inline const vec3& firstPosition() const
     {
 //      if (!values.empty())
-        return positions[0];
+        return _positions[0];
 
 //      return defaultValue;
+    }
+
+    const vec3& lastPosition( ) const
+    {
+      return _positions.back( );
+    }
+
+    const std::vector< vec3 >& positions( void ) const
+    {
+      return _positions;
+    }
+
+
+    size_t size( void ) const
+    {
+      return _size;
+    }
+
+    vec3 operator[]( unsigned int i ) const
+    {
+      assert( i < _size );
+      return _positions[ i ];
+    }
+
+    vec3 segmentDirection( unsigned int i ) const
+    {
+      assert( i < _size - 1);
+      return _directions[ i + 1 ];
+    }
+
+    vec3 lastSegmentDirection( void ) const
+    {
+      return _directions.back( );
+    }
+
+    float totalDistance( void ) const
+    {
+      return _distances.back( );
+    }
+
+    float segmentDistance( unsigned int i ) const
+    {
+      if( i < _size - 1)
+        return _distances[ i + 1 ] - _distances[ i ];
+      else
+        return 0;
+    }
+
+    float firstSegmentDistance( void ) const
+    {
+      assert( _distances.size( ) > 1 );
+      return _distances[ 1 ];
+    }
+
+    float lastSegmentDistance( void ) const
+    {
+      return _distances[ _size - 1 ] - _distances[ _size - 2 ];
     }
 
     // Faster implementation for CPU interpolation.
@@ -132,24 +209,24 @@ namespace utils
       {
        unsigned int i = 0;
        float accumulated = distance;
-       while (distance > distances[i+1])
+       while (distance > _distances[i+1])
        {
          i++;
        }
 
-       accumulated -= distances[i];
+       accumulated -= _distances[i];
 
-       vec3 dir = directions[i+1];
+       vec3 dir = _directions[i+1];
 
 
-       vec3 res = positions[i] + dir * accumulated;
+       vec3 res = _positions[i] + dir * accumulated;
 
        return res;
 
       }
       else
       {
-        return positions[0];
+        return _positions[0];
       }
     }
 
@@ -159,7 +236,7 @@ namespace utils
       float currentDist = 0;
       std::vector< vec3 > result;
 
-      while( currentDist < distances.back( ))
+      while( currentDist < _distances.back( ))
       {
         vec3 pos = pointAtDistance( currentDist );
 
@@ -173,9 +250,9 @@ namespace utils
 
   protected:
 
-    std::vector< float > distances;
-    std::vector< vec3 > positions;
-    std::vector< vec3 > directions;
+    std::vector< float > _distances;
+    std::vector< vec3 > _positions;
+    std::vector< vec3 > _directions;
 
     unsigned int _size;
 
