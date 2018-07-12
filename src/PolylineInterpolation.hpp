@@ -178,6 +178,12 @@ namespace utils
       return _directions.back( );
     }
 
+    float distance( unsigned int i ) const
+    {
+      assert( i < _size );
+      return _distances[ i ];
+    }
+
     float totalDistance( void ) const
     {
       return _distances.back( );

@@ -41,6 +41,7 @@ namespace syncopa
   {
     tsy_fixedPosition = 0,
     tsy_distanceOnSection,
+//    tsy_distanceToSynapse,
     tsy_indexLastNode
   };
 
@@ -55,6 +56,8 @@ namespace syncopa
 
   typedef std::unordered_map< nsol::NeuronMorphologySectionPtr,
                               tSectionInfo > tSectionsInfoMap;
+
+  typedef std::unordered_set< nsol::NeuronMorphologySectionPtr > tSectionsMap;
 
   class PathFinder
   {
@@ -83,18 +86,24 @@ namespace syncopa
 
 
     tSectionsInfoMap parseSections( const std::set< nsol::SynapsePtr >& synapses,
-                                 TNeuronConnection type = PRESYNAPTIC ) const;
+                                    const tSectionsMap& endSections,
+                                    TNeuronConnection type = PRESYNAPTIC ) const;
 
     unsigned int findSynapseSegment(  const vec3& synapsePos,
                                       const nsol::Nodes& nodes ) const;
 
-    std::unordered_set< nsol::NeuronMorphologySectionPtr >
-      findEndSections( const std::set< nsol::SynapsePtr >& synapses,
-                       TNeuronConnection type = PRESYNAPTIC ) const;
+    tSectionsMap findEndSections( const std::set< nsol::SynapsePtr >& synapses,
+                                  TNeuronConnection type = PRESYNAPTIC ) const;
 
     std::tuple< vec3, float, unsigned int, bool >
       projectSynapse( const vec3 synapsePos,
                       const utils::PolylineInterpolation& nodes ) const;
+
+    std::tuple< vec3, float, unsigned int, bool >
+      findClosestPointToSynapse( const vec3 synapsePos,
+                      const utils::PolylineInterpolation& nodes ) const;
+
+
 
     std::vector< vec3 > cutEndSection( const std::vector< vec3 >& nodes,
                                        const vec3&  synapsePos,

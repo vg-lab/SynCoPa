@@ -13,3 +13,9 @@
   set( RENDERTOTEXTURE_SOURCES renderToTexture.cpp )
   set( RENDERTOTEXTURE_LINK_LIBRARIES prefr nlgeometry nlrender nlgenerator )
   common_application( renderToTexture )
+  
+  
+  set( BRIONTEST_HEADERS )
+  set( BRIONTEST_SOURCES projectionTest.cpp )
+  set( BRIONTEST_LINK_LIBRARIES Brion Brain )
+  common_application( brionTest )
