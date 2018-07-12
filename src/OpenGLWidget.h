@@ -124,7 +124,7 @@ protected:
 
   void initRenderToTexture( void );
   void generateDepthTexture( int width_, int height_ );
-  void extractDeph( void );
+  void performMSAA( void );
   void paintMorphologies( void );
 
 
@@ -207,12 +207,18 @@ protected:
   // Render to texture
   QOpenGLFunctions_4_0_Core* _oglFunctions;
 
-  unsigned int _screenPlaneVao;
   reto::ShaderProgram* _screenPlaneShader;
+
+  unsigned int _screenPlaneVao;
 
   unsigned int _depthFrameBuffer;
   unsigned int _textureColor;
   unsigned int _textureDepth;
+
+  unsigned int _msaaSamples;
+  unsigned int _msaaFrameBuffer;
+  unsigned int _msaaTextureColor;
+  unsigned int _msaaTextureDepth;
 
   int _currentWidth;
   int _currentHeight;

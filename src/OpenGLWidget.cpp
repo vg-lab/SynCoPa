@@ -110,8 +110,18 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showSynapsesPost( true )
 , _showPathsPre( true )
 , _showPathsPost( true )
+, _oglFunctions( nullptr )
+, _screenPlaneShader( nullptr )
+, _screenPlaneVao( 0 )
 , _depthFrameBuffer( 0 )
+, _textureColor( 0 )
 , _textureDepth( 0 )
+, _msaaSamples( 4 )
+, _msaaFrameBuffer( 0 )
+, _msaaTextureColor( 0 )
+, _msaaTextureDepth( 0 )
+, _currentWidth( 0 )
+, _currentHeight( 0 )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 5000 );
@@ -456,11 +466,36 @@ void OpenGLWidget::initRenderToTexture( void )
   _screenPlaneShader->link( );
   _screenPlaneShader->autocatching( true );
 
-//  _screenPlaneShader->use();
-//  glActiveTexture( GL_TEXTURE0 );
-//  glBindTexture( GL_TEXTURE_2D, _textureColor );
-//  _screenPlaneShader->sendUniformi( "screenTexture", 0);
 
+  // Create MSAA framebuffer and textures
+  glGenFramebuffers(1, &_msaaFrameBuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER, _msaaFrameBuffer);
+
+  glGenTextures(1, &_msaaTextureColor);
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureColor);
+  _oglFunctions->glTexImage2DMultisample(
+      GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGB, width( ), height( ), GL_TRUE);
+
+  glGenTextures(1, &_msaaTextureDepth);
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureDepth);
+  _oglFunctions->glTexImage2DMultisample(
+      GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_DEPTH_COMPONENT, width( ), height( ), GL_TRUE);
+
+
+  // Bind Multisample textures to MSAA framebuffer
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                         GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureColor, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                         GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureDepth, 0);
+
+  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    std::cout << "Error: creating MSAA FrameBuffer" << std::endl;
+
+  glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject( ) );
+
+
+  // Create intermediate framebuffer and color and depth textures
   glActiveTexture( GL_TEXTURE0 );
   glGenTextures( 1, &_textureColor );
   glBindTexture( GL_TEXTURE_2D, _textureColor );
@@ -469,14 +504,6 @@ void OpenGLWidget::initRenderToTexture( void )
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
 
-
-  // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
-//  unsigned int rbo;
-//  glGenRenderbuffers(1, &rbo);
-//  glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-//  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width( ), height( )); // use a single renderbuffer object for both a depth AND stencil buffer.
-//  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
   glGenTextures( 1, &_textureDepth );
   glBindTexture( GL_TEXTURE_2D, _textureDepth );
   glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
@@ -484,8 +511,6 @@ void OpenGLWidget::initRenderToTexture( void )
 
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
   glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-//  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-//  glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
 
   glGenFramebuffers( 1, &_depthFrameBuffer );
   glBindFramebuffer( GL_FRAMEBUFFER, _depthFrameBuffer );
@@ -498,7 +523,7 @@ void OpenGLWidget::initRenderToTexture( void )
 
   if( glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE )
   {
-    std::cout << "Error creating framebuffer" << std::endl;
+    std::cout << "Error: creating intermediate FrameBuffer" << std::endl;
   }
 
   glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
@@ -544,6 +569,16 @@ void OpenGLWidget::generateDepthTexture( int width_, int height_ )
                width_, height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
 
   glBindTexture( GL_TEXTURE_2D, 0 );
+
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureColor);
+  _oglFunctions->glTexImage2DMultisample(
+      GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_RGB, width( ), height( ), GL_TRUE);
+
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _msaaTextureDepth);
+  _oglFunctions->glTexImage2DMultisample(
+      GL_TEXTURE_2D_MULTISAMPLE, _msaaSamples, GL_DEPTH_COMPONENT, width( ), height( ), GL_TRUE);
+
+  glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0 );
 }
 
 
@@ -556,7 +591,7 @@ void OpenGLWidget::paintMorphologies( void )
   glEnable( GL_DEPTH_TEST );
 
 
-  glBindFramebuffer(GL_FRAMEBUFFER, _depthFrameBuffer );
+  glBindFramebuffer(GL_FRAMEBUFFER, _msaaFrameBuffer );
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
 
@@ -591,6 +626,8 @@ void OpenGLWidget::paintMorphologies( void )
                          std::get< syncopa::COLOR >( _neuronsContext ), true, false );
 
   glFlush( );
+
+  performMSAA( );
 
   glBindFramebuffer( GL_FRAMEBUFFER, defaultFramebufferObject( ));
 
@@ -631,8 +668,12 @@ void OpenGLWidget::paintMorphologies( void )
 }
 
 
-void OpenGLWidget::extractDeph( void )
+void OpenGLWidget::performMSAA( void )
 {
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, _msaaFrameBuffer);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthFrameBuffer);
+  _oglFunctions->glBlitFramebuffer(0, 0, width( ), height( ), 0, 0, width( ), height( ),
+                    GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 }
 
