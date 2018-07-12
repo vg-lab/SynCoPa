@@ -8,3 +8,8 @@
   set( STATICPREFR_SOURCES prefrStatic.cpp SourceMultiPosition.cpp UpdaterStaticPosition.cpp )
   set( STATICPREFR_LINK_LIBRARIES prefr )
   common_application( staticPReFr )
+
+  set( RENDERTOTEXTURE_HEADERS )
+  set( RENDERTOTEXTURE_SOURCES renderToTexture.cpp )
+  set( RENDERTOTEXTURE_LINK_LIBRARIES prefr nlgeometry nlrender nlgenerator )
+  common_application( renderToTexture )

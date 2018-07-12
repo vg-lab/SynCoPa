@@ -12,6 +12,7 @@
 
 #include <QOpenGLFunctions>
 #include <QOpenGLWidget>
+#include <QOpenGLFunctions_4_0_Core>
 #include <QLabel>
 #include <chrono>
 #include <unordered_set>
@@ -120,6 +121,10 @@ protected:
                    const std::set< unsigned int >& gidsPost );
 
   void paintParticles( void );
+
+  void initRenderToTexture( void );
+  void generateDepthTexture( int width_, int height_ );
+  void performMSAA( void );
   void paintMorphologies( void );
 
 
@@ -197,9 +202,30 @@ protected:
   bool _showPathsPre;
   bool _showPathsPost;
 
-
-
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
+
+  // Render to texture
+  QOpenGLFunctions_4_0_Core* _oglFunctions;
+
+  reto::ShaderProgram* _screenPlaneShader;
+
+  unsigned int _screenPlaneVao;
+
+  unsigned int _depthFrameBuffer;
+  unsigned int _textureColor;
+  unsigned int _textureDepth;
+
+  unsigned int _msaaSamples;
+  unsigned int _msaaFrameBuffer;
+  unsigned int _msaaTextureColor;
+  unsigned int _msaaTextureDepth;
+
+  int _currentWidth;
+  int _currentHeight;
+
+  Eigen::Vector2f _inverseResolution;
+
+
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__
