@@ -33,6 +33,7 @@ namespace syncopa
   {
     tpi_position = 0,
     tpi_distance,
+    tpi_distanceToSynapse,
     tpi_index,
     tpi_found
   };
@@ -41,11 +42,11 @@ namespace syncopa
   {
     tsy_fixedPosition = 0,
     tsy_distanceOnSection,
-//    tsy_distanceToSynapse,
+    tsy_distanceToSynapse,
     tsy_indexLastNode
   };
 
-  typedef std::tuple< vec3, float, unsigned int > tFixedSynapseInfo;
+  typedef std::tuple< vec3, float, float, unsigned int, bool > tFixedSynapseInfo;
 
   typedef std::tuple< std::unordered_map< nsol::MorphologySynapsePtr,
                       tFixedSynapseInfo>,
@@ -58,6 +59,9 @@ namespace syncopa
                               tSectionInfo > tSectionsInfoMap;
 
   typedef std::unordered_set< nsol::NeuronMorphologySectionPtr > tSectionsMap;
+
+  typedef std::unordered_map< nsol::MorphologySynapsePtr, std::pair<
+      nsol::NeuronMorphologySectionPtr, nsol::NeuronMorphologySectionPtr >> tSynapseFixedSections;
 
   class PathFinder
   {
@@ -95,13 +99,11 @@ namespace syncopa
     tSectionsMap findEndSections( const std::set< nsol::SynapsePtr >& synapses,
                                   TNeuronConnection type = PRESYNAPTIC ) const;
 
-    std::tuple< vec3, float, unsigned int, bool >
-      projectSynapse( const vec3 synapsePos,
-                      const utils::PolylineInterpolation& nodes ) const;
+    tFixedSynapseInfo projectSynapse( const vec3 synapsePos,
+                                      const utils::PolylineInterpolation& nodes ) const;
 
-    std::tuple< vec3, float, unsigned int, bool >
-      findClosestPointToSynapse( const vec3 synapsePos,
-                      const utils::PolylineInterpolation& nodes ) const;
+    tFixedSynapseInfo findClosestPointToSynapse( const vec3 synapsePos,
+                                                 const utils::PolylineInterpolation& nodes ) const;
 
 
 
@@ -109,7 +111,14 @@ namespace syncopa
                                        const vec3&  synapsePos,
                                        unsigned int index ) const;
 
+    void calculateFixedSynapseSections( void );
+
+    std::vector< nsol::NeuronMorphologySectionPtr > getChildrenSections( nsol::MorphologySynapsePtr synapse,
+                                                                         TNeuronConnection type = PRESYNAPTIC ) const;
+
     nsol::DataSet* _dataset;
+
+    std::unordered_map< unsigned int , tSynapseFixedSections> _fixedSynapseSections;
 
   };
 }

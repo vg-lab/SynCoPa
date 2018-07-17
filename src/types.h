@@ -29,11 +29,13 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+typedef Eigen::Vector3f vec3;
+typedef Eigen::Vector4f vec4;
+typedef Eigen::Matrix4f mat4;
+
+
 namespace syncopa
 {
-  typedef Eigen::Vector3f vec3;
-  typedef Eigen::Vector4f vec4;
-  typedef Eigen::Matrix4f mat4;
 
   typedef std::vector< unsigned int > gidVec;
   typedef std::set< unsigned int > gidSet;

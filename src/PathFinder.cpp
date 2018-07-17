@@ -25,9 +25,8 @@ namespace syncopa
   }
 
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
-  : _dataset( dataset_ )
   {
-
+    dataset( dataset_ );
   }
 
   PathFinder::~PathFinder( void )
@@ -38,6 +37,11 @@ namespace syncopa
   void PathFinder::dataset( nsol::DataSet* dataset_ )
   {
     _dataset = dataset_;
+
+    if( _dataset )
+    {
+//      calculateFixedSynapseSections( );
+    }
   }
 
 
@@ -444,79 +448,60 @@ namespace syncopa
 //
 //      std::cout << "--------------------------------------------" << std::endl;
 
+
+      auto it = result.find( section );
+
+      // If section has been already processed, add new synapse
+      if( it == result.end( ))
       {
-        auto it = result.find( section );
+        utils::PolylineInterpolation interpolator;
 
-        // If section has been already processed, add new synapse
-        if( it != result.end( ))
+        for( auto node : section->nodes( ))
         {
-          auto projected =
-              findClosestPointToSynapse( synapsePos,
-                              std::get< tsi_Interpolator >( it->second ));
+          vec4 transPoint( node->point( ).x( ), node->point( ).y( ), node->point( ).z( ), 1 );
+          transPoint = transform * transPoint;
 
-          if( std::get< tpi_found >( projected ))
-          {
-            std::get< tsi_Synapses >( it->second ).insert(
-                std::make_pair( msyn, std::make_tuple( std::get< tpi_position >( projected ),
-                                                       std::get< tpi_distance >( projected ),
-                                                       std::get< tpi_index >( projected ))));
-          }
-          else
-            std::cout << "Synapse " << msyn->preSynapticNeuron( )
-                      << "-" << msyn->postSynapticNeuron( )
-                      << " ... " << synapsePos.x( )
-                      << ", " << synapsePos.y( )
-                      << ", " << synapsePos.z( )
-                      << " projection not found."
-                      << std::endl;
-        }
-        // If section is not found, it will be processed and a new synapse will be added
-        else
-        {
-          utils::PolylineInterpolation interpolator;
-
-          for( auto node : section->nodes( ))
-          {
-            vec4 transPoint( node->point( ).x( ), node->point( ).y( ), node->point( ).z( ), 1 );
-            transPoint = transform * transPoint;
-
-            interpolator.insert( transPoint.block< 3, 1>( 0, 0 ));
-          }
-
-          std::unordered_map< nsol::MorphologySynapsePtr,
-                              std::tuple< vec3, float, unsigned int >> synapseSet;
-
-          auto projected = findClosestPointToSynapse( synapsePos, interpolator );
-          if( std::get< tpi_found >( projected ))
-          {
-            synapseSet.insert( std::make_pair( msyn, std::make_tuple( std::get< tpi_position >( projected ),
-                                                                      std::get< tpi_distance >( projected ),
-                                                                      std::get< tpi_index >( projected ))));
-          }
-          else
-            std::cout << "Synapse " << msyn->preSynapticNeuron( )
-                      << "-" << msyn->postSynapticNeuron( )
-                      << " ... " << synapsePos.x( )
-                      << ", " << synapsePos.y( )
-                      << ", " << synapsePos.z( )
-                      << " projection not found."
-                      << std::endl;
-
-          float sectionDist = interpolator.totalDistance( );
-
-          std::vector< vec3 > fixedSection;
-
-          tSectionInfo data =
-              std::make_tuple( synapseSet, sectionDist,
-                               false,
-                               fixedSection, interpolator );
-
-          result.insert( std::make_pair( section, data ));
-
+          interpolator.insert( transPoint.block< 3, 1>( 0, 0 ));
         }
 
-//        section = dynamic_cast< nsol::NeuronMorphologySectionPtr >( section->parent( ));
+        std::unordered_map< nsol::MorphologySynapsePtr,
+                            tFixedSynapseInfo> synapseSet;
+
+        float sectionDist = interpolator.totalDistance( );
+
+        std::vector< vec3 > fixedSection;
+
+        tSectionInfo data =
+            std::make_tuple( synapseSet, sectionDist,
+                             false,
+                             fixedSection, interpolator );
+
+        it = result.insert( std::make_pair( section, data )).first;
       }
+
+      auto projected =
+          findClosestPointToSynapse( synapsePos,
+                          std::get< tsi_Interpolator >( it->second ));
+
+      if( std::get< tpi_found >( projected ))
+      {
+        std::get< tsi_Synapses >( it->second ).insert(
+            std::make_pair( msyn, projected ));
+
+//          std::make_tuple( std::get< tpi_position >( projected ),
+//                                                   std::get< tpi_distance >( projected ),
+//                                                   std::get< tpi_distanceToSynapse >( projected ),
+//                                                   std::get< tpi_index >( projected ))));
+      }
+      else
+        std::cout << "Synapse " << msyn->preSynapticNeuron( )
+                  << "-" << msyn->postSynapticNeuron( )
+                  << " ... " << synapsePos.x( )
+                  << ", " << synapsePos.y( )
+                  << ", " << synapsePos.z( )
+                  << " projection not found."
+                  << std::endl;
+
 
     }
 
@@ -573,9 +558,8 @@ namespace syncopa
 
   }
 
-  std::tuple< vec3, float, unsigned int, bool >
-  PathFinder::projectSynapse( const vec3 synapsePos,
-                              const utils::PolylineInterpolation& nodes ) const
+  tFixedSynapseInfo PathFinder::projectSynapse( const vec3 synapsePos,
+                                                const utils::PolylineInterpolation& nodes ) const
   {
 
     unsigned int index = nodes.size( );
@@ -699,7 +683,8 @@ namespace syncopa
 
     float totalDist = nodes.distance( index ) + projectedDist;
 
-    return std::make_tuple( projectedPos, totalDist, index, found );
+    return std::make_tuple( projectedPos, totalDist,
+                            distanceToProjectedPoint[ index ], index, found );
 
 //      if( ab.cross( ac ).norm( ) != 0.0f )
 //        continue;
@@ -707,7 +692,7 @@ namespace syncopa
 
   }
 
-  std::tuple< vec3, float, unsigned int, bool >
+  tFixedSynapseInfo
     PathFinder::findClosestPointToSynapse( const vec3 synapsePos,
                                            const utils::PolylineInterpolation& nodes ) const
   {
@@ -725,11 +710,11 @@ namespace syncopa
     float minDist = std::numeric_limits< float >::max( );
     unsigned int index = nodes.size( ) - 1;
 
-        std::cout << "-----------------------------" << std::endl
-                  << "Synapse " << synapsePos.x( )
-                  << ", " << synapsePos.y( )
-                  << ", " << synapsePos.z( )
-                  << std::endl;
+//        std::cout << "-----------------------------" << std::endl
+//                  << "Synapse " << synapsePos.x( )
+//                  << ", " << synapsePos.y( )
+//                  << ", " << synapsePos.z( )
+//                  << std::endl;
 
     for( unsigned int i = 0; i < nodes.size( ); ++i )
     {
@@ -741,12 +726,12 @@ namespace syncopa
         index = i;
       }
 
-      std::cout << "Calculated " << i
-                    << " with " << dist
-                    << " -> "<< currentPoint.x( )
-                    << ", " << currentPoint.y( )
-                    << ", " << currentPoint.z( )
-                    << std::endl;
+//      std::cout << "Calculated " << i
+//                    << " with " << dist
+//                    << " -> "<< currentPoint.x( )
+//                    << ", " << currentPoint.y( )
+//                    << ", " << currentPoint.z( )
+//                    << std::endl;
 
       distances.push_back( dist );
     }
@@ -762,27 +747,208 @@ namespace syncopa
 
     projectedDist =
         nodes.segmentDirection( index ).dot( ( synapsePos - startPoint ));
+//
+//    std::cout << "Projected synapse at node " << index
+//              << " with distance " << projectedDist
+//              << " out of " << nodes.segmentDistance( index )
+//              << " -> " << distances[ index ]
+//              << std::endl;
 
-    std::cout << "Projected synapse at node " << index << " with distance " << projectedDist
-              << " out of " << nodes.segmentDistance( index ) << std::endl;
-
-    projectedDist =
-        std::max( 0.f, std::min( projectedDist,
-                                 nodes.segmentDistance( index )));
+    if( projectedDist < 0 || projectedDist > nodes.segmentDistance( index ) * 2)
+    {
+//      found = false;
+    }
+    else
+    {
+      projectedDist =
+          std::max( 0.f, std::min( projectedDist,
+                                   nodes.segmentDistance( index )));
+      found = true;
+    }
 
     projectedPos = nodes[ index ] +
         nodes.segmentDirection( index ) * projectedDist;
 
-    found = true;
-
     float totalDist = nodes.distance( index ) + projectedDist;
 
-    return std::make_tuple( projectedPos, totalDist, index, found );
+    return std::make_tuple( projectedPos, totalDist, distances[ index ],
+                            index, found );
 
 
   }
 
+  std::vector< nsol::NeuronMorphologySectionPtr >
+  PathFinder::getChildrenSections( nsol::MorphologySynapsePtr synapse,
+                                   TNeuronConnection type ) const
+  {
+    std::vector< nsol::NeuronMorphologySectionPtr > result;
 
+    nsol::NeuronMorphologySectionPtr section =
+        type == PRESYNAPTIC ? synapse->preSynapticSection( ) :
+                              synapse->postSynapticSection( );
+
+    if( !section )
+      return result;
+
+    std::queue< nsol::NeuronMorphologySectionPtr > pending;
+    for( auto child: section->forwardNeighbors( ))
+      pending.push( dynamic_cast< nsol::NeuronMorphologySectionPtr >( child ));
+
+    while( pending.size( ) > 0 )
+    {
+      section = pending.front( );
+      pending.pop( );
+
+      result.push_back( section );
+
+      for( auto child : section->forwardNeighbors( ))
+      {
+        pending.push( dynamic_cast< nsol::NeuronMorphologySectionPtr >( child ));
+      }
+    }
+
+    return result;
+  }
+
+  void PathFinder::calculateFixedSynapseSections( void )
+  {
+    std::set< unsigned int > gids;
+    for( auto neuron : _dataset->neurons( ))
+    {
+      gids.insert( neuron.first );
+    }
+
+    auto& circuit = _dataset->circuit(  );
+
+    auto synapses = circuit.synapses( gids, nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+    std::vector< nsol::MorphologySynapsePtr > synapseVec;
+    synapseVec.reserve( synapses.size( ));
+    for( auto syn : synapses )
+      synapseVec.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
+
+    unsigned int fixedSynapses = 0;
+
+    for( auto syn : synapseVec )
+    {
+      unsigned int gidPre = syn->preSynapticNeuron( );
+      unsigned int gidPost = syn->postSynapticNeuron( );
+
+      nsol::NeuronMorphologySectionPtr section =
+          syn->preSynapticSection( );
+
+      vec3 synPos = syn->preSynapticSurfacePosition( );
+
+
+      auto neuronIt = _fixedSynapseSections.find( gidPre );
+      if( neuronIt == _fixedSynapseSections.end( ))
+      {
+        neuronIt = _fixedSynapseSections.insert(
+            std::make_pair( gidPre, tSynapseFixedSections( ))).first;
+
+      }
+
+      tSynapseFixedSections& fixedSections = neuronIt->second;
+
+      auto prevSections = findPathToSoma( syn, PRESYNAPTIC );
+      auto postSections = getChildrenSections( syn, PRESYNAPTIC );
+
+      std::vector< nsol::NeuronMorphologySectionPtr > sections;
+      sections.insert( sections.end( ), prevSections.begin( ), prevSections.end( ));
+      sections.insert( sections.end( ), postSections.begin( ), postSections.end( ));
+
+      unsigned int minDistIdx = sections.size( );
+      float minDist = std::numeric_limits< float >::max( );
+
+      auto transform = getTransform( gidPre );
+
+//      std::vector< float > distances;
+//      std::vector< vec3 > positions;
+//      for( auto sec : sections )
+//      {
+//        for( auto node : sec->nodes( ))
+//        {
+//          positions.push_back( transformPoint( node->point( ), transform ));
+//        }
+//      }
+//
+//      distances.reserve( positions.size( ));
+//      for( unsigned int i = 0; i < positions.size( ); ++i )
+//      {
+//        vec3 pos = positions[ i ];
+//
+//        float dist = ( synPos - pos ).norm( );
+//
+//        if( dist < minDist )
+//        {
+//          minDist = dist;
+//          minDistIdx = i;
+//        }
+//
+//        distances.push_back( dist);
+//
+//      }
+//
+//      std::cout << "Min distance " << minDist << std::endl;
+
+
+
+
+      std::vector< tFixedSynapseInfo > projectedSynapses( sections.size( ));
+
+      unsigned int defSectionIdx = sections.size( );
+//      #pragma omp parallel for
+      for( int i = 0; i < ( int ) sections.size( ); ++i )
+      {
+        nsol::NeuronMorphologySectionPtr sec = sections[ i ];
+
+        utils::PolylineInterpolation interpolator;
+        for( auto node : sec->nodes( ))
+          interpolator.insert( transformPoint( node->point( ), transform ));
+
+        auto projected = findClosestPointToSynapse( synPos, interpolator );
+        float currentDist = std::get< tpi_distanceToSynapse >( projected );
+
+//        std::cout << "Current dist " << currentDist << std::endl;
+
+        if( sec->id( ) == section->id( ))
+          defSectionIdx = i;
+
+        if( currentDist <  minDist )
+        {
+          minDist = currentDist;
+          minDistIdx = i;
+
+        }
+
+        projectedSynapses[ i ] = projected;
+      }
+
+      if( minDistIdx < sections.size( ))
+      {
+
+
+        if( section != sections[ minDistIdx])
+        {
+          std::cout << "Projected synapse " << gidPre << "-" << gidPost
+                  << " into closest section " << sections[ minDistIdx]
+                  << " " << minDistIdx
+                  << " dist " << minDist
+                  << " instead of " << section
+                  << " dist " << std::get< tpi_distanceToSynapse >( projectedSynapses[ defSectionIdx ])
+                  << std::endl;
+
+          ++fixedSynapses;
+        }
+        fixedSections.insert(
+            std::make_pair( syn, std::make_pair( sections[ minDistIdx ],
+                                                 sections[ minDistIdx ] )));
+      }
+    }
+
+    std::cout << "Fixed synapses " << fixedSynapses << " out of " << synapses.size( ) << std::endl;
+
+  }
 
 
 }

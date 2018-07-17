@@ -127,7 +127,6 @@ protected:
   void performMSAA( void );
   void paintMorphologies( void );
 
-
   QLabel _fpsLabel;
   bool _showFps;
 

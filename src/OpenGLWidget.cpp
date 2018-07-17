@@ -221,8 +221,6 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
 
   _dataset = new nsol::DataSet( );
 
-  _pathFinder->dataset( _dataset );
-
   std::cout << "Loading data hierarchy..." << std::endl;
   _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
 
@@ -231,6 +229,8 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
 
   std::cout << "Loading connectivity..." << std::endl;
   _dataset->loadBlueConfigConnectivityWithMorphologies( );
+
+  _pathFinder->dataset( _dataset );
 
   _neuronScene = new syncopa::NeuronScene( _dataset );
   std::cout << "Generating meshes..." << std::endl;
@@ -1180,3 +1180,5 @@ void OpenGLWidget::showPathsPost( int state )
   _showPathsPost = state;
   _psManager->showPaths( state, syncopa::POSTSYNAPTIC );
 }
+
+
