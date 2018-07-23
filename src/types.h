@@ -20,6 +20,8 @@
 //#include <GL/glew.h>
 //#endif
 
+#include <nsol/nsol.h>
+
 #include <Eigen/Eigen>
 
 // GLM includes
@@ -33,12 +35,20 @@ typedef Eigen::Vector3f vec3;
 typedef Eigen::Vector4f vec4;
 typedef Eigen::Matrix4f mat4;
 
+typedef std::vector< vec3 > tPosVec;
 
 namespace syncopa
 {
 
+  typedef nsol::NeuronMorphologySectionPtr nsolMSection_ptr;
+  typedef nsol::MorphologySynapsePtr nsolMSynapse_ptr;
+
   typedef std::vector< unsigned int > gidVec;
   typedef std::set< unsigned int > gidSet;
+
+  typedef Eigen::Vector3f vec3;
+  typedef Eigen::Vector4f vec4;
+  typedef Eigen::Matrix4f mat4;
 
   enum TNeuronConnection
   {
@@ -64,9 +74,33 @@ namespace syncopa
     return glm::vec4( value.x( ), value.y( ), value.z( ), value.w( ));
   }
 
+
+  inline Eigen::Vector3f glmToEigen( const glm::vec3& value )
+  {
+    return vec3( value.x, value.y, value.z );
+  }
+
   inline Eigen::Vector4f glmToEigen( const glm::vec4& value )
   {
     return vec4( value.x, value.y, value.z, value.w );
+  }
+
+  inline vec3 transformPoint( const vec3& point, const mat4& matrix )
+  {
+    vec4 transPoint( point.x( ), point.y( ), point.z( ), 1 );
+    transPoint = matrix * transPoint;
+
+    return transPoint.block< 3, 1 >( 0, 0 );
+  }
+
+  inline std::ostream& operator<<( std::ostream& stream, const vec3& vec )
+  {
+    return stream << "("<< vec.x( ) << ", " << vec.y( ) << ", " << vec.z( ) << ")";
+  }
+
+  inline std::ostream& operator<<( std::ostream& stream, const glm::vec3& vec )
+  {
+    return stream << "("<< vec.x << ", " << vec.y << ", " << vec.z << ")";
   }
 }
 

@@ -81,17 +81,19 @@ namespace syncopa
                                            float pointSize,
                                            TNeuronConnection type = PRESYNAPTIC ) const;
 
-    std::vector< nsol::NeuronMorphologySectionPtr >
-      findPathToSoma( const nsol::MorphologySynapsePtr synapse,
-                      TNeuronConnection type = PRESYNAPTIC ) const;
+
+    tSectionsInfoMap parseSections( const std::set< nsol::SynapsePtr >& synapses,
+                                    TNeuronConnection type = PRESYNAPTIC ) const;
+
+
+    std::vector< nsolMSection_ptr > pathToSoma( nsolMSection_ptr section ) const;
+    std::vector< nsolMSection_ptr > pathToSoma( const nsolMSynapse_ptr synapse,
+                                                TNeuronConnection type = PRESYNAPTIC ) const;
+
+
 
   protected:
 
-
-
-    tSectionsInfoMap parseSections( const std::set< nsol::SynapsePtr >& synapses,
-                                    const tSectionsMap& endSections,
-                                    TNeuronConnection type = PRESYNAPTIC ) const;
 
     unsigned int findSynapseSegment(  const vec3& synapsePos,
                                       const nsol::Nodes& nodes ) const;

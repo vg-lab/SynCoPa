@@ -47,6 +47,8 @@
 #include "SourceMultiPosition.h"
 #include "UpdaterStaticPosition.h"
 
+#include "MobilePolylineSource.h"
+
 // GLUT Functions
 void renderFunc( void );
 void resizeFunc( int width, int height );
@@ -296,7 +298,9 @@ void mouseMoveFunc( int xCoord, int yCoord )
 using namespace prefr;
 void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/ )
 {
-  particleSystem = new ParticleSystem( maxParticles + 10, &camera );
+  unsigned int extraParticles = 1000;
+
+  particleSystem = new ParticleSystem( maxParticles + extraParticles, &camera );
 
   Model* model1 = new Model( 3.0f, 10.0f );
 //  model1->color.Insert( 0.0f, glm::vec4( 1.0f, 1.0f, 0.0f, 0.65f ));
@@ -321,8 +325,8 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
   model2->velocity.Insert( 1.0f, 30.0f );
   particleSystem->addModel( model2 );
 
-  syncopa::UpdaterStaticPosition* updater = new syncopa::UpdaterStaticPosition( );
-  particleSystem->addUpdater( updater );
+  syncopa::UpdaterStaticPosition* staticUpdater = new syncopa::UpdaterStaticPosition( );
+  particleSystem->addUpdater( staticUpdater );
 
   Cluster* cluster;
   syncopa::SourceMultiPosition* source = new syncopa::SourceMultiPosition( );
@@ -337,6 +341,7 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
 
 
   std::vector< Eigen::Vector3f > positions;
+  tPosVec displacementPositions;
   positions.reserve( maxParticles );
   for( unsigned int i = 0; i < maxParticles; ++i )
   {
@@ -346,13 +351,14 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
     glm::vec3 pos( position.x( ), position.y( ), position.z( ));
     expandBoundingBox( boundingBoxMin, boundingBoxMax, pos );
     positions.push_back( position );
+
+    if( i % 2 )
+      displacementPositions.push_back( position );
   }
 
   auto indices = particleSystem->retrieveUnused( maxParticles );
 
   source->addPositions( indices.indices( ), positions );
-
-//  Sampler* sampler = new SphereSampler( 1.0f, 360 );
 
 //  unsigned int particlesPerCluster = maxParticles / maxClusters;
 
@@ -362,36 +368,40 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
   particleSystem->addCluster( cluster, indices.indices( ) );
 
   cluster->setModel( model1 );
-  cluster->setUpdater( updater );
+  cluster->setUpdater( staticUpdater );
 
-//  for( unsigned int i = 0; i < maxClusters; ++i )
-//  {
-//    glm::vec3 position( 100 * sinf(( i ) / 10.0f ),
-//                        100 * sinf(( i + 5 ) / 20.0f ),
-//                        i * 10 );
-//
-//
-//    source = new Source( 0.3f, position, sampler );
-//
-//    ParticleIndices indices;
-//    indices.reserve( particlesPerCluster );
-//
-//    unsigned int start = particlesPerCluster * i;
-//    unsigned int end = start + particlesPerCluster;
-//
-//    for( unsigned int index = start; index < end; ++index )
-//    {
-//      indices.push_back( index );
-//    }
-//
-//    particleSystem->addSource( source, indices );
-//    particleSystem->addCluster( cluster, indices );
-//
-//    cluster->setModel( i % 2 == 0 ? model1 : model2 );
-//    cluster->setUpdater( updater );
-//
-//
-//  }
+  Updater* updater = new Updater( );
+  particleSystem->addUpdater( updater );
+
+  Cluster* mobileCluster;
+  syncopa::MobilePolylineSource* mobileSource;
+
+  Sampler* sampler = new SphereSampler( 1.0f, 360 );
+
+  unsigned int sourceNumber = 3;
+
+  for( unsigned int i = 0; i < sourceNumber; ++i )
+  {
+    mobileSource = new syncopa::MobilePolylineSource( 0.3, vec3( 0, 0, 0 ));
+
+    mobileSource->path( displacementPositions );
+    mobileSource->delay( i * 50 );
+    mobileSource->velocityModule( 10 );
+    mobileSource->sampler( sampler );
+    mobileSource->maxEmissionCycles( 0 );
+    mobileSource->autoDeactivateWhenFinished( true );
+
+    mobileCluster = new Cluster( );
+
+    indices = particleSystem->retrieveUnused( extraParticles / sourceNumber );
+    particleSystem->addSource( mobileSource, indices.indices( ) );
+    particleSystem->addCluster( mobileCluster, indices.indices( ) );
+
+    mobileCluster->setModel( model2 );
+    mobileCluster->setUpdater( updater );
+
+  }
+
 
   Eigen::Vector3f center = ( boundingBoxMax + boundingBoxMin ) * 0.5f;
   float radius = ( boundingBoxMax - center ).norm( );

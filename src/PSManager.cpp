@@ -18,15 +18,23 @@ namespace syncopa
   , _modelSynPost( nullptr )
   , _modelPathPre( nullptr )
   , _modelPathPost( nullptr )
+  , _modelDyn( nullptr )
+  , _dynamicVelocityModule( 50 )
   , _sourceSynPre( nullptr )
   , _sourceSynPost( nullptr )
   , _sourcePathPre( nullptr )
   , _sourcePathPost( nullptr )
+  , _sampler( nullptr )
+  , _totalDynamicSources( 20 )
+  , _particlesPerDynamicSource( 1000 )
+  , _mobileSourcesEmissionRate( 0.3f )
+  , _clusterDyn( nullptr )
   , _clusterSynPre( nullptr )
   , _clusterSynPost( nullptr )
   , _clusterPathPre( nullptr )
   , _clusterPathPost( nullptr )
   , _updaterSynapses( nullptr)
+  , _normalUpdater( nullptr )
   { }
 
   PSManager::~PSManager( void )
@@ -44,7 +52,7 @@ namespace syncopa
   {
     _particleSystem = new prefr::ParticleSystem( maxParticles );
 
-    _particleSystem->parallel( true );
+    _particleSystem->parallel( false );
 
     prefr::Model model = prefr::Model( 1.0f, 1.0f );
     model.velocity.Insert( 0.0f, 0.0f );
@@ -85,6 +93,23 @@ namespace syncopa
 
     _updaterSynapses = new UpdaterStaticPosition( );
     _particleSystem->addUpdater( _updaterSynapses );
+
+    _normalUpdater = new prefr::Updater( );
+    _particleSystem->addUpdater( _normalUpdater );
+//TODO
+    _sampler = new prefr::SphereSampler( 5, 360 );
+
+    _clusterDyn = new prefr::Cluster( );
+
+    _modelDyn = new prefr::Model( model );
+    _modelDyn->setLife( 1, 3 );
+    _modelDyn->color.Insert( 0.0f, eigenToGLM( vec4( 1, 0, 0, 0.5 )));
+    _modelDyn->color.Insert( 1.0f, eigenToGLM( vec4( 1, 0, 1, 0.3 )));
+    _modelDyn->size.Insert( 0.0f, 1 );
+    _modelDyn->size.Insert( 1.0f, 2 );
+    _modelDyn->velocity.Insert( 0.0f, 1.0f );
+
+    _particleSystem->addCluster( _clusterDyn );
 
     prefr::Sorter* sorter = new prefr::Sorter( );
     prefr::GLRenderer* renderer = new prefr::GLRenderer( );
@@ -163,7 +188,7 @@ namespace syncopa
     if( positions.empty( ))
       return;
 
-    _particleSystem->run( false );
+    _particleSystem->run( true );
 
     clearSynapses( type );
 
@@ -391,5 +416,86 @@ namespace syncopa
     }
   }
 
+  MobilePolylineSource* PSManager::getSpareMobileSouce( void )
+  {
+
+    MobilePolylineSource* result;
+
+    if( _availableDynamicSources.empty( ))
+    {
+      result = new MobilePolylineSource( _mobileSourcesEmissionRate, vec3( 0, 0, 0 ));
+    }
+    else
+    {
+      result = *_availableDynamicSources.begin( );
+      _availableDynamicSources.erase( result );
+    }
+
+    _dynamicSources.insert( result );
+
+    auto indices = _particleSystem->retrieveUnused( _particlesPerDynamicSource );
+//    result->particles( ) = indices;
+
+    _clusterDyn->particles( indices );
+    _clusterDyn->setModel( _modelDyn );
+    _clusterDyn->setUpdater( _normalUpdater );
+
+    result->delay( 0 );
+    result->maxEmissionCycles( 0 );
+    result->autoDeactivateWhenFinished( true );
+    result->velocityModule( _dynamicVelocityModule );
+
+    result->sampler( _sampler );
+
+    _particleSystem->addSource( result, indices.indices( ) );
+
+    result->restart( );
+
+    return result;
+  }
+
+  void PSManager::releaseMobileSource( MobilePolylineSource* source_ )
+  {
+    _availableDynamicSources.insert( source_ );
+    _dynamicSources.erase( source_ );
+
+    _particleSystem->detachSource( source_ );
+  }
+
+
+  void PSManager::setupDynamicPath( const tPosVec&  )
+  {
+//    _particleSystem->detachSource( _sourceDynPre );
+//
+//    tPosVec posit;
+////    posit.push_back( vec3( 0, 0, 0 ));
+////    posit.push_back( vec3( 50, 50, 50 ));
+////    posit.push_back( vec3( 100, 100, 100 ));
+//    posit = positions;
+//
+//    _boundingBox.clear( );
+//    for( auto pos : posit )
+//    {
+//      _boundingBox.expand( pos );
+//    }
+//
+//    _sourceDynPre->path( posit );
+//    _sourceDynPre->velocityModule( 100 );
+//
+//    auto indices = _particleSystem->retrieveUnused( 1000 );
+//    // TODO SETUP PARTICLES AND SOURCE VALUES
+//    std::cout << "Using indices";
+//    for( auto idx : indices )
+//      std::cout << " " << idx.id( );
+//    std::cout << std::endl;
+//
+//    _clusterDyn->particles( indices );
+//    _clusterDyn->setSource( _sourceDynPre );
+//    _clusterDyn->setUpdater( _normalUpdater );
+//    _clusterDyn->setModel( _modelDyn );
+//    _particleSystem->addSource( _sourceDynPre, indices.indices( ));
+
+//    _sourceDynPre->restart( );
+  }
 
 }

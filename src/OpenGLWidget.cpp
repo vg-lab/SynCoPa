@@ -87,6 +87,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _neuronScene( nullptr )
 , _psManager( nullptr )
 , _pathFinder( nullptr )
+, _dynPathManager( nullptr )
 , _particleSizeThreshold( 1.0f )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( false )
@@ -131,6 +132,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 //  connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
 
   _pathFinder = new syncopa::PathFinder( );
+  _dynPathManager = new syncopa::DynamicPathManager( );
+
 
   _lastCameraPosition = glm::vec3( 0, 0, 0 );
 
@@ -290,6 +293,8 @@ void OpenGLWidget::createParticleSystem( void )
 
   _psManager->sizePaths( 3.0, PRESYNAPTIC );
   _psManager->sizePaths( 3.0, POSTSYNAPTIC );
+
+  _dynPathManager->init( _pathFinder, _psManager );
 }
 
 void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gidsPre,
@@ -425,6 +430,8 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
   setupSynapses( _gidsSelectedPre );
   setupPaths( _gidsSelectedPre, _gidsRelated );
+
+  setupDynamicPath( gid );
 
   home( );
 }
@@ -786,6 +793,9 @@ void OpenGLWidget::paintGL( void )
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
 
+  _dynPathManager->processPendingSections( );
+  _dynPathManager->processFinishedPaths( );
+
   if ( _paint )
   {
     _camera->anim( );
@@ -796,7 +806,10 @@ void OpenGLWidget::paintGL( void )
       if( _psManager && _psManager->particleSystem( ) &&
           _elapsedTimeRenderAcc >= _renderPeriodMicroseconds )
       {
-        _psManager->particleSystem( )->update( 0.1 );
+        //TODO
+        float delta = _elapsedTimeRenderAcc * 0.000001;
+//        std::cout << "Delta " << delta << std::endl;
+        _psManager->particleSystem( )->update( delta );
         _elapsedTimeRenderAcc = 0.0f;
       }
 
@@ -1179,6 +1192,59 @@ void OpenGLWidget::showPathsPost( int state )
 {
   _showPathsPost = state;
   _psManager->showPaths( state, syncopa::POSTSYNAPTIC );
+}
+
+void OpenGLWidget::setupDynamicPath( unsigned int gidPre )
+{
+  auto& circuit = _dataset->circuit( );
+  auto synap = circuit.synapses( gidPre,
+                                    nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+  std::vector< nsol::MorphologySynapsePtr > synapses;
+  synapses.reserve( synap.size( ));
+
+  for( auto syn : synap )
+    synapses.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
+
+  _dynPathManager->clear( );
+
+  auto sectionsInfo = _pathFinder->parseSections( synap, PRESYNAPTIC );
+
+  _dynPathManager->configure( gidPre, synapses, sectionsInfo );
+
+//  tPosVec positions;
+//  std::vector< nsol::NeuronMorphologySectionPtr > sections;
+//
+//  for( auto syn : synapses )
+//  {
+//    auto msyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
+//
+//   sections = _pathFinder->findPathToSoma( msyn, PRESYNAPTIC );
+//    break;
+//  }
+//
+//  auto transform = _pathFinder->getTransform( gidPre );
+//
+//  std::cout << "Nodes: " << std::endl;
+//
+//  for( auto sec : sections )
+//  {
+////    for( auto node : sec->nodes( ))
+//    for( auto node = sec->nodes( ).rbegin( ); node != sec->nodes( ).rend( ); ++node )
+//    {
+//      positions.push_back( transformPoint(( *node )->point( ), transform ));
+//
+//      std::cout << " " << positions.back( );
+//    }
+//  }
+//
+//  std::cout << std::endl;
+//
+//  _psManager->setupDynamicPath( positions );
+
+
+
+
 }
 
 

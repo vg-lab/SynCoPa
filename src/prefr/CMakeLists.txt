@@ -5,8 +5,15 @@
   include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
   set( STATICPREFR_HEADERS )
-  set( STATICPREFR_SOURCES prefrStatic.cpp SourceMultiPosition.cpp UpdaterStaticPosition.cpp )
-  set( STATICPREFR_LINK_LIBRARIES prefr )
+  set( STATICPREFR_SOURCES
+      prefrStatic.cpp
+      SourceMultiPosition.cpp
+      UpdaterStaticPosition.cpp
+      MobilePolylineSource.cpp
+      ../ConnectivityTree.cpp
+      ../PathFinder.cpp
+  )
+  set( STATICPREFR_LINK_LIBRARIES prefr nsol )
   common_application( staticPReFr )
 
   set( RENDERTOTEXTURE_HEADERS )

@@ -69,7 +69,8 @@ void main()\n\
   float alpha = float(l <= margin) + (float(l > margin) * (1.0 -((l - margin) / (1.0 - margin))));\n\
   alpha = 1.0 - alpha;\n\
   outputColor = vec4(color.rgb, alpha );\n\
-  outputColor = vec4(vec3( LinearizeDepth( texture( depthMap, coord ).r ) / zFar ), 1.0 );\
+  outputColor = vec4(vec3( LinearizeDepth( texture( depthMap, coord ).r ) / zFar ), 1.0 );\n\
+  outputColor = vec4(vec3( 0 ), 1 );\n\
 }";
 
 }

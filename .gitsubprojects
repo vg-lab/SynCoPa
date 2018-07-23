@@ -1,6 +1,6 @@
 # -*- mode: cmake -*-
 git_subproject( ReTo git@gitlab.gmrv.es:nsviz/ReTo.git 7561862 )
-git_subproject( prefr git@gitlab.gmrv.es:nsviz/prefr.git 7e856c7 )
+git_subproject( prefr git@gitlab.gmrv.es:nsviz/prefr.git 259b25d )
 git_subproject( Brion https://github.com/BlueBrain/Brion.git e5a858d)
 git_subproject( nsol git@gitlab.gmrv.es:nsviz/nsol.git ac17369 )
 git_subproject( neurolots git@gitlab.gmrv.es:nsviz/neurolots.git 3ee3e69)

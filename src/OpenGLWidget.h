@@ -31,6 +31,7 @@
 #include "NeuronScene.h"
 #include "PSManager.h"
 #include "PathFinder.h"
+#include "DynamicPathManager.h"
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -120,6 +121,8 @@ protected:
   void setupPaths( const std::set< unsigned int >& gidsPre,
                    const std::set< unsigned int >& gidsPost );
 
+  void setupDynamicPath( unsigned int gidPre );
+
   void paintParticles( void );
 
   void initRenderToTexture( void );
@@ -155,6 +158,7 @@ protected:
   syncopa::NeuronScene* _neuronScene;
   syncopa::PSManager* _psManager;
   syncopa::PathFinder* _pathFinder;
+  syncopa::DynamicPathManager* _dynPathManager;
 
   float _particleSizeThreshold;
 

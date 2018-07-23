@@ -16,14 +16,6 @@
 namespace syncopa
 {
 
-  static vec3 transformPoint( const vec3& point, const mat4& matrix )
-  {
-    vec4 transPoint( point.x( ), point.y( ), point.z( ), 1 );
-    transPoint = matrix * transPoint;
-
-    return transPoint.block< 3, 1 >( 0, 0 );
-  }
-
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
   {
     dataset( dataset_ );
@@ -111,9 +103,9 @@ namespace syncopa
 
 
 
-    auto endSections = findEndSections( synapses, type );
 
-    auto synapseSections = parseSections( synapses, endSections, type );
+
+    auto synapseSections = parseSections( synapses, type );
 
     std::unordered_set< nsol::NeuronMorphologySectionPtr > insertedSections;
 
@@ -147,7 +139,7 @@ namespace syncopa
 
         auto transform = getTransform( currentGid );
 
-        auto sectionNodes = findPathToSoma( msyn, type );
+        auto sectionNodes = pathToSoma( msyn, type );
 
         unsigned int counter = 0;
         for( auto section : sectionNodes )
@@ -210,13 +202,13 @@ namespace syncopa
           }
 
           float currentDist = 0;
-
-          for( unsigned int i = 0; i < pathPoints.size( ); ++i )
-//          while( currentDist < accDist )
+          float accDist = pathPoints.totalDistance( );
+//          for( unsigned int i = 0; i < pathPoints.size( ); ++i )
+          while( currentDist < accDist )
           {
-//            vec3 pos = pathPoints.pointAtDistance( currentDist );
+            vec3 pos = pathPoints.pointAtDistance( currentDist );
 
-            vec3 pos = pathPoints[ i ];
+//            vec3 pos = pathPoints[ i ];
             result.push_back( pos );
 
             currentDist += pointSize;
@@ -233,38 +225,31 @@ namespace syncopa
 
 
   std::vector< nsol::NeuronMorphologySectionPtr >
-  PathFinder::findPathToSoma( const nsol::MorphologySynapsePtr synapse,
+  PathFinder::pathToSoma( const nsolMSynapse_ptr synapse,
                               syncopa::TNeuronConnection type ) const
   {
 
     nsol::Nodes result;
 
-//    unsigned int gid;
     nsol::NeuronMorphologySectionPtr section = nullptr;
-
-    std::vector< nsol::NeuronMorphologySection* > sections;
 
     if( type == PRESYNAPTIC )
     {
-//      gid = synapse->preSynapticNeuron( );
-      section =
-          dynamic_cast< nsol::NeuronMorphologySection* >(
-              synapse->preSynapticSection( ));
+      section = dynamic_cast< nsolMSection_ptr >( synapse->preSynapticSection( ));
     }
     else
     {
-//      gid = synapse->postSynapticNeuron( );
-      section =
-          dynamic_cast< nsol::NeuronMorphologySection* >(
-              synapse->postSynapticSection( ));
+      section = dynamic_cast< nsolMSection_ptr >( synapse->postSynapticSection( ));
     }
 
-//    auto morpho = _neuronMorphologies.find( gid );
-//    if( !morpho )
-//    {
-//      std::cerr << "Morphology " << gid << " not found." << std::endl;
-//      return result;
-//    }
+    return pathToSoma( section );
+
+  }
+
+  std::vector< nsolMSection_ptr > PathFinder::pathToSoma( nsolMSection_ptr section ) const
+  {
+
+    std::vector< nsol::NeuronMorphologySection* > sections;
 
     while( section )
     {
@@ -273,16 +258,7 @@ namespace syncopa
       section = dynamic_cast< nsol::NeuronMorphologySection* >( section->parent( ));
     }
 
-//    for( auto sec : sections )
-//    {
-//      for( auto node : sec->nodes( ))
-//        result.push_back( node );
-//    }
-//
-//    return result;
-
     return sections;
-
   }
 
   mat4 PathFinder::getTransform( unsigned int gid ) const
@@ -415,9 +391,10 @@ namespace syncopa
 
   tSectionsInfoMap
   PathFinder::parseSections( const std::set< nsol::SynapsePtr >& synapses,
-                             const tSectionsMap& endSections,
                              TNeuronConnection type ) const
   {
+
+    auto endSections = findEndSections( synapses, type );
 
     tSectionsInfoMap result;
 // TODO probar a pintar solo las secciones hoja
@@ -850,7 +827,7 @@ namespace syncopa
 
       tSynapseFixedSections& fixedSections = neuronIt->second;
 
-      auto prevSections = findPathToSoma( syn, PRESYNAPTIC );
+      auto prevSections = pathToSoma( syn, PRESYNAPTIC );
       auto postSections = getChildrenSections( syn, PRESYNAPTIC );
 
       std::vector< nsol::NeuronMorphologySectionPtr > sections;

@@ -17,6 +17,7 @@
 
 #include "prefr/SourceMultiPosition.h"
 #include "prefr/UpdaterStaticPosition.h"
+#include "prefr/MobilePolylineSource.h"
 
 namespace syncopa
 {
@@ -44,6 +45,8 @@ public:
     void setupPath( const std::vector< vec3 > nodePositions,
                     TNeuronConnection type = PRESYNAPTIC );
 
+    void setupDynamicPath( const tPosVec& positions );
+
     vec4 colorSynapses( TNeuronConnection type = PRESYNAPTIC ) const;
     void colorSynapses( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
 
@@ -64,6 +67,10 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
+    MobilePolylineSource* getSpareMobileSouce( void );
+    void releaseMobileSource( MobilePolylineSource* source_ );
+
+
 protected:
 
     prefr::ParticleSystem* _particleSystem;
@@ -80,11 +87,24 @@ protected:
     prefr::Model* _modelPathPre;
     prefr::Model* _modelPathPost;
 
+    prefr::Model* _modelDyn;
+    float _dynamicVelocityModule;
+
     SourceMultiPosition* _sourceSynPre;
     SourceMultiPosition* _sourceSynPost;
 
     SourceMultiPosition* _sourcePathPre;
     SourceMultiPosition* _sourcePathPost;
+
+    prefr::SphereSampler* _sampler;
+
+    unsigned int _totalDynamicSources;
+    unsigned int _particlesPerDynamicSource;
+    float _mobileSourcesEmissionRate;
+    std::unordered_set< MobilePolylineSource* > _availableDynamicSources;
+    std::unordered_set< MobilePolylineSource* > _dynamicSources;
+
+    prefr::Cluster* _clusterDyn;
 
     // Clusters for pre and postsynaptic positions of synapses
     prefr::Cluster* _clusterSynPre;
@@ -95,6 +115,7 @@ protected:
     prefr::Cluster* _clusterPathPost;
 
     UpdaterStaticPosition* _updaterSynapses;
+    prefr::Updater* _normalUpdater;
 
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
   };

@@ -34,9 +34,12 @@ set(SYNCOPA_SOURCES
   NeuronScene.cpp
   PSManager.cpp
   PathFinder.cpp
+  ConnectivityTree.cpp
+  DynamicPathManager.cpp
   
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
+  prefr/MobilePolylineSource.cpp
   
   CMakeSetup.rc
   syncopa.ui
@@ -51,9 +54,12 @@ set(SYNCOPA_HEADERS
   NeuronScene.h
   PSManager.h
   PathFinder.h
+  ConnectivityTree.h
+  DynamicPathManager.h
   
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h
+  prefr/MobilePolylineSource.h
   
   prefr/PrefrShaders.h
 )
