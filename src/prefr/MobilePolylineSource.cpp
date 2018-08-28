@@ -105,6 +105,11 @@ namespace syncopa
   {
     if( _currentDistance >= _interpolator.totalDistance( ))
     {
+//      std::cout << "Reached end source " << _gid
+//                << " " << _lastFrameAliveParticles
+//                << " " << std::boolalpha << _continueEmission
+//                << std::endl;
+
       if( _continueEmission  )
       {
           _finished = false;
@@ -128,6 +133,8 @@ namespace syncopa
         }
 
         finishedPath( _gid );
+        finishedPath.disconnect_all_slots( );
+        finishedSection.disconnect_all_slots( );
       }
     }
   }

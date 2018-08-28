@@ -183,6 +183,10 @@ namespace utils
       return _positions;
     }
 
+    bool empty( void ) const
+    {
+      return ( _size == 0 );
+    }
 
     size_t size( void ) const
     {

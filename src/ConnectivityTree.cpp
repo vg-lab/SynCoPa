@@ -17,6 +17,7 @@ namespace syncopa
   , _parent( nullptr )
   , _maxDepth( 0 )
   , _deepestChildrenNode( nullptr )
+  , _deepestChild( nullptr )
   { }
 
   void ConnectivityNode::parent( cnode_ptr parent_ )
@@ -194,7 +195,7 @@ namespace syncopa
     if( fromRoot )
       std::reverse( result.begin( ), result.end( ));
 
-    std::cout  << std::endl << "Calculated deepest path with " << result.size( ) << " sections";
+//    std::cout  << std::endl << "Calculated deepest path with " << result.size( ) << " sections";
 
     return result;
   }
@@ -250,17 +251,17 @@ namespace syncopa
 
 
   ConnectivityTree::ConnectivityTree(  )
-  : _pathFinder( nullptr )
+  : _size( 0 )
+  , _maxDepth( 0 )
   { }
 
-  unsigned int ConnectivityTree::addBranch( nsol::NeuronMorphologySectionPtr section,
-                                            const tSectionInfo&  )
+  unsigned int ConnectivityTree::addBranch( const std::vector< nsolMSection_ptr >& sections )
   {
-    if( _sectionToNodes.find( section ) != _sectionToNodes.end( ))
-    {
-      std::cout << "** node from section " << section->id( ) << " not found" << std::endl;
-      return 0;
-    }
+//    if( _sectionToNodes.find( section ) != _sectionToNodes.end( ))
+//    {
+//      std::cout << "** node from section " << section->id( ) << " not found" << std::endl;
+//      return 0;
+//    }
 
 //    auto& synapses = std::get< tsi_Synapses >( sectionInfo );
 //
@@ -270,7 +271,7 @@ namespace syncopa
 //      return 0;
 //    }
 
-    auto sections = _pathFinder->pathToSoma( section );
+//    auto sections = _pathFinder->pathToSoma( section );
 
     std::cout << "Adding branch of " << sections.size( ) << " sections" << std::endl;
 
@@ -286,6 +287,8 @@ namespace syncopa
       _rootNodes.push_back( rootNode );
       _sectionToNodes.insert( std::make_pair( rootSection, rootNode ));
       _sectionIDToNodes.insert( std::make_pair( rootSection->id( ), rootNode ));
+
+      _size += 1;
 
     }
     else
@@ -310,6 +313,8 @@ namespace syncopa
 
         it = _sectionToNodes.insert( std::make_pair( *sec, node )).first;
         _sectionIDToNodes.insert( std::make_pair( ( *sec )->id( ), node ));
+
+        _size += 1;
       }
       else
         node = it->second;
@@ -320,9 +325,23 @@ namespace syncopa
 
     }
 
+    if( rootNode->childrenMaxDepth( ) + 1 > _maxDepth )
+      _maxDepth = rootNode->childrenMaxDepth( ) + 1;
+
     return sections.size( );
 
   }
+
+  size_t ConnectivityTree::size( void ) const
+  {
+    return _size;
+  }
+
+  unsigned int ConnectivityTree::maxDepth( void ) const
+  {
+    return _maxDepth;
+  }
+
 
   tCNodeVec ConnectivityTree::rootNodes( void ) const
   {
@@ -332,6 +351,40 @@ namespace syncopa
     for( auto node : _rootNodes )
     {
       result.push_back( node );
+    }
+
+    return result;
+  }
+
+  tCNodeVec ConnectivityTree::leafNodes( void ) const
+  {
+    tCNodeVec result;
+
+    std::queue< cnode_ptr> pending;
+
+    for( auto node : _rootNodes )
+    {
+      pending.push( node );
+    }
+
+    cnode_ptr currentNode;
+    while( !pending.empty( ))
+    {
+      currentNode = pending.front( );
+
+      if( currentNode->numberOfChildren( ) > 0 )
+      {
+        for( auto child : currentNode->children( ))
+        {
+          pending.push( child );
+        }
+      }
+      else
+      {
+        result.push_back( currentNode );
+      }
+
+      pending.pop( );
     }
 
     return result;
@@ -363,7 +416,8 @@ namespace syncopa
 
   void ConnectivityTree::clear( )
   {
-    _pathFinder = nullptr;
+    _size = 0;
+    _maxDepth = 0;
     _rootNodes.clear( );
     _sectionToNodes.clear( );
   }

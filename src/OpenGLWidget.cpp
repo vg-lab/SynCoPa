@@ -297,17 +297,17 @@ void OpenGLWidget::createParticleSystem( void )
   _dynPathManager->init( _pathFinder, _psManager );
 }
 
-void OpenGLWidget::setupSynapses( const std::set< unsigned int >& gidsPre,
+
+void OpenGLWidget::setupSynapses( const std::set< unsigned int >& /*gidsPre*/,
                                   const std::set< unsigned int >& gidsPost)
 {
-  auto& circuit = _dataset->circuit( );
-  auto synapses = circuit.synapses( gidsPre,
-                                    nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+  auto& synapses = _pathFinder->getSynapses( );
 
   std::vector< vec3 > positionsPre;
   std::vector< vec3 > positionsPost;
   positionsPre.reserve( synapses.size( ));
-  positionsPre.reserve( synapses.size( ));
+  positionsPost.reserve( synapses.size( ));
 
   _currentSynapses.clear( );
 
@@ -419,6 +419,9 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
   for( auto gidToDelete : _gidsRelated )
     _gidsOther.erase( gidToDelete );
 
+
+  _dynPathManager->clear( );
+  _pathFinder->configure( gid );
 
 //  _gidsOther.erase( _gidsSelectedPre.begin( ), _gidsSelectedPre.end( ));
 //  _gidsOther.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
@@ -1194,23 +1197,19 @@ void OpenGLWidget::showPathsPost( int state )
   _psManager->showPaths( state, syncopa::POSTSYNAPTIC );
 }
 
-void OpenGLWidget::setupDynamicPath( unsigned int gidPre )
+void OpenGLWidget::setupDynamicPath( unsigned int /*gidPre*/ )
 {
-  auto& circuit = _dataset->circuit( );
-  auto synap = circuit.synapses( gidPre,
-                                    nsol::Circuit::PRESYNAPTICCONNECTIONS );
+//  std::set< unsigned int > gidsPre = { gidPre };
+//  auto synapses = _pathFinder->getSynapses( gidsPre );
 
-  std::vector< nsol::MorphologySynapsePtr > synapses;
-  synapses.reserve( synap.size( ));
-
-  for( auto syn : synap )
-    synapses.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
+//  for( auto syn : synapses )
+//    synapses.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
 
   _dynPathManager->clear( );
 
-  auto sectionsInfo = _pathFinder->parseSections( synap, PRESYNAPTIC );
+//  auto sectionsInfo = _pathFinder->parseSections( synapses, PRESYNAPTIC );
 
-  _dynPathManager->configure( gidPre, synapses, sectionsInfo );
+  _dynPathManager->createRootSources( );
 
 //  tPosVec positions;
 //  std::vector< nsol::NeuronMorphologySectionPtr > sections;

@@ -13,7 +13,7 @@
 
 #include <nsol/nsol.h>
 
-#include "PathFinder.h"
+#include "PolylineInterpolation.hpp"
 
 namespace syncopa
 {
@@ -69,8 +69,6 @@ namespace syncopa
 
     float _sectionLength;
 
-    tSectionInfo _sectionInfo;
-
     cnode_ptr _parent;
 
     std::unordered_map< nsol::NeuronMorphologySectionPtr, cnode_ptr > _children;
@@ -92,10 +90,13 @@ namespace syncopa
 
     void clear( );
 
-    unsigned int addBranch( nsol::NeuronMorphologySectionPtr section,
-                            const tSectionInfo& sectionInfo );
+    unsigned int addBranch( const std::vector< nsolMSection_ptr >& sections );
 
     tCNodeVec rootNodes( void ) const;
+    tCNodeVec leafNodes( void ) const;
+
+    size_t size( void ) const;
+    unsigned int maxDepth( void ) const;
 
     cnode_ptr node( nsol::NeuronMorphologySectionPtr section_) const;
     cnode_ptr node( unsigned int sectionID ) const;
@@ -106,9 +107,11 @@ namespace syncopa
 
   protected:
 
-    PathFinder* _pathFinder;
+    unsigned int _size;
+    unsigned int _maxDepth;
 
     tCNodeVec _rootNodes;
+    tCNodeVec _leafNodes;
 
     std::unordered_map< unsigned int, cnode_ptr > _sectionIDToNodes;
     std::unordered_map< nsol::NeuronMorphologySectionPtr, cnode_ptr > _sectionToNodes;

@@ -11,6 +11,8 @@
 
 #include "NeuronScene.h"
 
+#include <unordered_set>
+
 namespace syncopa
 {
 
@@ -46,24 +48,44 @@ namespace syncopa
   void NeuronScene::generateMeshes( void )
   {
     std::cout << "Generating " << _dataset->neurons( ).size( ) << std::endl;
+
+    std::unordered_set< nsol::NeuronMorphologyPtr > morphologies;
+    std::vector< nsol::NeuronMorphologyPtr > vecMorpho;
+
     for ( auto neuronIt: _dataset->neurons( ))
     {
       auto morphology = neuronIt.second->morphology( );
-      auto morphoIt = _neuronMeshes.find( morphology );
-      if( morphoIt == _neuronMeshes.end( ))
+      auto morphoIt = morphologies.find( morphology );
+      if( morphoIt == morphologies.end( ))
       {
-        auto simplifier = nsol::Simplifier::Instance( );
-        simplifier->adaptSoma( morphology );
-        simplifier->simplify( morphology, nsol::Simplifier::DIST_NODES_RADIUS );
-
-        auto mesh = nlgenerator::MeshGenerator::generateMesh( morphology );
-        mesh->uploadGPU( _attribsFormat, nlgeometry::Facet::PATCHES );
-        mesh->clearCPUData( );
-        _neuronMeshes[ morphology ] = mesh;
-
+        morphologies.insert( morphology );
+        vecMorpho.push_back( morphology );
       }
+
       _neuronMorphologies[ neuronIt.first ] = morphology;
     }
+
+    std::cout << "Generating meshes " << vecMorpho.size( ) << std::endl;
+
+    #pragma omp parallel for
+    for( int i = 0; i < ( int ) vecMorpho.size( ); ++i )
+    {
+      auto morphology = vecMorpho[ i ];
+
+      auto simplifier = nsol::Simplifier::Instance( );
+      simplifier->adaptSoma( morphology );
+      simplifier->simplify( morphology, nsol::Simplifier::DIST_NODES_RADIUS );
+
+      auto mesh = nlgenerator::MeshGenerator::generateMesh( morphology );
+      _neuronMeshes[ morphology ] = mesh;
+    }
+
+    for( auto mesh : _neuronMeshes )
+    {
+      mesh.second->uploadGPU( _attribsFormat, nlgeometry::Facet::PATCHES );
+      mesh.second->clearCPUData( );
+    }
+
   }
 
   TRenderMorpho NeuronScene::getRender( const std::set< unsigned int >& gids_ ) const
