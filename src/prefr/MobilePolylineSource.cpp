@@ -16,7 +16,7 @@ namespace syncopa
   MobilePolylineSource::MobilePolylineSource( float emissionRate,
                                               const vec3& position_ )
   : prefr::Source( emissionRate, eigenToGLM( position_ ))
-  , _initialNode( nullptr )
+//  , _initialNode( nullptr )
   , _currentDistance( 0.0f )
   , _velocityModule( 0.0f )
   , _delay( 0.0f )
@@ -75,15 +75,15 @@ namespace syncopa
     _interpolator.addEventNode( distance, section->section( )->id( ));
   }
 
-  void MobilePolylineSource::initialNode( cnode_ptr section_ )
-  {
-    _initialNode = section_;
-  }
-
-  cnode_ptr MobilePolylineSource::initialNode( void ) const
-  {
-    return _initialNode;
-  }
+//  void MobilePolylineSource::initialNode( cnode_ptr section_ )
+//  {
+//    _initialNode = section_;
+//  }
+//
+//  cnode_ptr MobilePolylineSource::initialNode( void ) const
+//  {
+//    return _initialNode;
+//  }
 
   void MobilePolylineSource::delay( float delay_ )
   {
@@ -201,7 +201,10 @@ namespace syncopa
     auto events = _interpolator.eventsAt( _currentDistance, displacement );
     for( auto event : events )
     {
-      finishedSection( event.second );
+      if( std::get< 2 >( event ) == utils::TEvent_section )
+        finishedSection( std::get< 1 >( event ));
+      else
+        reachedSynapse( std::get< 1 >( event ));
     }
 
     if( _currentDistance >= _interpolator.totalDistance( ))

@@ -34,6 +34,10 @@ namespace syncopa
 
     typedef tSigSection::slot_type tSigSectionSlot;
 
+    typedef boost::signals2::signal< void ( unsigned long int )> tSigSynapse;
+    typedef tSigSynapse::slot_type tSigSynapseSlot;
+
+
     MobilePolylineSource( float emissionRate,
                           const vec3& position_ );
 
@@ -66,13 +70,15 @@ namespace syncopa
 
     tSigSection finishedSection;
 
+    tSigSynapse reachedSynapse;
+
   protected:
 
     static unsigned int _counter;
 
     unsigned int _gid;
 
-    cnode_ptr _initialNode;
+//    cnode_ptr _initialNode;
 
     virtual void updatePosition( float deltaTime );
 

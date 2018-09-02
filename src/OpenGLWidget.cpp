@@ -338,16 +338,16 @@ void OpenGLWidget::setupPaths( const std::set< unsigned int >& gidsPre,
                                const std::set< unsigned int >& gidsPost )
 {
 
-  float distance = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
+  float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
 
   // TODO FIX MULTIPLE PRESYNAPTIC SELECTION
   unsigned int gidPre = *gidsPre.begin( );
   auto points =
-      _pathFinder->getAllPathsPoints( gidPre, gidsPost, distance, PRESYNAPTIC );
+      _pathFinder->getAllPathsPoints( gidPre, gidsPost, pointSize, PRESYNAPTIC );
 
   _psManager->setupPath( points, PRESYNAPTIC );
 
-  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, distance, POSTSYNAPTIC );
+  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, pointSize, POSTSYNAPTIC );
 
   _psManager->setupPath( points, POSTSYNAPTIC );
 }
@@ -421,7 +421,7 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
 
   _dynPathManager->clear( );
-  _pathFinder->configure( gid );
+  _pathFinder->configure( gid, _gidsSelectedPost );
 
 //  _gidsOther.erase( _gidsSelectedPre.begin( ), _gidsSelectedPre.end( ));
 //  _gidsOther.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
@@ -452,11 +452,16 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
 
   _gidsOther.clear( );
 
+  _dynPathManager->clear( );
+  _pathFinder->configure( *_gidsSelectedPre.begin( ), _gidsSelectedPost );
+
   setupNeuronMorphologies( );
 
 //  std::set< unsigned int > gidsPre = { _gidsSelectedPre };
   setupSynapses( _gidsSelectedPre, _gidsSelectedPost );
   setupPaths( _gidsSelectedPre, _gidsSelectedPost );
+
+  setupDynamicPath( *_gidsSelectedPre.begin( ) );
 
   home( );
 
@@ -798,6 +803,7 @@ void OpenGLWidget::paintGL( void )
 
   _dynPathManager->processPendingSections( );
   _dynPathManager->processFinishedPaths( );
+  _dynPathManager->processPendingSynapses( );
 
   if ( _paint )
   {

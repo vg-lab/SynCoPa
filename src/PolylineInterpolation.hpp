@@ -31,7 +31,7 @@ namespace utils
     { }
 
     PolylineInterpolation( const std::vector< vec3 >& nodes )
-    : _size( nodes.size( ) )
+    : _size( 0 )
     {
       _distances.reserve( _size );
       _positions.reserve( _size );
@@ -336,7 +336,13 @@ namespace utils
 
   };
 
-  typedef std::pair< float, unsigned int > tEventSectionInfo;
+  enum tEventType
+  {
+    TEvent_section = 0,
+    TEvent_synapse
+  };
+
+  typedef std::tuple< float, unsigned long int, unsigned int > tEventSectionInfo;
   typedef std::vector< tEventSectionInfo > tSectionEvents;
 
   class EventPolylineInterpolation : public PolylineInterpolation
@@ -381,9 +387,9 @@ namespace utils
       return pos;
     }
 
-    void addEventNode( float distance, unsigned int eventID )
+    void addEventNode( float distance, unsigned long int eventID, tEventType type = TEvent_section )
     {
-      _events.push_back( std::make_pair( distance, eventID ));
+      _events.push_back( std::make_tuple( distance, eventID, ( unsigned int ) type ));
 //      unsigned int pos = _segmentFromDistance( distance );
 //
 //      if( pos >= _size - 1 )
@@ -421,7 +427,8 @@ namespace utils
       for( auto event : _events )
 //      for( auto event : _eventSection[ i ] )
       {
-        if( event.first >= prevDist && event.first < distance )
+        float eventDistance = std::get< 0 >( event );
+        if( eventDistance >= prevDist && eventDistance < distance )
         {
           result.push_back( event );
         }

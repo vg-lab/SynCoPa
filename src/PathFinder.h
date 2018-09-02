@@ -69,10 +69,10 @@ namespace syncopa
 
   typedef std::unordered_set< nsol::NeuronMorphologySectionPtr > tSectionsMap;
 
-  typedef std::unordered_map< nsol::MorphologySynapsePtr, std::pair<
-      nsol::NeuronMorphologySectionPtr, nsol::NeuronMorphologySectionPtr >> tSynapseFixedSections;
-
   typedef std::tuple< nsolMSynapse_ptr, unsigned int, unsigned int, float > tBrainSynapse;
+
+  typedef std::unordered_map< nsolMSynapse_ptr,
+      std::pair< tBrainSynapse, tBrainSynapse >> TSynapseInfo;
 
   class PathFinder
   {
@@ -101,52 +101,56 @@ namespace syncopa
     tSectionsInfoMap processSections( const std::vector< nsolMSynapse_ptr >& synapses,
                                       TNeuronConnection type,
                                       unsigned int gid ) const;
-
-    tSectionsInfoMap parseSections( const std::vector< nsolMSynapse_ptr >& synapses,
-                                    TNeuronConnection type = PRESYNAPTIC ) const;
+//
+//    tSectionsInfoMap parseSections( const std::vector< nsolMSynapse_ptr >& synapses,
+//                                    TNeuronConnection type = PRESYNAPTIC ) const;
 
 
     std::vector< nsolMSection_ptr > pathToSoma( nsolMSection_ptr section ) const;
     std::vector< nsolMSection_ptr > pathToSoma( const nsolMSynapse_ptr synapse,
                                                 TNeuronConnection type = PRESYNAPTIC ) const;
 
-    void configure( unsigned int presynapticGid );
+    void configure( unsigned int presynapticGid, const std::set< unsigned int >& postsynapticGIDS );
 
     void addPostsynapticPath( nsolMSynapse_ptr synapse,
                               const tPosVec& nodes );
+
+    utils::EventPolylineInterpolation getPostsynapticPath( nsolMSynapse_ptr synapse ) const;
 
     const ConnectivityTree& tree( void ) const;
 
     cnode_ptr node( unsigned int sectionID ) const;
 
     void computedPathFrom( unsigned int sectionID, const utils::EventPolylineInterpolation& path );
-    utils::EventPolylineInterpolation computedPathFrom( unsigned int sectionID );
+    utils::EventPolylineInterpolation computeDeepestPathFrom( unsigned int sectionID );
+
+    const TSynapseInfo& synapsesInfo( void ) const;
+
+    std::vector< vec3 > cutLeafSection( unsigned int sectionID ) const;
 
   protected:
 
-    void _loadSynapses( unsigned int presynapticGID );
+    void _loadSynapses( unsigned int presynapticGID, const std::set< unsigned int >& postsynapticGIDs );
 
     unsigned int findSynapseSegment(  const vec3& synapsePos,
                                       const nsol::Nodes& nodes ) const;
 
     tSectionsMap findEndSections( const std::vector< nsolMSynapse_ptr >& synapses,
                                   TNeuronConnection type = PRESYNAPTIC ) const;
+//
+//    tFixedSynapseInfo projectSynapse( const vec3 synapsePos,
+//                                      const utils::PolylineInterpolation& nodes ) const;
+//
+//    tFixedSynapseInfo findClosestPointToSynapse( const vec3 synapsePos,
+//                                                 const utils::PolylineInterpolation& nodes ) const;
 
-    tFixedSynapseInfo projectSynapse( const vec3 synapsePos,
-                                      const utils::PolylineInterpolation& nodes ) const;
-
-    tFixedSynapseInfo findClosestPointToSynapse( const vec3 synapsePos,
-                                                 const utils::PolylineInterpolation& nodes ) const;
 
 
-
-    std::vector< vec3 > cutEndSection( const std::vector< vec3 >& nodes,
+    std::vector< vec3 > _cutEndSection( const std::vector< vec3 >& nodes,
                                        const vec3&  synapsePos,
                                        unsigned int index ) const;
 
     nsol::DataSet* _dataset;
-
-    std::unordered_map< unsigned int , tSynapseFixedSections> _fixedSynapseSections;
 
     ConnectivityTree _treePre;
     std::unordered_map< unsigned int, ConnectivityTree > _treePost;
@@ -161,7 +165,7 @@ namespace syncopa
 
     std::vector< nsolMSynapse_ptr > _synapses;
 
-    std::unordered_map< nsolMSynapse_ptr, std::pair< tBrainSynapse, tBrainSynapse >> _synapseFixInfo;
+    TSynapseInfo _synapseFixInfo;
 
     unsigned int _presynapticGID;
 

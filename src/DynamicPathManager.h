@@ -38,14 +38,18 @@ namespace syncopa
 
     void clear( void );
 
-    void synapse( nsol::MorphologySynapsePtr syn );
+    void synapse( unsigned long int synapsePtr );
     void finished( unsigned int sourceID );
 
     void finishedSection( unsigned int sectionID );
 
+    void restart( void );
+    void pause( void );
+    void play( void );
+
   protected:
 
-    void _createSourceOnDeepestPath( cnode_ptr origin, MobilePolylineSource* source  );
+    void _createSourceOnDeepestPath( nsolMSection_ptr origin, MobilePolylineSource* source  );
 
     unsigned int _presynapticGID;
 
@@ -59,6 +63,7 @@ namespace syncopa
 
     std::list< unsigned int > _pendingSections;
     std::list< unsigned int > _pendingSources;
+    std::list< nsolMSynapse_ptr > _pendingSynapses;
   };
 
 

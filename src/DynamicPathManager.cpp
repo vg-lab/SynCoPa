@@ -24,11 +24,14 @@ namespace syncopa
   }
 
 
-  void DynamicPathManager::_createSourceOnDeepestPath( cnode_ptr origin,
+  void DynamicPathManager::_createSourceOnDeepestPath( nsolMSection_ptr origin,
                                                        MobilePolylineSource* source )
   {
 
-    auto computedPath = _pathFinder->computedPathFrom( origin->section( )->id( ));
+    if( !_pathFinder )
+      return;
+
+    auto computedPath = _pathFinder->computeDeepestPathFrom( origin->id( ));
     if( computedPath.size( ) > 0 )
     {
       _sources.insert( std::make_pair( source->gid( ), source ));
@@ -36,18 +39,19 @@ namespace syncopa
     }
     else
     {
-      std::cout << "Error: path from node " << origin->section( )->id( ) << " not found." << std::endl;
+      std::cout << "Error: path from node " << origin->id( ) << " not found." << std::endl;
       return;
     }
 //    std::cout << std::endl;
 
-    source->initialNode( origin );
+//    source->initialNode( origin );
     source->restart( );
 
     source->finishedPath.connect( boost::bind( &DynamicPathManager::finished, this, _1 ));
 
     source->finishedSection.connect( boost::bind( &DynamicPathManager::finishedSection, this, _1 ));
 
+    source->reachedSynapse.connect( boost::bind( &DynamicPathManager::synapse, this, _1 ));
   }
 
   void DynamicPathManager::clear( void )
@@ -55,17 +59,25 @@ namespace syncopa
     for( auto source : _sources )
       _psManager->releaseMobileSource( source.second );
 
+    for( auto source: _rootSources )
+      _psManager->releaseMobileSource( source );
+
     _sources.clear( );
     _rootSources.clear( );
 
     _pendingSections.clear( );
     _pendingSources.clear( );
+    _pendingSynapses.clear( );
   }
 
 
-  void DynamicPathManager::synapse( nsol::MorphologySynapsePtr  )
+  void DynamicPathManager::synapse( unsigned long int synapsePtr )
   {
+    nsolMSynapse_ptr synapse = reinterpret_cast< nsolMSynapse_ptr >( synapsePtr );
 
+    std::cout << "Reached synapse " << synapse << std::endl;
+
+    _pendingSynapses.push_back( synapse );
   }
 
   void DynamicPathManager::finished( unsigned int sourceID )
@@ -90,7 +102,7 @@ namespace syncopa
 //      auto section = rootNode->section( );
       auto source = _psManager->getSpareMobileSouce( );
 
-      _createSourceOnDeepestPath( rootNode, source );
+      _createSourceOnDeepestPath( rootNode->section( ), source );
 
       _rootSources.insert( source );
     }
@@ -129,7 +141,7 @@ namespace syncopa
               auto source = _psManager->getSpareMobileSouce( );
               source->maxEmissionCycles( 1 );
 
-              _createSourceOnDeepestPath( child, source );
+              _createSourceOnDeepestPath( child->section( ), source );
             }
           }
         }
@@ -139,6 +151,31 @@ namespace syncopa
 
     _pendingSections.clear( );
 
+  }
+
+  void DynamicPathManager::processPendingSynapses( void )
+  {
+    for( auto synapse : _pendingSynapses )
+    {
+      auto path = _pathFinder->getPostsynapticPath( synapse );
+
+      auto section = synapse->postSynapticSection( );
+      if( !section )
+        continue;
+
+      auto source = _psManager->getSpareMobileSouce( );
+      source->maxEmissionCycles( 1 );
+
+      source->path( path );
+
+      source->restart( );
+
+      source->finishedPath.connect( boost::bind( &DynamicPathManager::finished, this, _1 ));
+
+      _sources.insert( std::make_pair( source->gid( ), source ));
+    }
+
+    _pendingSynapses.clear( );
   }
 
   void DynamicPathManager::processFinishedPaths( void )
@@ -152,7 +189,7 @@ namespace syncopa
 
         if( _rootSources.find( source ) == _rootSources.end( ))
         {
-//          std::cout << "Releasing source " << sourceID << std::endl;
+          std::cout << "Releasing source " << sourceID << std::endl;
           _psManager->releaseMobileSource( source );
           _sources.erase( sourceID );
         }
@@ -161,6 +198,18 @@ namespace syncopa
     }
 
     _pendingSources.clear( );
+  }
+
+  void DynamicPathManager::restart( void )
+  {
+    for( auto source : _sources )
+    {
+      _psManager->releaseMobileSource( source.second );
+    }
+    _sources.clear( );
+
+    for( auto source : _rootSources )
+      source->restart( );
   }
 
 
