@@ -116,10 +116,10 @@ protected:
 
   void setupNeuronMorphologies( void );
 
-  void setupSynapses( const std::set< unsigned int >& gidsPre,
-                      const std::set< unsigned int >& gidsPost = std::set< unsigned int >( ));
-  void setupPaths( const std::set< unsigned int >& gidsPre,
-                   const std::set< unsigned int >& gidsPost );
+  void setupSynapses( const gidUSet& gidsPre,
+                      const gidUSet& gidsPost = gidUSet( ));
+  void setupPaths( const gidUSet& gidsPre,
+                   const gidUSet& gidsPost );
 
   void setupDynamicPath( unsigned int gidPre );
 
@@ -176,11 +176,11 @@ protected:
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
 
-  std::set< unsigned int > _gidsAll;
-  std::set< unsigned int > _gidsSelectedPre;
-  std::set< unsigned int > _gidsSelectedPost;
-  std::set< unsigned int > _gidsRelated;
-  std::set< unsigned int > _gidsOther;
+  gidUSet _gidsAll;
+  gidUSet _gidsSelectedPre;
+  gidUSet _gidsSelectedPost;
+  gidUSet _gidsRelated;
+  gidUSet _gidsOther;
 
   syncopa::vec3 _colorSelectedPre;
   syncopa::vec3 _colorSelectedPost;

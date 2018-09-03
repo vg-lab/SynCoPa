@@ -34,24 +34,16 @@ namespace syncopa
   {
     tpi_position = 0,
     tpi_distance,
-    tpi_distanceToSynapse,
+    tpi_distanceOnSection,
     tpi_index,
     tpi_found
-  };
-
-  enum tSynapseInfo
-  {
-    tsy_fixedPosition = 0,
-    tsy_distanceOnSection,
-    tsy_distanceToSynapse,
-    tsy_indexLastNode
   };
 
   enum tSynapseFixInfo
   {
     tsfi_pointer = 0,
     tsfi_section,
-    tsfi_node,
+    tsfi_segmentID,
     tsfi_distance
   };
 
@@ -83,6 +75,8 @@ namespace syncopa
 
     void dataset( nsol::DataSet* dataset_ );
 
+    void configure( unsigned int presynapticGid, const gidUSet& postsynapticGIDS );
+
     void clear( void );
 
     const std::vector< nsolMSynapse_ptr >& getSynapses( void ) const;
@@ -91,16 +85,16 @@ namespace syncopa
 
     mat4 getTransform( unsigned int gid ) const;
 
-    std::set< unsigned int > connectedTo( unsigned int gid ) const;
+    gidUSet connectedTo( unsigned int gid ) const;
 
     std::vector< vec3 > getAllPathsPoints( unsigned int gid,
-                                           const std::set< unsigned int >& gidsPost,
+                                           const gidUSet& gidsPost,
                                            float pointSize,
                                            TNeuronConnection type = PRESYNAPTIC ) const;
 
     tSectionsInfoMap processSections( const std::vector< nsolMSynapse_ptr >& synapses,
-                                      TNeuronConnection type,
-                                      unsigned int gid ) const;
+                                      unsigned int presynapticGID,
+                                      const gidUSet& neuronGIDs ) const;
 //
 //    tSectionsInfoMap parseSections( const std::vector< nsolMSynapse_ptr >& synapses,
 //                                    TNeuronConnection type = PRESYNAPTIC ) const;
@@ -109,8 +103,6 @@ namespace syncopa
     std::vector< nsolMSection_ptr > pathToSoma( nsolMSection_ptr section ) const;
     std::vector< nsolMSection_ptr > pathToSoma( const nsolMSynapse_ptr synapse,
                                                 TNeuronConnection type = PRESYNAPTIC ) const;
-
-    void configure( unsigned int presynapticGid, const std::set< unsigned int >& postsynapticGIDS );
 
     void addPostsynapticPath( nsolMSynapse_ptr synapse,
                               const tPosVec& nodes );
@@ -130,7 +122,12 @@ namespace syncopa
 
   protected:
 
-    void _loadSynapses( unsigned int presynapticGID, const std::set< unsigned int >& postsynapticGIDs );
+    void _loadSynapses( unsigned int presynapticGID,
+                        const gidUSet& postsynapticGIDs );
+
+    void _populateTrees( const tsynapseVec& synapses );
+
+    void _processEndSections( unsigned int gidPresynaptic, const gidUSet& gidsPost );
 
     unsigned int findSynapseSegment(  const vec3& synapsePos,
                                       const nsol::Nodes& nodes ) const;

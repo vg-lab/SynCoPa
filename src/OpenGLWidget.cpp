@@ -243,7 +243,7 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   _neuronScene->color( vec3( 0, 1, 1 ), POSTSYNAPTIC );
 
 
-  std::set< unsigned int > gids;
+  gidUSet gids;
   for( auto neuron : _dataset->neurons( ))
   {
     gids.insert( neuron.first );
@@ -298,8 +298,8 @@ void OpenGLWidget::createParticleSystem( void )
 }
 
 
-void OpenGLWidget::setupSynapses( const std::set< unsigned int >& /*gidsPre*/,
-                                  const std::set< unsigned int >& gidsPost)
+void OpenGLWidget::setupSynapses( const gidUSet& /*gidsPre*/,
+                                  const gidUSet& gidsPost)
 {
 
   auto& synapses = _pathFinder->getSynapses( );
@@ -334,8 +334,8 @@ void OpenGLWidget::setupSynapses( const std::set< unsigned int >& /*gidsPre*/,
   _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
 }
 
-void OpenGLWidget::setupPaths( const std::set< unsigned int >& gidsPre,
-                               const std::set< unsigned int >& gidsPost )
+void OpenGLWidget::setupPaths( const gidUSet& gidsPre,
+                               const gidUSet& gidsPost )
 {
 
   float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
@@ -434,14 +434,14 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
   setupSynapses( _gidsSelectedPre );
   setupPaths( _gidsSelectedPre, _gidsRelated );
 
-  setupDynamicPath( gid );
+//  setupDynamicPath( gid );
 
   home( );
 }
 
 void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& gidsv )
 {
-  _gidsSelectedPost = std::set< unsigned int >( gidsv.begin( ), gidsv.end( ));
+  _gidsSelectedPost = gidUSet( gidsv.begin( ), gidsv.end( ));
 
   unsigned int gidPre = *_gidsSelectedPre.begin( );
   _gidsRelated = _pathFinder->connectedTo( gidPre );

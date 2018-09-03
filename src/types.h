@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <unordered_set>
 
 // types.h should be the first file included to ensure
 // GLEW is included before any other GL file
@@ -43,8 +44,12 @@ namespace syncopa
   typedef nsol::NeuronMorphologySectionPtr nsolMSection_ptr;
   typedef nsol::MorphologySynapsePtr nsolMSynapse_ptr;
 
+  typedef std::vector< nsolMSection_ptr > tsectionVec;
+  typedef std::vector< nsolMSynapse_ptr > tsynapseVec;
+
   typedef std::vector< unsigned int > gidVec;
   typedef std::set< unsigned int > gidSet;
+  typedef std::unordered_set< unsigned int > gidUSet;
 
   typedef Eigen::Vector3f vec3;
   typedef Eigen::Vector4f vec4;

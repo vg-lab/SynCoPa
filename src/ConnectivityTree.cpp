@@ -273,7 +273,7 @@ namespace syncopa
 
 //    auto sections = _pathFinder->pathToSoma( section );
 
-    std::cout << "Adding branch of " << sections.size( ) << " sections" << std::endl;
+    std::cout << this << " Adding branch of " << sections.size( ) << " sections" << std::endl;
 
     auto rootSection = sections.back( );
 

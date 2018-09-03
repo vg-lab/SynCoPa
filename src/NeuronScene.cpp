@@ -88,7 +88,7 @@ namespace syncopa
 
   }
 
-  TRenderMorpho NeuronScene::getRender( const std::set< unsigned int >& gids_ ) const
+  TRenderMorpho NeuronScene::getRender( const gidUSet& gids_ ) const
   {
     if( gids_.empty( ))
       return TRenderMorpho( );
@@ -197,7 +197,7 @@ namespace syncopa
 //    return std::make_tuple( gids, meshes, matrices, colors );
 //  }
 
-  void NeuronScene::computeBoundingBox( std::vector< unsigned int > indices_ )
+  void NeuronScene::computeBoundingBox( const gidVec& indices_ )
   {
     Eigen::Array3f minimum =
         Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
