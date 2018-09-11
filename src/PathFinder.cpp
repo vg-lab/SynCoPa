@@ -31,20 +31,20 @@ namespace syncopa
 
     if( _dataset )
     {
-      brion::BlueConfig* blueConfig = _dataset->blueConfig( );
+      auto blueConfig = _dataset->blueConfig( );
 
-      brain::Circuit brainCircuit( *blueConfig);
-      brion::GIDSet gidSetBrain = brainCircuit.getGIDs( );
+      brain::Circuit brainCircuit( *blueConfig );
+      brion::GIDSet gidSetBrain = brainCircuit.getGIDs( _dataset->blueConfigTarget( ));
 
       const brain::Synapses& brainSynapses =
           brainCircuit.getAfferentSynapses( gidSetBrain,
-                                            brain::SynapsePrefetch::all );
+                                            brain::SynapsePrefetch::attributes );
 
       auto synapses = _dataset->circuit( ).synapses( );
       for( unsigned int i = 0; i < synapses.size( ); ++i )
       {
         auto synapse = dynamic_cast< nsolMSynapse_ptr >( synapses[ i ]);
-        auto brainSynapse = brainSynapses[ i ];
+        auto brainSynapse = brainSynapses[ synapse->gid( ) - 1 ];
 
         tBrainSynapse infoPre =
             std::make_tuple( synapse,
@@ -251,13 +251,12 @@ namespace syncopa
         utils::PolylineInterpolation pathPoints;
 
         auto parsedSection = _infoSections.find( section );
-        if( parsedSection == _infoSections.end( ))
-          std::cout << "Warning: section info " << section->id( ) << " NOT FOUND" << std::endl;
-
         if( parsedSection != _infoSections.end( ) &&
             std::get< tsi_leafSection >( parsedSection->second ))
         {
           auto points = std::get< tsi_fixedSection >( parsedSection->second );
+          std::cout << "Fixed section with " << points.size( )
+                    << " instead of " << nodes.size( ) << std::endl;
 
           pathPoints.insert( points );
 //            accDist = pathPoints.totalDistance( );
