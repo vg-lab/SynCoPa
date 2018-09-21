@@ -257,21 +257,6 @@ namespace syncopa
 
   unsigned int ConnectivityTree::addBranch( const std::vector< nsolMSection_ptr >& sections )
   {
-//    if( _sectionToNodes.find( section ) != _sectionToNodes.end( ))
-//    {
-//      std::cout << "** node from section " << section->id( ) << " not found" << std::endl;
-//      return 0;
-//    }
-
-//    auto& synapses = std::get< tsi_Synapses >( sectionInfo );
-//
-//    if( synapses.empty( ))
-//    {
-//      std::cout << "ERROR: Section " << section->id( ) << " with no synapses." << std::endl;
-//      return 0;
-//    }
-
-//    auto sections = _pathFinder->pathToSoma( section );
 
     std::cout << this << " Adding branch of " << sections.size( ) << " sections" << std::endl;
 
@@ -420,6 +405,7 @@ namespace syncopa
     _maxDepth = 0;
     _rootNodes.clear( );
     _sectionToNodes.clear( );
+    _sectionIDToNodes.clear( );
   }
 
   void ConnectivityTree::print( void ) const

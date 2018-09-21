@@ -72,7 +72,9 @@ namespace utils
       vec3 currentPoint;
       vec3 nextPoint;
 
-      insert( 0, nodes.front( ), vec3( 0, 0, 0 ));
+      insert( nodes.front( ));
+
+      accDist = _distances.back( );
 
       for( unsigned int i = 0; i < nodes.size( ) - 1; ++i )
       {
@@ -113,34 +115,34 @@ namespace utils
       if( !_positions.empty( ) && position == _positions.back( ))
         return _size;
 
-      unsigned int i = 0;
-
-      // Iterate over time values till the last minus one
-      while( i < _size && _size > 0 )
-      {
-        // Overwrite position
-        if (distance == _distances[ i ])
-        {
-          _positions[ i ] = position;
-          return _size;
-        }
-        // New intermediate position
-        else if( distance < _distances[ i ])
-        {
-          _distances.emplace( _distances.begin( ) + i, distance );
-          _positions.emplace( _positions.begin( ) + i, position );
-          _directions.emplace( _directions.begin( ) + i, direction );
-
-//          precision = GetPrecision(distance);
-//          precisionValues.emplace(precisionValues.begin() + i,
-//                                  precision);
-
-          _size = ( unsigned int ) _distances.size( );
-//          UpdateQuickReference(precision);
-          return i;
-        }
-        i++;
-      }
+//      unsigned int i = 0;
+//
+//      // Iterate over time values till the last minus one
+//      while( i < _size && _size > 0 )
+//      {
+//        // Overwrite position
+//        if (distance == _distances[ i ])
+//        {
+//          _positions[ i ] = position;
+//          return _size;
+//        }
+//        // New intermediate position
+//        else if( distance < _distances[ i ])
+//        {
+//          _distances.emplace( _distances.begin( ) + i, distance );
+//          _positions.emplace( _positions.begin( ) + i, position );
+//          _directions.emplace( _directions.begin( ) + i, direction );
+//
+////          precision = GetPrecision(distance);
+////          precisionValues.emplace(precisionValues.begin() + i,
+////                                  precision);
+//
+//          _size = ( unsigned int ) _distances.size( );
+////          UpdateQuickReference(precision);
+//          return i;
+//        }
+//        i++;
+//      }
 
       // New highest position
       _distances.push_back( distance );
@@ -197,6 +199,11 @@ namespace utils
     {
       assert( i < _size );
       return _positions[ i ];
+    }
+
+    vec3 direction( unsigned int i ) const
+    {
+      return _directions[ i ];
     }
 
     vec3 segmentDirection( unsigned int i ) const
@@ -355,15 +362,12 @@ namespace utils
 
     EventPolylineInterpolation( const tPosVec& nodes )
     : PolylineInterpolation( nodes )
-    {
-      _eventSection.resize( nodes.size( ));
-    }
+    { }
 
     EventPolylineInterpolation( const PolylineInterpolation& other )
     : PolylineInterpolation( other )
-    {
-      _eventSection.resize( other.size( ));
-    }
+    { }
+
     virtual void insert( const std::vector< vec3 >& nodes )
     {
       PolylineInterpolation::insert( nodes );
@@ -372,19 +376,6 @@ namespace utils
     virtual void insert( const vec3 node )
     {
       PolylineInterpolation::insert( node );
-    }
-
-    virtual inline unsigned int insert( float distance, vec3 position, vec3 direction )
-    {
-      unsigned int pos =
-          PolylineInterpolation::insert( distance, position, direction );
-
-      if( pos == _size )
-        return _size;
-
-      _eventSection.emplace( _eventSection.begin( ) + pos, tSectionEvents( ));
-
-      return pos;
     }
 
     void addEventNode( float distance, unsigned long int eventID, tEventType type = TEvent_section )
@@ -441,7 +432,7 @@ namespace utils
 
 
     tSectionEvents _events;
-    std::vector< tSectionEvents> _eventSection;
+//    std::vector< tSectionEvents> _eventSection;
 
 
   };

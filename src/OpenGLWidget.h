@@ -100,6 +100,9 @@ public slots:
   void showPathsPre( int state );
   void showPathsPost( int state );
 
+  void startDynamic( void );
+  void stopDynamic( void );
+
 protected:
 
   virtual void initializeGL( void );

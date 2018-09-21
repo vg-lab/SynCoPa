@@ -109,7 +109,7 @@ namespace syncopa
 
     utils::EventPolylineInterpolation getPostsynapticPath( nsolMSynapse_ptr synapse ) const;
 
-    const ConnectivityTree& tree( void ) const;
+    const ConnectivityTree& presynapticTree( void ) const;
 
     cnode_ptr node( unsigned int sectionID ) const;
 

@@ -2,7 +2,7 @@
 git_subproject( ReTo git@gitlab.gmrv.es:nsviz/ReTo.git 7561862 )
 git_subproject( prefr git@gitlab.gmrv.es:nsviz/prefr.git f8f88ae )
 git_subproject( Brion https://github.com/BlueBrain/Brion.git e5a858d)
-git_subproject( nsol git@gitlab.gmrv.es:nsviz/nsol.git b534885 )
+git_subproject( nsol git@gitlab.gmrv.es:nsviz/nsol.git bff2367 )
 git_subproject( neurolots git@gitlab.gmrv.es:nsviz/neurolots.git 3ee3e69)
 #git_subproject( ZeroEQ https://github.com/HBPVIS/ZeroEQ c394f90)
 #git_subproject( Lexis https://github.com/HBPVIS/Lexis.git 617eedb)

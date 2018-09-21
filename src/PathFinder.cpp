@@ -158,7 +158,7 @@ namespace syncopa
     }
   }
 
-  const ConnectivityTree& PathFinder::tree( void ) const
+  const ConnectivityTree& PathFinder::presynapticTree( void ) const
   {
     return _treePre;
   }
@@ -193,8 +193,6 @@ namespace syncopa
 
     std::set< unsigned int > gids = { gid };
     auto& synapses = getSynapses( );
-
-    std::cout << "Found " << synapses.size( ) << " synapses for " << gid << std::endl;
 
 //    auto synapseSections = processSections( synapses, currentGid, gidsPost );
 //    auto synapseSections = parseSections( synapses, type );
@@ -681,9 +679,9 @@ namespace syncopa
 
       auto firstPath = origin->deepestPath( );
 
-      for( auto node : firstPath )
+      for( auto pathSection : firstPath )
       {
-        pathSections.push_back( node );
+        pathSections.push_back( pathSection );
       }
 
 //      std::cout << "Found deepest path with " << pathSections.size( )
@@ -705,13 +703,19 @@ namespace syncopa
 
         float prevDist = interpolator.totalDistance( );
 
-//        std::cout << "-------------" << std::endl;
+        std::cout << "--------------------------------" << std::endl;
 
         //TODO Check if leaf section and add cut end
         auto infoSection = _infoSections.find( currentSection->section( ));
         if( infoSection != _infoSections.end( ) && std::get< tsi_leafSection >( infoSection->second ))
         {
-          interpolator.insert( std::get< tsi_fixedSection >( infoSection->second ));
+          auto fixedSection = std::get< tsi_fixedSection >( infoSection->second );
+
+          interpolator.insert( fixedSection );
+
+          std::cout << "Fixed ";
+          for( auto node : fixedSection )
+            std::cout << node << std::endl;
         }
         else
         {
@@ -719,19 +723,17 @@ namespace syncopa
           {
             auto point = transformPoint( node->point( ), transform );
 
-//            std::cout << point << std::endl;
+            std::cout << point << std::endl;
 
             interpolator.insert( point );
           }
 
-  //        for( auto nodeIt = sec->nodes( ).rbegin( ); nodeIt != sec->nodes( ).rend( ); ++nodeIt )
-  //          nodes.push_back( transformPoint( ( *nodeIt )->point( ), transform ));
           if( last && last->numberOfChildren( ) > 1 )
           {
   //          auto children = last->children( );
     //          for( auto child = children.begin( ) + 1; child != children.end( ); ++child )
             {
-//              interpolator.addEventNode( prevDist, last->section( )->id() );
+              interpolator.addEventNode( prevDist, last->section( )->id() );
             }
           }
         }
@@ -772,8 +774,24 @@ namespace syncopa
                 auto postTransform = getTransform( synapse.first->postSynapticNeuron( ));
 
                 tPosVec points;
-                for( auto sec : postSections )
+
+                auto fixedSection = _infoSections.find( postSections.front( ));
+                if( fixedSection == _infoSections.end( ))
+                  std::cout << "ERROR: Postsynaptic section " << postSections.front( )->id( )
+                            << " info not found." << std::endl;
+
+                auto sectionEndNodes =
+                    std::get< tsi_fixedSection >( fixedSection->second );
+
+                for( auto nodeIt = sectionEndNodes.rbegin( );
+                    nodeIt != sectionEndNodes.rend( ); ++nodeIt )
+                  points.emplace_back( *nodeIt );
+
+                for( unsigned int i = 1; i < postSections.size( ); ++i )
+//                for( auto sec : postSections )
                 {
+                  auto sec = postSections[ i ];
+
                   for( auto nodeit = sec->nodes( ).rbegin( ); nodeit != sec->nodes( ).rend( ); ++nodeit )
 //                    for( auto nodeit = sec->nodes( ).begin( ); nodeit != sec->nodes( ).end( ); ++nodeit )
                     points.emplace_back( transformPoint( (*nodeit)->point( ), postTransform ));
@@ -790,23 +808,25 @@ namespace syncopa
           }
         }
 
-
         currentSection->sectionLength( interpolator.totalDistance( ) - prevDist );
 
         last = currentSection;
       }
 
+      std::cout << "Interpolator" << std::endl;
+      for( unsigned int i = 0; i < interpolator.size( ); ++i )
+        std::cout << interpolator[ i ]
+                  << "\t" << interpolator.distance( i )
+                  << "\t" << interpolator.direction( i ) << std::endl;
+
+
       auto it = _computedPaths.insert( std::make_pair( origin->section( )->id( ), interpolator ));
+
+
 
       return it.first->second;
     }
   }
-
-//  std::vector< nsolMSynapse_ptr > PathFinder::getSynapses( unsigned int gidPre ) const
-//  {
-//    std::set< unsigned int > gids = { gidPre };
-//    return getSynapses( gids );
-//  }
 
 
   const std::vector< nsolMSynapse_ptr >& PathFinder::getSynapses( void ) const
@@ -847,6 +867,8 @@ namespace syncopa
 
       result.push_back( msyn );
     }
+
+    result.shrink_to_fit( );
 
     _synapses = result;
 

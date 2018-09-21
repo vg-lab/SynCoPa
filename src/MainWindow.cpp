@@ -276,6 +276,26 @@ void MainWindow::initColorDock( void )
 
   // Synapses
 
+  _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
+
+  _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
+
+  _sliderAlphaPathsPre = new QSlider( Qt::Horizontal );
+
+  _sliderAlphaPathsPost = new QSlider( Qt::Horizontal );
+
+  _spinBoxSynapsesPre = new QDoubleSpinBox( );
+  _spinBoxSynapsesPre->setValue( 3.0f );
+
+  _spinBoxSynapsesPost = new QDoubleSpinBox( );
+  _spinBoxSynapsesPost->setValue( 3.0f );
+
+  _spinBoxPathsPre = new QDoubleSpinBox( );
+  _spinBoxPathsPre->setValue( 3.0f );
+
+  _spinBoxPathsPost = new QDoubleSpinBox( );
+  _spinBoxPathsPost->setValue( 3.0f );
+
   row = 0;
   col = 0;
 
@@ -283,8 +303,8 @@ void MainWindow::initColorDock( void )
   synLayout->addWidget( checkSynapsesPre, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
-  synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
-  synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+  synLayout->addWidget( _spinBoxSynapsesPre, row, col++, 1, 1 );
+  synLayout->addWidget( _sliderAlphaSynapsesPre, row, col, 1, 2 );
 
   ++row;
   col = 0;
@@ -293,8 +313,8 @@ void MainWindow::initColorDock( void )
   synLayout->addWidget( checkSynapsesPost, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
   ++col;
-  synLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
-  synLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+  synLayout->addWidget( _spinBoxSynapsesPost, row, col++, 1, 1 );
+  synLayout->addWidget( _sliderAlphaSynapsesPost, row, col, 1, 2 );
 
   ++row;
 
@@ -307,8 +327,8 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( checkPathsPre, row, col++, 1, 2 );
 //  pathLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
-  pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
-  pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+  pathLayout->addWidget( _spinBoxPathsPre, row, col++, 1, 1 );
+  pathLayout->addWidget( _sliderAlphaPathsPre, row, col, 1, 2 );
 
   ++row;
   col = 0;
@@ -317,12 +337,18 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( checkPathsPost, row, col++, 1, 2 );
 //  pathLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
   ++col;
-  pathLayout->addWidget( new QLabel( "%"), row, col++, 1, 1 );
-  pathLayout->addWidget( new QLabel( "slider"), row, col, 1, 2 );
+  pathLayout->addWidget( _spinBoxPathsPost, row, col++, 1, 1 );
+  pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
 
   layout->addWidget( groupBoxMorphologies );
   layout->addWidget( groupBoxSynapses );
   layout->addWidget( groupBoxPaths );
+
+  _dynamic = new QPushButton( "Dynamic" );
+  _dynamic->setCheckable( true );
+  connect( _dynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
+
+  layout->addWidget( _dynamic );
 
   connect( _frameColorMorphoPre, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
@@ -668,6 +694,7 @@ void MainWindow::clear( void )
   updateInfoDock( );
 }
 
+
 bool MainWindow::showDialog( QColor& current, const QString& message )
 {
   QColor result = QColorDialog::getColor( current, this,
@@ -738,3 +765,12 @@ void MainWindow::colorSelectionClicked( void )
 
   }
 }
+
+void MainWindow::dynamic( void )
+{
+  if( _dynamic->isChecked( ))
+    _openGLWidget->startDynamic( );
+  else
+    _openGLWidget->stopDynamic( );
+}
+

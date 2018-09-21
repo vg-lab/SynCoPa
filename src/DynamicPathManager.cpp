@@ -31,6 +31,9 @@ namespace syncopa
     if( !_pathFinder )
       return;
 
+    if( _sources.find( source->gid( )) != _sources.end( ))
+      std::cout << "ERROR: Creating already existing source" << std::endl;
+
     auto computedPath = _pathFinder->computeDeepestPathFrom( origin->id( ));
     if( computedPath.size( ) > 0 )
     {
@@ -97,12 +100,14 @@ namespace syncopa
 
   void DynamicPathManager::createRootSources( void )
   {
-    for( auto rootNode : _pathFinder->tree( ).rootNodes( ))
+    for( auto rootNode : _pathFinder->presynapticTree( ).rootNodes( ))
     {
 //      auto section = rootNode->section( );
       auto source = _psManager->getSpareMobileSouce( );
 
       _createSourceOnDeepestPath( rootNode->section( ), source );
+
+      std::cout << "Generating root node: " << rootNode->section( )->id( ) << std::endl;
 
       _rootSources.insert( source );
     }
@@ -115,7 +120,7 @@ namespace syncopa
     for( auto sectionID : _pendingSections )
     {
 
-      auto node = _pathFinder->tree( ).node( sectionID );
+      auto node = _pathFinder->presynapticTree( ).node( sectionID );
       if( !node )
       {
         std::cout << "ERROR: Section node " << sectionID << " not found. " << std::endl;
@@ -155,6 +160,7 @@ namespace syncopa
 
   void DynamicPathManager::processPendingSynapses( void )
   {
+//    return; //TODO
     for( auto synapse : _pendingSynapses )
     {
       auto path = _pathFinder->getPostsynapticPath( synapse );
@@ -194,6 +200,8 @@ namespace syncopa
           _sources.erase( sourceID );
         }
       }
+//      else
+//        std::cout << "ERROR: Source " << sourceID << " not found" << std::endl;
 
     }
 

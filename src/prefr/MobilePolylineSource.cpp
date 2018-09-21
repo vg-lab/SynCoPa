@@ -42,6 +42,12 @@ namespace syncopa
   {
     _interpolator = interpolator;
 
+//    std::cout << "Source positions " << this << " ";
+//    for( auto node : _interpolator.positions( ))
+//      std::cout << node << " ";
+
+    std::cout << std::endl;
+
     _currentDistance = 0.0f;
     _position = eigenToGLM( _interpolator.firstPosition( ));
   }
@@ -202,16 +208,22 @@ namespace syncopa
     for( auto event : events )
     {
       if( std::get< 2 >( event ) == utils::TEvent_section )
+      {
         finishedSection( std::get< 1 >( event ));
+        std::cout << "Reached section " << std::get< 1 >( event ) << std::endl;
+      }
       else
+      {
         reachedSynapse( std::get< 1 >( event ));
+        std::cout << "Reached synapse " << std::get< 1 >( event ) << std::endl;
+      }
     }
 
     if( _currentDistance >= _interpolator.totalDistance( ))
     {
       ++_currentCycle;
       _currentDistance = _interpolator.totalDistance( );
-//      std::cout << "Finished." << std::endl;
+      std::cout << "Finished " << this << std::endl;
     }
 
     _position = eigenToGLM( _interpolator.pointAtDistance( _currentDistance ));

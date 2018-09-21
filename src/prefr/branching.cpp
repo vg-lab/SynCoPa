@@ -21,15 +21,19 @@ int main( int argc, char** argv )
   std::string blueConfigPath = argv[ 1 ];
   std::string target = argv[ 2 ];
 
-  auto _dataset = new nsol::DataSet( );
+  auto dataset = new nsol::DataSet( );
 
   std::cout << "Loading data hierarchy..." << std::endl;
-   _dataset->loadBlueConfigHierarchy( blueConfigPath, target );
+   dataset->loadBlueConfigHierarchy( blueConfigPath, target );
 
   std::cout << "Loading morphologies..." << std::endl;
-  _dataset->loadAllMorphologies( );
+  dataset->loadAllMorphologies( );
 
   std::cout << "Loading connectivity..." << std::endl;
-  _dataset->loadBlueConfigConnectivityWithMorphologies( );
+  dataset->loadBlueConfigConnectivityWithMorphologies( );
+
+//  syncopa::PathFinder* pathFinder = new syncopa::PathFinder( dataset );
+
+
 
 }

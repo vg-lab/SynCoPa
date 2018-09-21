@@ -17,7 +17,7 @@
 #include <QTableView>
 #include <QStandardItemModel>
 #include <QGridLayout>
-
+#include <QDoubleSpinBox>
 
 #include "OpenGLWidget.h"
 
@@ -53,6 +53,8 @@ protected slots:
   void colorSelectionClicked( void );
 
   void clear( void );
+
+  void dynamic( void );
 
 protected:
 
@@ -96,4 +98,11 @@ protected:
   QSlider* _sliderAlphaSynapsesPost;
   QSlider* _sliderAlphaPathsPre;
   QSlider* _sliderAlphaPathsPost;
+
+  QDoubleSpinBox* _spinBoxSynapsesPre;
+  QDoubleSpinBox* _spinBoxSynapsesPost;
+  QDoubleSpinBox* _spinBoxPathsPre;
+  QDoubleSpinBox* _spinBoxPathsPost;
+
+  QPushButton* _dynamic;
 };

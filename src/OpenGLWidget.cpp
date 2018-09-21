@@ -347,6 +347,7 @@ void OpenGLWidget::setupPaths( const gidUSet& gidsPre,
 
   _psManager->setupPath( points, PRESYNAPTIC );
 
+  std::cout << "GENERATING POSTSYNAPTIC PATHS" << std::endl;
   points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, pointSize, POSTSYNAPTIC );
 
   _psManager->setupPath( points, POSTSYNAPTIC );
@@ -1211,11 +1212,11 @@ void OpenGLWidget::setupDynamicPath( unsigned int /*gidPre*/ )
 //  for( auto syn : synapses )
 //    synapses.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
 
-  _dynPathManager->clear( );
+//  _dynPathManager->clear( );
 
 //  auto sectionsInfo = _pathFinder->parseSections( synapses, PRESYNAPTIC );
 
-  _dynPathManager->createRootSources( );
+//  _dynPathManager->createRootSources( );
 
 //  tPosVec positions;
 //  std::vector< nsol::NeuronMorphologySectionPtr > sections;
@@ -1248,8 +1249,17 @@ void OpenGLWidget::setupDynamicPath( unsigned int /*gidPre*/ )
 //  _psManager->setupDynamicPath( positions );
 
 
-
-
 }
 
+void OpenGLWidget::startDynamic( void )
+{
+  stopDynamic( );
+  _dynPathManager->createRootSources( );
+}
+
+
+void OpenGLWidget::stopDynamic( void )
+{
+  _dynPathManager->clear( );
+}
 
