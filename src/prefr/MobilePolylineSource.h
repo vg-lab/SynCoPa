@@ -22,6 +22,14 @@
 namespace syncopa
 {
 
+  enum TSourceFunction
+  {
+    TSF_ROOT = 0,
+    TSF_BIFURCATION,
+    TSF_SYNAPSE,
+    TSF_UNDEFINED
+  };
+
   class MobilePolylineSource : public prefr::Source
   {
   public:
@@ -53,6 +61,9 @@ namespace syncopa
 
     unsigned int gid( void ) const;
 
+    void functionType( TSourceFunction type );
+    TSourceFunction functionType( void ) const;
+
     void addEventNode( float distance, cnode_ptr section );
 
     void initialNode( cnode_ptr section_ );
@@ -66,6 +77,8 @@ namespace syncopa
     virtual void prepareFrame( const float& deltaTime );
 //    virtual void closeFrame( );
 
+    virtual void sample( prefr::SampledValues* values );
+
     tSigSourceID finishedPath;
 
     tSigSection finishedSection;
@@ -74,15 +87,20 @@ namespace syncopa
 
   protected:
 
+    virtual void _updatePosition( float deltaTime );
+
     static unsigned int _counter;
 
     unsigned int _gid;
 
-//    cnode_ptr _initialNode;
+    TSourceFunction _functionType;
 
-    virtual void updatePosition( float deltaTime );
+//    cnode_ptr _initialNode;
+    vec3 _lastPosition;
+    unsigned int _currentSegment;
 
     float _currentDistance;
+    float _lastDisplacement;
 
     float _velocityModule;
 
@@ -91,6 +109,7 @@ namespace syncopa
 
     utils::EventPolylineInterpolation _interpolator;
 
+    float _invDisplacementIndex;
   };
 
 }

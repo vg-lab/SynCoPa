@@ -15,6 +15,14 @@
 namespace syncopa
 {
 
+  enum TBrainSynapse
+  {
+    TBS_SYNAPSE = 0,
+    TBS_SECTION_ID,
+    TBS_SEGMENT_INDEX,
+    TBS_SEGMENT_DISTANCE
+  };
+
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
   {
     dataset( dataset_ );
@@ -86,7 +94,7 @@ namespace syncopa
 
     _populateTrees( synapses );
 
-    _infoSections = processSections( synapses, presynapticGid, postsynapticGIDs );
+    _processSections( synapses, presynapticGid, postsynapticGIDs );
 
     _processEndSections( presynapticGid, postsynapticGIDs );
 
@@ -108,16 +116,16 @@ namespace syncopa
 
       if( !sectionPre )
       {
-        std::cout << "ERROR: Unassigned synapse pre section " << syn
+        std::cout << "ERROR: Unassigned synapse pre section " << syn->gid( )
                   << " " << syn->preSynapticNeuron( )
                   << "-" << syn->postSynapticNeuron( )
                   << std::endl;
         continue;
       }
 
-      if( !sectionPost )
+      if( !sectionPost && syn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC )
       {
-        std::cout << "ERROR: Unassigned synapse post section " << syn
+        std::cout << "ERROR: Unassigned synapse post section " << syn->gid( )
                   << " " << syn->preSynapticNeuron( )
                   << "-" << syn->postSynapticNeuron( )
                   << std::endl;
@@ -359,40 +367,6 @@ namespace syncopa
     return result;
   }
 
-  std::unordered_set< nsolMSection_ptr>
-      PathFinder::findEndSections( const std::vector< nsolMSynapse_ptr >& synapses,
-                                   TNeuronConnection type ) const
- {
-    std::unordered_set< nsol::NeuronMorphologySectionPtr > candidates;
-    std::unordered_set< nsol::NeuronMorphologySectionPtr > intermediate;
-
-    for( auto syn : synapses )
-    {
-      nsolMSection_ptr sectionPtr =
-          ( type == PRESYNAPTIC ? syn->preSynapticSection( ) : syn->postSynapticSection( ));
-
-      if( !sectionPtr )
-        continue;
-
-      auto discarded = intermediate.find( sectionPtr );
-
-      if( discarded == intermediate.end( ))
-        candidates.insert( sectionPtr );
-
-      sectionPtr = dynamic_cast< nsolMSection_ptr >( sectionPtr->parent( ));
-
-      while( sectionPtr )
-      {
-        intermediate.insert( sectionPtr );
-        candidates.erase( sectionPtr );
-
-        sectionPtr = dynamic_cast< nsolMSection_ptr >( sectionPtr->parent( ));
-      }
-
-    }
-    return candidates;
- }
-
   std::vector< vec3 > PathFinder::_cutEndSection( const std::vector< vec3 >& nodes,
                                                  const vec3& synapsePos,
                                                  unsigned int lastIndex ) const
@@ -411,12 +385,13 @@ namespace syncopa
     return result;
   }
 
-  tSectionsInfoMap
-  PathFinder::processSections( const std::vector< nsolMSynapse_ptr >& synapses,
+  void
+  PathFinder::_processSections( const std::vector< nsolMSynapse_ptr >& synapses,
                                unsigned int gidPre,
-                               const gidUSet& postNeuronGIDs ) const
+                               const gidUSet& postNeuronGIDs )
   {
-    tSectionsInfoMap result;
+    _infoSections.clear( );
+    _somaSynapses.clear( );
 
     auto transformPre = getTransform( gidPre );
 
@@ -427,7 +402,7 @@ namespace syncopa
       auto synInfo = _synapseFixInfo.find( synapse );
       if( synInfo == _synapseFixInfo.end( ))
       {
-        std::cout << "ERROR: Synapse " << synapse << " info NOT FOUND" << std::endl;
+        std::cout << "ERROR: Synapse " << synapse->gid( ) << " info NOT FOUND" << std::endl;
         continue;
       }
 
@@ -440,6 +415,14 @@ namespace syncopa
                   << " not found in postynaptic gid set with size "
                   << postNeuronGIDs.size( ) << std::endl;
 
+        continue;
+      }
+
+      if( !synapse->preSynapticSection( ) ||
+          ( !synapse->postSynapticSection( ) &&
+              synapse->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
+      {
+        std::cout << "ERROR: Synapse " << synapse->gid( ) << " section NOT FOUND" << std::endl;
         continue;
       }
 
@@ -469,9 +452,12 @@ namespace syncopa
             ( type == PRESYNAPTIC ) ? synapse->preSynapticSection( )
                                     : synapse->postSynapticSection( );
 
-        if( !section )
+
+        if( type == POSTSYNAPTIC && !section &&
+            synapse->synapseType( ) == nsol::MorphologySynapse::AXOSOMATIC )
         {
-          std::cout << "ERROR: Synapse " << synapse << " section NOT FOUND" << std::endl;
+          _somaSynapses.insert( synapse );
+          std::cout << "Found somatic synapse " << synapse->gid( ) << std::endl;
           continue;
         }
 
@@ -514,8 +500,8 @@ namespace syncopa
 
         vec3 synapsePos = transformPoint( end * normalized + start * ( 1 - normalized ), transform );
 
-        auto it = result.find( section );
-        if( it == result.end( ))
+        auto it = _infoSections.find( section );
+        if( it == _infoSections.end( ))
         {
           utils::PolylineInterpolation interpolator;
 
@@ -534,7 +520,7 @@ namespace syncopa
                                false,
                                fixedSection, interpolator );
 
-          it = result.insert( std::make_pair( section, data )).first;
+          it = _infoSections.insert( std::make_pair( section, data )).first;
 
         } // if section not found
 
@@ -553,15 +539,13 @@ namespace syncopa
 
     } // for each synapse
 
-    return result;
+
   }
 
   void PathFinder::_processEndSections( unsigned int gidPre, const gidUSet& gidsPost )
   {
     gidUSet gids = gidsPost;
     gids.insert( gidPre );
-
-    auto& sectionInfo = _infoSections;
 
     for( auto gid : gids )
     {
@@ -591,8 +575,8 @@ namespace syncopa
       {
        auto section = node->section( );
 
-       auto it = sectionInfo.find( section );
-       if( it == sectionInfo.end( ))
+       auto it = _infoSections.find( section );
+       if( it == _infoSections.end( ))
        {
          std::cout << "Section " << section->id( ) << " not parsed correctly." << std::endl;
          continue;
@@ -703,7 +687,7 @@ namespace syncopa
 
         float prevDist = interpolator.totalDistance( );
 
-        std::cout << "--------------------------------" << std::endl;
+//        std::cout << "--------------------------------" << std::endl;
 
         //TODO Check if leaf section and add cut end
         auto infoSection = _infoSections.find( currentSection->section( ));
@@ -713,9 +697,9 @@ namespace syncopa
 
           interpolator.insert( fixedSection );
 
-          std::cout << "Fixed ";
-          for( auto node : fixedSection )
-            std::cout << node << std::endl;
+//          std::cout << "Fixed ";
+//          for( auto node : fixedSection )
+//            std::cout << node << std::endl;
         }
         else
         {
@@ -723,7 +707,7 @@ namespace syncopa
           {
             auto point = transformPoint( node->point( ), transform );
 
-            std::cout << point << std::endl;
+//            std::cout << point << std::endl;
 
             interpolator.insert( point );
           }
@@ -757,8 +741,8 @@ namespace syncopa
 
               uintptr_t intPointer = reinterpret_cast< uintptr_t >( synapse.first );
 
-              std::cout << "Adding synapse event " << intPointer
-                        << " dist " << synapseDist
+              std::cout << "Adding synapse event " << synapse.first->gid( )
+                        << " segment dist " << synapseDist
                         << " section dist " << sectionDist
                         << " current dist " << prevDist
                         << std::endl;
@@ -777,8 +761,11 @@ namespace syncopa
 
                 auto fixedSection = _infoSections.find( postSections.front( ));
                 if( fixedSection == _infoSections.end( ))
+                {
                   std::cout << "ERROR: Postsynaptic section " << postSections.front( )->id( )
                             << " info not found." << std::endl;
+                  continue;
+                }
 
                 auto sectionEndNodes =
                     std::get< tsi_fixedSection >( fixedSection->second );
@@ -803,6 +790,15 @@ namespace syncopa
                           << " with " << points.size( ) << std::endl;
 
               }
+
+              if( synapseDist > interpolator.totalDistance( ))
+              {
+                std::cout << "--Fixing synapse dist " << synapseDist
+                          << " to " << interpolator.totalDistance( )
+                          << std::endl;
+
+                synapseDist = interpolator.totalDistance( );
+              }
               interpolator.addEventNode( synapseDist, intPointer, utils::TEvent_synapse );
             }
           }
@@ -813,11 +809,11 @@ namespace syncopa
         last = currentSection;
       }
 
-      std::cout << "Interpolator" << std::endl;
-      for( unsigned int i = 0; i < interpolator.size( ); ++i )
-        std::cout << interpolator[ i ]
-                  << "\t" << interpolator.distance( i )
-                  << "\t" << interpolator.direction( i ) << std::endl;
+//      std::cout << "Interpolator" << std::endl;
+//      for( unsigned int i = 0; i < interpolator.size( ); ++i )
+//        std::cout << interpolator[ i ]
+//                  << "\t" << interpolator.distance( i )
+//                  << "\t" << interpolator.direction( i ) << std::endl;
 
 
       auto it = _computedPaths.insert( std::make_pair( origin->section( )->id( ), interpolator ));
@@ -858,10 +854,45 @@ namespace syncopa
           postsynapticGIDs.find( syn->postSynapticNeuron( )) == postsynapticGIDs.end( ))
         continue;
 
+
       auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
-      if( !msyn || !msyn->preSynapticSection( ) || !msyn->postSynapticSection( ))
+      if( !msyn)
       {
         std::cout << "EMPTY SYNAPSE " << std::endl;
+        continue;
+      }
+
+      auto sectionPre = msyn->preSynapticSection( );
+      auto sectionPost = msyn->postSynapticSection( );
+
+      // axo-somatic
+      if( !sectionPre || ( !sectionPost &&
+          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
+        continue;
+
+
+      auto synInfo = _synapseFixInfo.find( msyn );
+      if( synInfo == _synapseFixInfo.end( ))
+        continue;
+
+
+      if( std::get< TBS_SEGMENT_INDEX >( synInfo->second.first ) >=
+          sectionPre->nodes( ).size( ) - 1 )
+      {
+        std::cout << "Discarding synapse with pre segment "
+                  << std::get< TBS_SEGMENT_INDEX >( synInfo->second.first )
+                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
+                  << std::endl;
+        continue;
+      }
+
+      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( synInfo->second.second ) >=
+          sectionPost->nodes( ).size( ) - 1 )
+      {
+        std::cout << "Discarding synapse with post segment "
+                  << std::get< TBS_SEGMENT_INDEX >( synInfo->second.second )
+                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
+                  << std::endl;
         continue;
       }
 

@@ -51,6 +51,8 @@ namespace syncopa
 
     void _createSourceOnDeepestPath( nsolMSection_ptr origin, MobilePolylineSource* source  );
 
+
+
     unsigned int _presynapticGID;
 
     PathFinder* _pathFinder;
@@ -58,8 +60,10 @@ namespace syncopa
     PSManager* _psManager;
 
     std::unordered_map< unsigned int, MobilePolylineSource* > _sources;
-
+    std::unordered_map< unsigned int, MobilePolylineSource* > _sectionSources;
+    std::unordered_map< nsolMSynapse_ptr, MobilePolylineSource* > _synapseSources;
     std::unordered_set< syncopa::MobilePolylineSource* > _rootSources;
+    std::unordered_set< syncopa::MobilePolylineSource* > _orphanSources;
 
     std::list< unsigned int > _pendingSections;
     std::list< unsigned int > _pendingSources;

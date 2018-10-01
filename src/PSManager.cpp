@@ -18,16 +18,17 @@ namespace syncopa
   , _modelSynPost( nullptr )
   , _modelPathPre( nullptr )
   , _modelPathPost( nullptr )
-  , _modelDyn( nullptr )
-  , _dynamicVelocityModule( 50 )
+  , _modelDynPre( nullptr )
+  , _modelDynPost( nullptr )
+  , _dynamicVelocityModule( 200 )
   , _sourceSynPre( nullptr )
   , _sourceSynPost( nullptr )
   , _sourcePathPre( nullptr )
   , _sourcePathPost( nullptr )
   , _sampler( nullptr )
   , _totalDynamicSources( 20 )
-  , _particlesPerDynamicSource( 1000 )
-  , _mobileSourcesEmissionRate( 0.3f )
+  , _particlesPerDynamicSource( 2000 )
+  , _mobileSourcesEmissionRate( 0.2f )
   , _clusterDyn( nullptr )
   , _clusterSynPre( nullptr )
   , _clusterSynPost( nullptr )
@@ -97,17 +98,27 @@ namespace syncopa
     _normalUpdater = new prefr::Updater( );
     _particleSystem->addUpdater( _normalUpdater );
 //TODO
-    _sampler = new prefr::SphereSampler( 5, 360 );
+    _sampler = new prefr::SphereSampler( 1, 360 );
 
     _clusterDyn = new prefr::Cluster( );
 
-    _modelDyn = new prefr::Model( model );
-    _modelDyn->setLife( 1, 3 );
-    _modelDyn->color.Insert( 0.0f, eigenToGLM( vec4( 1, 0, 0, 0.5 )));
-    _modelDyn->color.Insert( 1.0f, eigenToGLM( vec4( 1, 0, 1, 0.3 )));
-    _modelDyn->size.Insert( 0.0f, 1 );
-    _modelDyn->size.Insert( 1.0f, 2 );
-    _modelDyn->velocity.Insert( 0.0f, 1.0f );
+    _modelDynPre = new prefr::Model( model );
+    _modelDynPre->setLife( 1, 1 );
+    _modelDynPre->color.Insert( 0.0f, glm::vec4( 0.5, 0.5, 1, 0.7 ));
+    _modelDynPre->color.Insert( 0.25f, glm::vec4( 0, 0.5, 1, 0.2 ));
+    _modelDynPre->color.Insert( 1.0f, glm::vec4( 0, 1, 1, 0 ));
+
+    _modelDynPre->size.Insert( 0.0f, 10 );
+    _modelDynPre->size.Insert( 0.2f, 5 );
+    _modelDynPre->size.Insert( 1.0f, 1 );
+
+    _modelDynPre->velocity.Insert( 0.0f, 0.0f );
+
+    _modelDynPost = new prefr::Model( *_modelDynPre );
+    _modelDynPost->color.Insert( 0.0f, glm::vec4( 1, 0.5, 0.5, 0.7 ));
+    _modelDynPost->color.Insert( 0.25f, glm::vec4( 1, 0.5, 0, 0.2 ));
+    _modelDynPost->color.Insert( 1.0f, glm::vec4( 1, 1, 0, 0 ));
+
 
     _particleSystem->addCluster( _clusterDyn );
 
@@ -416,7 +427,7 @@ namespace syncopa
     }
   }
 
-  MobilePolylineSource* PSManager::getSpareMobileSouce( void )
+  MobilePolylineSource* PSManager::getSpareMobileSouce( TNeuronConnection type )
   {
 
     MobilePolylineSource* result;
@@ -424,11 +435,13 @@ namespace syncopa
     if( _availableDynamicSources.empty( ))
     {
       result = new MobilePolylineSource( _mobileSourcesEmissionRate, vec3( 0, 0, 0 ));
+      std::cout << "Creating new source " << result->gid( ) << std::endl;
     }
     else
     {
       result = *_availableDynamicSources.begin( );
       _availableDynamicSources.erase( result );
+//      std::cout << "Using old source " << result->gid( ) << std::endl;
     }
 
     _dynamicSources.insert( result );
@@ -437,7 +450,8 @@ namespace syncopa
 //    result->particles( ) = indices;
 
     _clusterDyn->particles( indices );
-    _clusterDyn->setModel( _modelDyn );
+
+    _clusterDyn->setModel(( type == PRESYNAPTIC ) ? _modelDynPre : _modelDynPost );
     _clusterDyn->setUpdater( _normalUpdater );
 
     result->delay( 0 );
@@ -458,6 +472,13 @@ namespace syncopa
   {
     _availableDynamicSources.insert( source_ );
     _dynamicSources.erase( source_ );
+
+    source_->finishedPath.disconnect_all_slots( );
+    source_->finishedSection.disconnect_all_slots( );
+    source_->reachedSynapse.disconnect_all_slots( );
+
+    std::cout << "-- Releasing source " << source_->gid( )
+              << " type " << (unsigned int) source_->functionType( ) << std::endl;
 
     _particleSystem->detachSource( source_ );
   }

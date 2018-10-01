@@ -91,10 +91,6 @@ namespace syncopa
                                            const gidUSet& gidsPost,
                                            float pointSize,
                                            TNeuronConnection type = PRESYNAPTIC ) const;
-
-    tSectionsInfoMap processSections( const std::vector< nsolMSynapse_ptr >& synapses,
-                                      unsigned int presynapticGID,
-                                      const gidUSet& neuronGIDs ) const;
 //
 //    tSectionsInfoMap parseSections( const std::vector< nsolMSynapse_ptr >& synapses,
 //                                    TNeuronConnection type = PRESYNAPTIC ) const;
@@ -127,20 +123,15 @@ namespace syncopa
 
     void _populateTrees( const tsynapseVec& synapses );
 
+
+    void _processSections( const std::vector< nsolMSynapse_ptr >& synapses,
+                           unsigned int presynapticGID,
+                           const gidUSet& neuronGIDs );
+
     void _processEndSections( unsigned int gidPresynaptic, const gidUSet& gidsPost );
 
     unsigned int findSynapseSegment(  const vec3& synapsePos,
                                       const nsol::Nodes& nodes ) const;
-
-    tSectionsMap findEndSections( const std::vector< nsolMSynapse_ptr >& synapses,
-                                  TNeuronConnection type = PRESYNAPTIC ) const;
-//
-//    tFixedSynapseInfo projectSynapse( const vec3 synapsePos,
-//                                      const utils::PolylineInterpolation& nodes ) const;
-//
-//    tFixedSynapseInfo findClosestPointToSynapse( const vec3 synapsePos,
-//                                                 const utils::PolylineInterpolation& nodes ) const;
-
 
 
     std::vector< vec3 > _cutEndSection( const std::vector< vec3 >& nodes,
@@ -156,9 +147,10 @@ namespace syncopa
 
     std::unordered_map< unsigned int, utils::EventPolylineInterpolation > _computedPaths;
 
-    std::unordered_map< nsol::MorphologySynapsePtr,
+    std::unordered_map< nsolMSynapse_ptr,
                         utils::PolylineInterpolation > _pathsPost;
 
+    std::unordered_set< nsolMSynapse_ptr > _somaSynapses;
 
     std::vector< nsolMSynapse_ptr > _synapses;
 

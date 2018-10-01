@@ -344,11 +344,11 @@ void MainWindow::initColorDock( void )
   layout->addWidget( groupBoxSynapses );
   layout->addWidget( groupBoxPaths );
 
-  _dynamic = new QPushButton( "Dynamic" );
-  _dynamic->setCheckable( true );
-  connect( _dynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
+  _buttonDynamic = new QPushButton( "Dynamic" );
+  _buttonDynamic->setCheckable( true );
+  connect( _buttonDynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
 
-  layout->addWidget( _dynamic );
+  layout->addWidget( _buttonDynamic );
 
   connect( _frameColorMorphoPre, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
@@ -605,6 +605,8 @@ void MainWindow::loadPresynapticList( void )
     _modelListPre->appendRow( item );
   }
 
+  _modelListPre->sort( 0, Qt::AscendingOrder );
+
   _listPresynaptic->setModel( _modelListPre );
   update( );
 }
@@ -641,7 +643,10 @@ void MainWindow::loadPostsynapticList( unsigned int gid )
     selection.insert( postGid );
   }
 
+  _modelListPost->sort( 0, Qt::SortOrder::AscendingOrder );
+
   _listPostsynaptic->setModel( _modelListPost );
+
   update( );
 }
 
@@ -660,6 +665,8 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
 
   _openGLWidget->selectPresynapticNeuron( gid );
 
+  _buttonDynamic->setChecked( false );
+
   std::cout << "Selected pre: " << gid << std::endl;
 
   loadPostsynapticList( gid );
@@ -676,6 +683,8 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
   }
 
   _openGLWidget->selectPostsynapticNeuron( selection );
+
+  _buttonDynamic->setChecked( false );
 
   std::cout << "Selected post: ";
   for( auto gid : selection )
@@ -768,7 +777,7 @@ void MainWindow::colorSelectionClicked( void )
 
 void MainWindow::dynamic( void )
 {
-  if( _dynamic->isChecked( ))
+  if( _buttonDynamic->isChecked( ))
     _openGLWidget->startDynamic( );
   else
     _openGLWidget->stopDynamic( );

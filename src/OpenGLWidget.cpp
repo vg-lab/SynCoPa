@@ -90,7 +90,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _dynPathManager( nullptr )
 , _particleSizeThreshold( 1.0f )
 , _elapsedTimeRenderAcc( 0.0f )
-, _alphaBlendingAccumulative( false )
+, _alphaBlendingAccumulative( true )
 , _colorSelectedPre( 1, 1, 1 )
 , _colorSelectedPost( 0.8, 0.6, 0.6 )
 , _colorRelated( 0.7, 0.5, 0 )
@@ -264,7 +264,7 @@ void OpenGLWidget::createParticleSystem( void )
 
   _particlesShader = new reto::ShaderProgram( );
   _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
-  _particlesShader->loadFragmentShader( "/home/sgalindo/dev/newsynvis/src/prefr/softParticles.fs" );
+  _particlesShader->loadFragmentShaderFromText( prefr::prefrSoftParticles );
   _particlesShader->create( );
   _particlesShader->link( );
   _particlesShader->autocatching( true );
@@ -372,7 +372,9 @@ void OpenGLWidget::clear( void )
   _neuronsRelated = _neuronScene->getRender( _gidsAll );
   _neuronsContext = syncopa::TRenderMorpho( );
 
+  _dynPathManager->clear( );
   _psManager->clear( );
+
 }
 
 void setColor( syncopa::TRenderMorpho& renderConfig, const vec3& color )
@@ -802,8 +804,11 @@ void OpenGLWidget::paintGL( void )
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
 
-  _dynPathManager->processPendingSections( );
+//  std::cout << "***** Processing finished paths" << std::endl;
   _dynPathManager->processFinishedPaths( );
+//  std::cout << "***** Processing bifurcations" << std::endl;
+  _dynPathManager->processPendingSections( );
+//  std::cout << "***** Processing synapses" << std::endl;
   _dynPathManager->processPendingSynapses( );
 
   if ( _paint )

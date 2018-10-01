@@ -260,6 +260,9 @@ namespace syncopa
 
     std::cout << this << " Adding branch of " << sections.size( ) << " sections" << std::endl;
 
+    if( sections.empty( ))
+      return 0;
+
     auto rootSection = sections.back( );
 
     cnode_ptr rootNode;

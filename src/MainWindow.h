@@ -104,5 +104,5 @@ protected:
   QDoubleSpinBox* _spinBoxPathsPre;
   QDoubleSpinBox* _spinBoxPathsPost;
 
-  QPushButton* _dynamic;
+  QPushButton* _buttonDynamic;
 };

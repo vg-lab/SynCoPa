@@ -67,7 +67,7 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
-    MobilePolylineSource* getSpareMobileSouce( void );
+    MobilePolylineSource* getSpareMobileSouce( TNeuronConnection type = PRESYNAPTIC );
     void releaseMobileSource( MobilePolylineSource* source_ );
 
 
@@ -87,7 +87,8 @@ protected:
     prefr::Model* _modelPathPre;
     prefr::Model* _modelPathPost;
 
-    prefr::Model* _modelDyn;
+    prefr::Model* _modelDynPre;
+    prefr::Model* _modelDynPost;
     float _dynamicVelocityModule;
 
     SourceMultiPosition* _sourceSynPre;

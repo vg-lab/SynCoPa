@@ -33,9 +33,9 @@ namespace utils
     PolylineInterpolation( const std::vector< vec3 >& nodes )
     : _size( 0 )
     {
-      _distances.reserve( _size );
-      _positions.reserve( _size );
-      _directions.reserve( _size );
+      _distances.reserve( nodes.size( ));
+      _positions.reserve( nodes.size( ));
+      _directions.reserve( nodes.size( ));
 
       insert( nodes );
     }
@@ -66,6 +66,9 @@ namespace utils
 
     virtual void insert( const std::vector< vec3 >& nodes )
     {
+
+      if( nodes.empty( ))
+        return;
 
       float accDist = 0;
 
@@ -251,29 +254,33 @@ namespace utils
     }
 
     // Faster implementation for CPU interpolation.
-    inline vec3 pointAtDistance( float distance )
+    inline vec3 pointAtDistance( float distance ) const
     {
       if( _size > 1 && distance > 0.0f )
       {
-       unsigned int i = _segmentFromDistance( distance );
+       unsigned int i = segmentFromDistance( distance );
 
-       if( i >= _size )
-         i = _size -1;
-
-       float accumulated = distance - _distances[ i ];
-
-       vec3 dir = _directions[ i + 1 ];
-
-
-       vec3 res = _positions[ i ] + dir * accumulated;
-
-       return res;
-
+       return pointAtDistance( distance, i );
       }
       else
       {
         return _positions[ 0 ];
       }
+    }
+
+    inline vec3 pointAtDistance( float distance, unsigned int segmentIdx ) const
+    {
+
+      if( segmentIdx >= _size )
+        segmentIdx = _size -1;
+
+      float accumulated = distance - _distances[ segmentIdx ];
+
+      vec3 dir = _directions[ segmentIdx + 1 ];
+
+      vec3 res = _positions[ segmentIdx ] + dir * accumulated;
+
+      return res;
     }
 
     std::vector< vec3 > interpolate( float stepSize,
@@ -319,9 +326,7 @@ namespace utils
       insert( reversePositions );
     }
 
-  protected:
-
-    unsigned int _segmentFromDistance( float distance ) const
+    unsigned int segmentFromDistance( float distance ) const
     {
       if( _distances.empty( ) || distance > _distances.back( ))
         return _size;
@@ -334,6 +339,8 @@ namespace utils
 
       return i;
     }
+
+  protected:
 
     std::vector< float > _distances;
     std::vector< vec3 > _positions;
@@ -410,7 +417,7 @@ namespace utils
 
       float prevDist = std::max( 0.0f, distance - step );
 
-      unsigned int i = _segmentFromDistance( prevDist );
+      unsigned int i = segmentFromDistance( prevDist );
 
       if( i >= _size )
         return result;

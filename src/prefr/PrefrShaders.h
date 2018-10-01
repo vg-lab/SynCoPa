@@ -73,6 +73,58 @@ void main()\n\
   outputColor = vec4(vec3( 0 ), 1 );\n\
 }";
 
+const static std::string prefrSoftParticles = "#version 400\n\
+\n\
+in vec4 color;\n\
+in vec2 uvCoord;\n\
+in float size;\n\
+\n\
+out vec4 outputColor;\n\
+\n\
+uniform float threshold;\n\
+uniform vec2 invResolution;\n\
+\n\
+uniform float zNear;\n\
+uniform float zFar;\n\
+\n\
+uniform sampler2D depthMap;\n\
+\n\
+float LinearizeDepth(float depth)\n\
+{\n\
+  float z = depth * 2.0 - 1.0;\n\
+  return (2.0 * zNear * zFar) / (zFar + zNear - z * (zFar - zNear));\n\
+}\n\
+\n\
+void main()\n\
+{\n\
+  vec2 screenCoord = gl_FragCoord.xy * invResolution;\n\
+  \n\
+  float screenDepth = texture( depthMap, screenCoord ).r;\n\
+  \n\
+  float fragmentDepth = gl_FragCoord.z / gl_FragCoord.w;\n\
+  \n\
+  float linealScreenDepth = LinearizeDepth( screenDepth );\n\
+  \n\
+  if( fragmentDepth > linealScreenDepth )\n\
+    discard;\n\
+  \n\
+  float weight = clamp((( linealScreenDepth - fragmentDepth ) / size ), 0.0, 1.0 );\n\
+  \n\
+  vec2 p = -1.0 + 2.0 * uvCoord;\n\
+  float l = sqrt( dot( p,p ));\n\
+  l = 1.0 - clamp( l, 0.0, 1.0 );\n\
+  \n\
+  float margin = 1.0 - threshold;\n\
+  float alpha = float(l <= margin) + (float(l > margin) * (1.0 -((l - margin) / (1.0 - margin))));\n\
+  alpha = 1.0 - alpha;\n\
+  alpha = alpha * weight;\n\
+  \n\
+  //outputColor = vec4( vec3( linealDepth ), 1.0 );\n\
+  //outputColor = vec4( vec3( fragmentDepth ), 1.0 );\n\
+  \n\
+  outputColor = vec4( color.rgb, alpha );\n\
+}";
+
 }
 
 #endif /* PREFRSHADERS_H_ */

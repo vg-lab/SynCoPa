@@ -11,6 +11,7 @@ cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
 # syncopa project and version
 project( syncopa VERSION 0.1.0 )
 set( syncopa_VERSION_ABI 1 )
+set( SYNCOPA_LICENSE "GPL")
 
 # Disable in source building
 if( "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}" )
