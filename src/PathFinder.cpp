@@ -15,14 +15,6 @@
 namespace syncopa
 {
 
-  enum TBrainSynapse
-  {
-    TBS_SYNAPSE = 0,
-    TBS_SECTION_ID,
-    TBS_SEGMENT_INDEX,
-    TBS_SEGMENT_DISTANCE
-  };
-
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
   {
     dataset( dataset_ );
@@ -55,20 +47,26 @@ namespace syncopa
         auto brainSynapse = brainSynapses[ synapse->gid( ) - 1 ];
 
         tBrainSynapse infoPre =
-            std::make_tuple( synapse,
-                             brainSynapse.getPresynapticSectionID( ),
+            std::make_tuple( brainSynapse.getPresynapticSectionID( ),
                              brainSynapse.getPresynapticSegmentID( ),
                              brainSynapse.getPresynapticDistance( ));
 
         tBrainSynapse infoPost =
-            std::make_tuple( synapse,
-                             brainSynapse.getPostsynapticSectionID( ),
+            std::make_tuple( brainSynapse.getPostsynapticSectionID( ),
                              brainSynapse.getPostsynapticSegmentID( ),
                              brainSynapse.getPostsynapticDistance( ));
 
+        tBrainSynapseAttribs attribs =
+            std::make_tuple( brainSynapse.getDelay( ),
+                             brainSynapse.getConductance( ),
+                             brainSynapse.getUtilization( ),
+                             brainSynapse.getDepression( ),
+                             brainSynapse.getFacilitation( ),
+                             brainSynapse.getDecay( ),
+                             brainSynapse.getEfficacy( ));
 
         _synapseFixInfo.insert(
-            std::make_pair( synapse, std::make_pair( infoPre, infoPost )));
+            std::make_pair( synapse, std::make_tuple( attribs, infoPre, infoPost )));
 
       }
 
@@ -445,8 +443,8 @@ namespace syncopa
         }
 
         const auto& synapseFixInfo = ( type == PRESYNAPTIC )
-                                     ? synInfo->second.first
-                                     : synInfo->second.second;
+                                     ? std::get< TBSI_PRESYNAPTIC >( synInfo->second )
+                                     : std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
         nsolMSection_ptr section =
             ( type == PRESYNAPTIC ) ? synapse->preSynapticSection( )
@@ -461,15 +459,15 @@ namespace syncopa
           continue;
         }
 
-        if( std::get< tsfi_section >( synapseFixInfo ) != section->id( ))
+        if( std::get< TBS_SECTION_ID >( synapseFixInfo ) != section->id( ))
         {
           std::cout << "ERROR: Section " << section->id( )
-                    << " does not match " << std::get< tsfi_section >( synapseFixInfo )
+                    << " does not match " << std::get< TBS_SECTION_ID >( synapseFixInfo )
                     << std::endl;
           continue;
         }
 
-        unsigned int segmentIndex = std::get< tsfi_segmentID >( synapseFixInfo );
+        unsigned int segmentIndex = std::get< TBS_SEGMENT_INDEX >( synapseFixInfo );
         const auto& nodes = section->nodes( );
 
         if( nodes.empty( ) || nodes.size( ) == 1)
@@ -485,12 +483,12 @@ namespace syncopa
           std::cout << "ERROR: " << neuronGID << " Segment index " << segmentIndex
                     << " is greater than section " << section->id( )
                     << " nodes number " << nodes.size( )
-                    << " distance " << std::get< tsfi_distance >( synapseFixInfo )
+                    << " distance " << std::get< TBS_SEGMENT_DISTANCE >( synapseFixInfo )
                     << std::endl;
           continue;
         }
 
-        float distance = std::get< tsfi_distance >( synapseFixInfo );
+        float distance = std::get< TBS_SEGMENT_DISTANCE >( synapseFixInfo );
         vec3 start = nodes[ segmentIndex ]->point( );
         vec3 end = nodes[ segmentIndex + 1 ]->point( );
 
@@ -730,10 +728,13 @@ namespace syncopa
             auto it = _synapseFixInfo.find( synapse.first );
             if( it != _synapseFixInfo.end( ))
             {
-              float synapseDist = std::get< tsfi_distance >( it->second.first );
+              auto presynInfo = std::get< TBSI_PRESYNAPTIC >( it->second );
+
+              float synapseDist =
+                  std::get< TBS_SEGMENT_DISTANCE >( presynInfo );
 
 
-              unsigned int segmentIndex = std::get< tsfi_segmentID >( it->second.first );
+              unsigned int segmentIndex = std::get< TBS_SEGMENT_INDEX >( presynInfo );
               const auto& sectionInterp =
                   std::get< tsi_Interpolator >( infoSection->second );
 
@@ -750,7 +751,8 @@ namespace syncopa
               synapseDist += prevDist;
               synapseDist += sectionDist;
 
-              if( _pathsPost.find( synapse.first ) == _pathsPost.end( ))
+              if( _pathsPost.find( synapse.first ) == _pathsPost.end( ) &&
+                  synapse.first->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC )
               {
                 auto postSections = pathToSoma( synapse.first, POSTSYNAPTIC );
                 // TODO cut leaf section (first)
@@ -830,6 +832,77 @@ namespace syncopa
     return _synapses;
   }
 
+  void PathFinder::loadSynapses( const gidUSet& gids )
+  {
+    if( gids.empty( ))
+      return;
+
+    std::vector< nsolMSynapse_ptr > result;
+
+    std::set< unsigned int > gidset( gids.begin( ), gids.end( ));
+
+    auto& circuit = _dataset->circuit( );
+    auto synapseSet = circuit.synapses( gidset,
+                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
+
+    result.reserve( synapseSet.size( ));
+
+    for( auto syn : synapseSet )
+    {
+
+      auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
+      if( !msyn)
+      {
+        std::cout << "EMPTY SYNAPSE " << std::endl;
+        continue;
+      }
+
+      auto sectionPre = msyn->preSynapticSection( );
+      auto sectionPost = msyn->postSynapticSection( );
+
+      // axo-somatic
+      if( !sectionPre || ( !sectionPost &&
+          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
+        continue;
+
+
+      auto synInfo = _synapseFixInfo.find( msyn );
+      if( synInfo == _synapseFixInfo.end( ))
+        continue;
+
+      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
+      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
+
+      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
+          sectionPre->nodes( ).size( ) - 1 )
+      {
+        std::cout << "Discarding synapse with pre segment "
+                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
+                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
+                  << std::endl;
+        continue;
+      }
+
+      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
+          sectionPost->nodes( ).size( ) - 1 )
+      {
+        std::cout << "Discarding synapse with post segment "
+                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
+                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
+                  << std::endl;
+        continue;
+      }
+
+      result.push_back( msyn );
+    }
+
+    result.shrink_to_fit( );
+
+    _synapses = result;
+
+    std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
+
+  }
 
   void PathFinder::_loadSynapses( unsigned int presynapticGID,
                                   const gidUSet& postsynapticGIDs )
@@ -875,22 +948,24 @@ namespace syncopa
       if( synInfo == _synapseFixInfo.end( ))
         continue;
 
+      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
+      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
-      if( std::get< TBS_SEGMENT_INDEX >( synInfo->second.first ) >=
+      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
           sectionPre->nodes( ).size( ) - 1 )
       {
         std::cout << "Discarding synapse with pre segment "
-                  << std::get< TBS_SEGMENT_INDEX >( synInfo->second.first )
+                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
                   << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
                   << std::endl;
         continue;
       }
 
-      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( synInfo->second.second ) >=
+      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
           sectionPost->nodes( ).size( ) - 1 )
       {
         std::cout << "Discarding synapse with post segment "
-                  << std::get< TBS_SEGMENT_INDEX >( synInfo->second.second )
+                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
                   << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
                   << std::endl;
         continue;
@@ -928,7 +1003,7 @@ namespace syncopa
     auto it = _pathsPost.find( synapse );
     if( it == _pathsPost.end( ))
     {
-      std::cout << "Error: post path for " << synapse << " NOT FOUND" << std::endl;
+//      std::cout << "Error: post path for " << synapse << " NOT FOUND" << std::endl;
       return utils::EventPolylineInterpolation( );
     }
 

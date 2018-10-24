@@ -88,21 +88,24 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _psManager( nullptr )
 , _pathFinder( nullptr )
 , _dynPathManager( nullptr )
-, _particleSizeThreshold( 1.0f )
+, _particleSizeThreshold( 0.45 )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( true )
-, _colorSelectedPre( 1, 1, 1 )
-, _colorSelectedPost( 0.8, 0.6, 0.6 )
+, _colorSelectedPre( 0.5, 0.5, 1 )
+, _colorSelectedPost( 1, 0.5, 0 )
 , _colorRelated( 0.7, 0.5, 0 )
 , _colorContext( 0.3, 0.3, 0.3 )
 , _colorSynapsesPre( 1, 0, 0 )
 , _colorSynapsesPost( 1, 0, 1 )
 , _colorPathsPre( 0, 1, 0 )
 , _colorPathsPost( 0, 0, 1 )
+, _colorSynMapPre( 0.5, 0, 0.5   )
+, _colorSynMapPost( 1, 0, 0 )
 , _alphaSynapsesPre( 0.85f )
 , _alphaSynapsesPost( 0.85f )
 , _alphaPathsPre( 0.1f )
 , _alphaPathsPost( 0.1f )
+, _alphaSynapseMapPre( 0.20f )
 , _showSelectedPre( true )
 , _showSelectedPost( true )
 , _showRelated( true )
@@ -123,6 +126,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _msaaTextureDepth( 0 )
 , _currentWidth( 0 )
 , _currentHeight( 0 )
+, _mapSynapseValues( false )
+, _currentSynapseAttrib( TBSA_SYNAPSE_OTHER )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 5000 );
@@ -252,7 +257,10 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   _gidsAll = gids;
 
   createParticleSystem( );
-  setupSynapses( gids );
+
+  _pathFinder->loadSynapses( _gidsAll );
+  auto& synapses = _pathFinder->getSynapses( );
+  setupSynapses( synapses );
 
   home( );
 }
@@ -270,7 +278,7 @@ void OpenGLWidget::createParticleSystem( void )
   _particlesShader->autocatching( true );
 
   _psManager = new syncopa::PSManager( );
-  _psManager->init( 500000 );
+  _psManager->init( _pathFinder, 500000 );
 
   _psManager->colorSynapses( vec4( _colorSynapsesPre.x( ), _colorSynapsesPre.y( ),
                                    _colorSynapsesPre.z( ), _alphaSynapsesPre ),
@@ -288,6 +296,16 @@ void OpenGLWidget::createParticleSystem( void )
                                 _colorPathsPost.z( ), _alphaPathsPost ),
                           POSTSYNAPTIC );
 
+  _psManager->colorSynapseMap( vec4( _colorSynMapPre.x( ), _colorSynMapPre.y( ),
+                                _colorSynMapPre.z( ), _alphaSynapseMapPre ),
+                          PRESYNAPTIC );
+
+  _psManager->colorSynapseMap( vec4( _colorSynMapPost.x( ), _colorSynMapPost.y( ),
+                                _colorSynMapPost.z( ), _alphaSynapseMapPre ),
+                          POSTSYNAPTIC );
+
+
+
   _psManager->sizeSynapses( 8.0, PRESYNAPTIC );
   _psManager->sizeSynapses( 8.0, POSTSYNAPTIC );
 
@@ -297,41 +315,15 @@ void OpenGLWidget::createParticleSystem( void )
   _dynPathManager->init( _pathFinder, _psManager );
 }
 
-
-void OpenGLWidget::setupSynapses( const gidUSet& /*gidsPre*/,
-                                  const gidUSet& gidsPost)
+void OpenGLWidget::setupSynapses( void )
 {
-
   auto& synapses = _pathFinder->getSynapses( );
+  setupSynapses( synapses );
+}
 
-  std::vector< vec3 > positionsPre;
-  std::vector< vec3 > positionsPost;
-  positionsPre.reserve( synapses.size( ));
-  positionsPost.reserve( synapses.size( ));
-
-  _currentSynapses.clear( );
-
-  unsigned int counter = 0;
-  for( auto syn : synapses )
-  {
-    unsigned int postGid = syn->postSynapticNeuron( );
-    if( gidsPost.size( ) > 0 && gidsPost.find( postGid ) == gidsPost.end( ))
-      continue;
-
-    auto morphoSyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
-
-    positionsPre.push_back( morphoSyn->preSynapticSurfacePosition( ));
-    positionsPost.push_back( morphoSyn->postSynapticSurfacePosition( ));
-
-    _currentSynapses.push_back( morphoSyn );
-
-    ++counter;
-  }
-
-  std::cout << " Loaded " << counter << " synapses." << std::endl;
-
-  _psManager->setupSynapses( positionsPre, PRESYNAPTIC );
-  _psManager->setupSynapses( positionsPost, POSTSYNAPTIC );
+void OpenGLWidget::setupSynapses( const tsynapseVec& synapses )
+{
+  _psManager->configureSynapses( synapses, _mapSynapseValues, _currentSynapseAttrib);
 }
 
 void OpenGLWidget::setupPaths( const gidUSet& gidsPre,
@@ -434,9 +426,11 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 //  std::vector< unsigned int > gidsvPre = { gid };
 //  std::vector< unsigned int > gidsvPost( gidsPost.begin( ), gidsPost.end( ));
 
-  setupSynapses( _gidsSelectedPre );
+  setupSynapses( );
   setupPaths( _gidsSelectedPre, _gidsRelated );
 
+  updateSynapsesVisibility( );
+  updatePathsVisibility( );
 //  setupDynamicPath( gid );
 
   home( );
@@ -461,10 +455,12 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
   setupNeuronMorphologies( );
 
 //  std::set< unsigned int > gidsPre = { _gidsSelectedPre };
-  setupSynapses( _gidsSelectedPre, _gidsSelectedPost );
+  setupSynapses( );
   setupPaths( _gidsSelectedPre, _gidsSelectedPost );
 
-  setupDynamicPath( *_gidsSelectedPre.begin( ) );
+  updateSynapsesVisibility( );
+  updatePathsVisibility( );
+//  setupDynamicPath( *_gidsSelectedPre.begin( ) );
 
   home( );
 
@@ -1040,7 +1036,7 @@ nsol::DataSet* OpenGLWidget::dataset( void )
 
 const std::vector< nsol::MorphologySynapsePtr >& OpenGLWidget::currentSynapses( void )
 {
-  return _currentSynapses;
+  return _pathFinder->getSynapses( );
 }
 
 void OpenGLWidget::colorSelectedPre( const syncopa::vec3& color )
@@ -1103,6 +1099,22 @@ void OpenGLWidget::colorPathsPost( const syncopa::vec3& color )
   _psManager->colorPaths( composedColor, syncopa::POSTSYNAPTIC );
 }
 
+void OpenGLWidget::colorSynapseMapPre( const syncopa::vec3& color )
+{
+  _colorSynMapPre = color;
+
+  syncopa::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaSynapseMapPre );
+  _psManager->colorSynapseMap( composedColor, syncopa::PRESYNAPTIC );
+}
+
+void OpenGLWidget::colorSynapseMapPost( const syncopa::vec3& color )
+{
+  _colorSynMapPost = color;
+
+  syncopa::vec4 composedColor( color.x( ), color.y( ), color.z( ), _alphaSynapseMapPre );
+  _psManager->colorSynapseMap( composedColor, syncopa::POSTSYNAPTIC );
+}
+
 
 const syncopa::vec3& OpenGLWidget::colorSelectedPre( void ) const
 {
@@ -1150,6 +1162,35 @@ const syncopa::vec3& OpenGLWidget::colorPathsPost( void ) const
   return _colorPathsPost;
 }
 
+const syncopa::vec3& OpenGLWidget::colorSynapseMapPre( void ) const
+{
+  return _colorSynMapPre;
+}
+
+
+void OpenGLWidget::colorSynapseMap( const tQColorVec& qcolors )
+{
+  _colorSynMap = qcolors;
+
+  tColorVec colors;
+  colors.reserve( qcolors.size( ));
+
+  for( auto color : qcolors )
+  {
+    glm::vec4 composedColor = qtToGLM( color.second );
+    composedColor.w = _alphaSynapseMapPre;
+
+    colors.emplace_back( std::make_pair( color.first, composedColor ));
+  }
+
+  _psManager->colorSynapseMap( colors );
+}
+
+tQColorVec OpenGLWidget::colorSynapseMap( void ) const
+{
+  return _colorSynMap;
+}
+
 //bool OpenGLWidget::showDialog( QColor& current, const std::string& message )
 //{
 //  QColor result = QColorDialog::getColor( current, this,
@@ -1165,6 +1206,18 @@ const syncopa::vec3& OpenGLWidget::colorPathsPost( void ) const
 //    return false;
 //
 //}
+
+void OpenGLWidget::updatePathsVisibility( void )
+{
+  _psManager->showPaths( _showPathsPre, PRESYNAPTIC );
+  _psManager->showPaths( _showPathsPost, POSTSYNAPTIC );
+}
+
+void OpenGLWidget::updateSynapsesVisibility( void )
+{
+  _psManager->showSynapses( _showSynapsesPre, PRESYNAPTIC );
+  _psManager->showSynapses( _showSynapsesPost, POSTSYNAPTIC );
+}
 
 void OpenGLWidget::showSelectedPre( int state )
 {
@@ -1209,53 +1262,6 @@ void OpenGLWidget::showPathsPost( int state )
   _psManager->showPaths( state, syncopa::POSTSYNAPTIC );
 }
 
-void OpenGLWidget::setupDynamicPath( unsigned int /*gidPre*/ )
-{
-//  std::set< unsigned int > gidsPre = { gidPre };
-//  auto synapses = _pathFinder->getSynapses( gidsPre );
-
-//  for( auto syn : synapses )
-//    synapses.push_back( dynamic_cast< nsol::MorphologySynapsePtr >( syn ));
-
-//  _dynPathManager->clear( );
-
-//  auto sectionsInfo = _pathFinder->parseSections( synapses, PRESYNAPTIC );
-
-//  _dynPathManager->createRootSources( );
-
-//  tPosVec positions;
-//  std::vector< nsol::NeuronMorphologySectionPtr > sections;
-//
-//  for( auto syn : synapses )
-//  {
-//    auto msyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
-//
-//   sections = _pathFinder->findPathToSoma( msyn, PRESYNAPTIC );
-//    break;
-//  }
-//
-//  auto transform = _pathFinder->getTransform( gidPre );
-//
-//  std::cout << "Nodes: " << std::endl;
-//
-//  for( auto sec : sections )
-//  {
-////    for( auto node : sec->nodes( ))
-//    for( auto node = sec->nodes( ).rbegin( ); node != sec->nodes( ).rend( ); ++node )
-//    {
-//      positions.push_back( transformPoint(( *node )->point( ), transform ));
-//
-//      std::cout << " " << positions.back( );
-//    }
-//  }
-//
-//  std::cout << std::endl;
-//
-//  _psManager->setupDynamicPath( positions );
-
-
-}
-
 void OpenGLWidget::startDynamic( void )
 {
   stopDynamic( );
@@ -1266,5 +1272,24 @@ void OpenGLWidget::startDynamic( void )
 void OpenGLWidget::stopDynamic( void )
 {
   _dynPathManager->clear( );
+}
+
+void OpenGLWidget::setSynapseMappingState( bool state )
+{
+  _mapSynapseValues = state;
+  _psManager->configureSynapses( _pathFinder->getSynapses( ),
+                                 state, _currentSynapseAttrib );
+}
+
+void OpenGLWidget::setSynapseMapping( int attrib )
+{
+  if( attrib < 0 || ( attrib > (int) TBSA_SYNAPSE_OTHER ))
+    return;
+
+  std::cout << "Synapse mapping changed to attribute " << attrib << std::endl;
+
+  _currentSynapseAttrib = ( TBrainSynapseAttribs ) attrib;
+  _psManager->configureSynapses( _pathFinder->getSynapses( ),
+                                 true, _currentSynapseAttrib );
 }
 

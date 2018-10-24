@@ -11,13 +11,17 @@
 
 #include "types.h"
 
+#include <QPolygonF>
+
 #include <prefr/prefr.h>
 #include <reto/reto.h>
 #include <nlgeometry/nlgeometry.h>
 
+#include "PathFinder.h"
 #include "prefr/SourceMultiPosition.h"
 #include "prefr/UpdaterStaticPosition.h"
 #include "prefr/MobilePolylineSource.h"
+#include "prefr/UpdaterMappedValue.h"
 
 namespace syncopa
 {
@@ -29,7 +33,8 @@ public:
     PSManager( void );
     ~PSManager( void );
 
-    void init( unsigned int maxParticles = 500000 );
+    void init( PathFinder* pathFinder,
+               unsigned int maxParticles = 500000 );
 
     prefr::ParticleSystem* particleSystem( void );
 
@@ -59,6 +64,13 @@ public:
     float sizePaths( TNeuronConnection type = PRESYNAPTIC ) const;
     void sizePaths( float size, TNeuronConnection type = PRESYNAPTIC );
 
+    vec4 colorSynapseMap( TNeuronConnection type = PRESYNAPTIC ) const;
+    void colorSynapseMap( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
+    void colorSynapseMap( const tColorVec& colors );
+
+    float sizeSynapseMap( TNeuronConnection type = PRESYNAPTIC ) const;
+    void sizeSynapseMap( float size, TNeuronConnection type = PRESYNAPTIC );
+
     void showSynapses( bool state, TNeuronConnection type = PRESYNAPTIC );
     void showPaths( bool state, TNeuronConnection type = PRESYNAPTIC );
 
@@ -70,10 +82,26 @@ public:
     MobilePolylineSource* getSpareMobileSouce( TNeuronConnection type = PRESYNAPTIC );
     void releaseMobileSource( MobilePolylineSource* source_ );
 
+    void configureSynapses( const tsynapseVec& synapses,
+                            bool mapValues = false,
+                            TBrainSynapseAttribs attrib = TBSA_SYNAPSE_OTHER,
+                            TNeuronConnection type = ALL_CONNECTIONS );
+
+    void mapSynapses( const tsynapseVec& synapses,
+                      TNeuronConnection type, TBrainSynapseAttribs attrib );
+
 
 protected:
 
+    void _generateHistogram( const std::vector< float >& values,
+                             float minValue, float maxValue );
+
+    void _updateBoundingBox( const std::vector< vec3 > positions,
+                             bool clear = true );
+
     prefr::ParticleSystem* _particleSystem;
+
+    PathFinder* _pathFinder;
 
     unsigned int _maxParticles;
 
@@ -83,12 +111,25 @@ protected:
     prefr::Model* _modelSynPre;
     prefr::Model* _modelSynPost;
 
+    vec4 _colorSynPre;
+    vec4 _colorSynPost;
+
+    prefr::Model* _modelSynMap;
+//    prefr::Model* _modelSynMapPost;
+
+    vec4 _colorSynMapStart;
+    vec4 _colorSynMapEnd;
+
     // Models for pre and postsynaptic paths between neurons
     prefr::Model* _modelPathPre;
     prefr::Model* _modelPathPost;
 
+    vec4 _colorPathPre;
+    vec4 _colorPathPost;
+
     prefr::Model* _modelDynPre;
     prefr::Model* _modelDynPost;
+
     float _dynamicVelocityModule;
 
     SourceMultiPosition* _sourceSynPre;
@@ -116,9 +157,18 @@ protected:
     prefr::Cluster* _clusterPathPost;
 
     UpdaterStaticPosition* _updaterSynapses;
+    UpdaterMappedValue* _updaterMapperSynapses;
     prefr::Updater* _normalUpdater;
 
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
+
+    std::unordered_map< unsigned int, unsigned int > _gidToParticleId;
+
+    unsigned int _binsNumber;
+    std::vector< unsigned int > _synapseAttribHistogram;
+    QPolygonF _histoFunction;
+
+
   };
 
 

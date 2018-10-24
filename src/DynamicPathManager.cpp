@@ -187,7 +187,7 @@ namespace syncopa
 //      std::cout << "Creating source for synapse " << synapse->gid( ) << std::endl;
       auto path = _pathFinder->getPostsynapticPath( synapse );
 
-      if( path.empty( ))
+      if( path.empty( ) && synapse->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC )
       {
         std::cout << "Error: Assigning empty post path to synapse " << synapse << std::endl;
         continue;

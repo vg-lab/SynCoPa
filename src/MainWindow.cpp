@@ -15,7 +15,6 @@
 #include <QGroupBox>
 #include <QScrollArea>
 #include <QColorDialog>
-#include <QCheckBox>
 
 // #include "qt/CustomSlider.h"
 
@@ -56,6 +55,43 @@ MainWindow::MainWindow( QWidget* parent_,
 , _widgetInfoPre( nullptr )
 , _widgetInfoPost( nullptr )
 , _dockColor( nullptr )
+, _frameColorMorphoPre( nullptr )
+, _frameColorMorphoPost( nullptr )
+, _frameColorMorphoRelated( nullptr )
+, _frameColorMorphoContext( nullptr )
+, _frameColorSynapsesPre( nullptr )
+, _frameColorSynapsesPost( nullptr )
+, _frameColorPathsPre( nullptr )
+, _frameColorPathsPost( nullptr )
+, _checkMorphoPre( nullptr )
+, _checkMorphoPost( nullptr )
+, _checkMorphoRelated( nullptr )
+, _checkMorphoContext( nullptr )
+, _checkSynapsesPre( nullptr )
+, _checkSynapsesPost( nullptr )
+, _checkPathsPre( nullptr )
+, _checkPathsPost( nullptr )
+, _frameColorSynapseMapGradient( nullptr )
+, _colorMapWidget( nullptr )
+, _sliderAlphaSynapsesPre( nullptr )
+, _sliderAlphaSynapsesPost( nullptr )
+, _sliderAlphaPathsPre( nullptr )
+, _sliderAlphaPathsPost( nullptr )
+, _sliderAlphaSynapseMap( nullptr )
+, _spinBoxSynapsesPre( nullptr )
+, _spinBoxSynapsesPost( nullptr )
+, _spinBoxPathsPre( nullptr )
+, _spinBoxPathsPost( nullptr )
+, _spinBoxSynapseMapSize( nullptr )
+, _labelTransSynPre( nullptr )
+, _labelTransSynPost( nullptr )
+, _labelTransPathPre( nullptr )
+, _labelTransPathPost( nullptr )
+, _labelTransSynMap( nullptr )
+
+, _buttonDynamic( nullptr )
+, _comboSynapseMapAttrib( nullptr )
+
 {
   _ui->setupUi( this );
 
@@ -162,23 +198,23 @@ void MainWindow::initColorDock( void )
   QGroupBox* groupBoxSynapses = new QGroupBox( "Synapses" );
   QGroupBox* groupBoxPaths = new QGroupBox( "Paths" );
 
-  QCheckBox* checkMorphoPre = new QCheckBox( "Presynaptic" );
-  QCheckBox* checkMorphoPost = new QCheckBox( "Postsynaptic" );
-  QCheckBox* checkMorphoRelated = new QCheckBox( "Related" );
-  QCheckBox* checkMorphoContext = new QCheckBox( "Context" );
-  QCheckBox* checkSynapsesPre = new QCheckBox( "Presynaptic" );
-  QCheckBox* checkSynapsesPost = new QCheckBox( "Postsynaptic" );
-  QCheckBox* checkPathsPre = new QCheckBox( "Presynaptic" );
-  QCheckBox* checkPathsPost = new QCheckBox( "Postsynaptic" );
+  _checkMorphoPre = new QCheckBox( "Presynaptic" );
+  _checkMorphoPost = new QCheckBox( "Postsynaptic" );
+  _checkMorphoRelated = new QCheckBox( "Related" );
+  _checkMorphoContext = new QCheckBox( "Context" );
+  _checkSynapsesPre = new QCheckBox( "Presynaptic" );
+  _checkSynapsesPost = new QCheckBox( "Postsynaptic" );
+  _checkPathsPre = new QCheckBox( "Presynaptic" );
+  _checkPathsPost = new QCheckBox( "Postsynaptic" );
 
-  checkMorphoPre->setChecked( true );
-  checkMorphoPost->setChecked( true );
-  checkMorphoRelated->setChecked( true );
-  checkMorphoContext->setChecked( true );
-  checkSynapsesPre->setChecked( true );
-  checkSynapsesPost->setChecked( true );
-  checkPathsPre->setChecked( true );
-  checkPathsPost->setChecked( true );
+  _checkMorphoPre->setChecked( true );
+  _checkMorphoPost->setChecked( true );
+  _checkMorphoRelated->setChecked( true );
+  _checkMorphoContext->setChecked( true );
+  _checkSynapsesPre->setChecked( true );
+  _checkSynapsesPost->setChecked( true );
+  _checkPathsPre->setChecked( true );
+  _checkPathsPost->setChecked( true );
 
   QGridLayout* morphoLayout = new QGridLayout( );
   groupBoxMorphologies->setLayout( morphoLayout );
@@ -196,14 +232,14 @@ void MainWindow::initColorDock( void )
   _frameColorMorphoPre->setMinimumSize( 20, 20 );
   _frameColorMorphoPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorSelectedPre( ));
+  color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
   _frameColorMorphoPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoPost = new QPushButton( );
   _frameColorMorphoPost->setMinimumSize( 20, 20 );
   _frameColorMorphoPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorSelectedPost( ));
+  color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
   _frameColorMorphoPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoRelated = new QPushButton( );
@@ -217,36 +253,44 @@ void MainWindow::initColorDock( void )
   _frameColorMorphoContext->setMinimumSize( 20, 20 );
   _frameColorMorphoContext->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorContext( ));
+  color = colorEigenToQt( _openGLWidget->colorContext( ));
   _frameColorMorphoContext->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPre = new QPushButton( );
   _frameColorSynapsesPre->setMinimumSize( 20, 20 );
   _frameColorSynapsesPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorSynapsesPre( ));
+  color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
   _frameColorSynapsesPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPost = new QPushButton( );
   _frameColorSynapsesPost->setMinimumSize( 20, 20 );
   _frameColorSynapsesPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorSynapsesPost( ));
+  color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
   _frameColorSynapsesPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPre = new QPushButton( );
   _frameColorPathsPre->setMinimumSize( 20, 20 );
   _frameColorPathsPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorPathsPre( ));
+  color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
   _frameColorPathsPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPost = new QPushButton( );
   _frameColorPathsPost->setMinimumSize( 20, 20 );
   _frameColorPathsPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorPathsPost( ));
+  color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
+
+  _frameColorSynapseMapGradient = new GradientWidget( );
+  _frameColorSynapseMapGradient->setDirection( GradientWidget::HORIZONTAL );
+  _frameColorSynapseMapGradient->setMinimumSize( 200, 50 );
+  _frameColorSynapseMapGradient->setMaximumSize( 200, 50 );
+
+  color = colorEigenToQt( _openGLWidget->colorSynapseMapPre( ));
+  _frameColorSynapseMapGradient->setStyleSheet( "background-color: " + color.name( ));
 
   // Morphologies
 
@@ -254,35 +298,40 @@ void MainWindow::initColorDock( void )
   unsigned int col = 0;
 
   morphoLayout->addWidget( _frameColorMorphoPre, row, col++, 1, 1 );
-  morphoLayout->addWidget( checkMorphoPre, row, col++, 1, 2 );
+  morphoLayout->addWidget( _checkMorphoPre, row, col++, 1, 2 );
 //  morphoLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
 
   morphoLayout->addWidget( _frameColorMorphoPost, row, col++, 1, 1 );
-  morphoLayout->addWidget( checkMorphoPost, row, col++, 1, 2 );
+  morphoLayout->addWidget( _checkMorphoPost, row, col++, 1, 2 );
 //  morphoLayout->addWidget( new QLabel( "Postsynaptic" ), row, col, 1, 2 );
 
   ++row;
   col = 0;
 
   morphoLayout->addWidget( _frameColorMorphoRelated, row, col++, 1, 1 );
-  morphoLayout->addWidget( checkMorphoRelated, row, col++, 1, 2 );
+  morphoLayout->addWidget( _checkMorphoRelated, row, col++, 1, 2 );
 //  morphoLayout->addWidget( new QLabel( "Related" ), row, col++, 1, 2 );
   ++col;
 
   morphoLayout->addWidget( _frameColorMorphoContext, row, col++, 1, 1 );
-  morphoLayout->addWidget( checkMorphoContext, row, col++, 1, 2 );
+  morphoLayout->addWidget( _checkMorphoContext, row, col++, 1, 2 );
 //  morphoLayout->addWidget( new QLabel( "Other" ), row, col, 1, 2 );
-
+//TODO
   // Synapses
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
-
   _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
-
   _sliderAlphaPathsPre = new QSlider( Qt::Horizontal );
-
   _sliderAlphaPathsPost = new QSlider( Qt::Horizontal );
+  _sliderAlphaSynapseMap = new QSlider( Qt::Horizontal );
+
+
+  _labelTransSynPre = new QLabel( );
+  _labelTransSynPost = new QLabel( );
+  _labelTransPathPre = new QLabel( );
+  _labelTransPathPost = new QLabel( );
+  _labelTransSynMap = new QLabel( );
 
   _spinBoxSynapsesPre = new QDoubleSpinBox( );
   _spinBoxSynapsesPre->setValue( 3.0f );
@@ -296,13 +345,40 @@ void MainWindow::initColorDock( void )
   _spinBoxPathsPost = new QDoubleSpinBox( );
   _spinBoxPathsPost->setValue( 3.0f );
 
+  _spinBoxSynapseMapSize = new QDoubleSpinBox( );
+  _spinBoxPathsPost->setValue( 3.0f );
+
+  QCheckBox* checkMapSynapses = new QCheckBox( tr( "Map color" ));
+  _comboSynapseMapAttrib = new QComboBox( );
+
+  QStringList optionList = { "Delay",
+                             "Conductance",
+                             "Utilization",
+                             "Depression",
+                             "Facilitation",
+                             "Decay",
+                             "Efficacy",
+                             "Synapse type" };
+
+  _comboSynapseMapAttrib->addItems( optionList );
+
+  QFrame* line = new QFrame( );
+  line->setFrameShape( QFrame::HLine );
+  line->setFrameShadow( QFrame::Sunken );
+
   row = 0;
   col = 0;
 
+
+//  synLayout->addWidget( line, row, col );
+
+//  ++row;
+  col = 0;
+
   synLayout->addWidget( _frameColorSynapsesPre, row, col++, 1, 1 );
-  synLayout->addWidget( checkSynapsesPre, row, col++, 1, 2 );
+  synLayout->addWidget( _checkSynapsesPre, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
-  ++col;
+//  ++col;
   synLayout->addWidget( _spinBoxSynapsesPre, row, col++, 1, 1 );
   synLayout->addWidget( _sliderAlphaSynapsesPre, row, col, 1, 2 );
 
@@ -310,13 +386,38 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   synLayout->addWidget( _frameColorSynapsesPost, row, col++, 1, 1 );
-  synLayout->addWidget( checkSynapsesPost, row, col++, 1, 2 );
+  synLayout->addWidget( _checkSynapsesPost, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
-  ++col;
+//  ++col;
   synLayout->addWidget( _spinBoxSynapsesPost, row, col++, 1, 1 );
   synLayout->addWidget( _sliderAlphaSynapsesPost, row, col, 1, 2 );
 
   ++row;
+  col = 0;
+
+  synLayout->addWidget( line, row, col, 1, 6 );
+
+  ++row;
+  synLayout->addWidget( checkMapSynapses, row, col++, 1, 2 );
+  ++row;
+  col = 0;
+  synLayout->addWidget( new QLabel( tr( "Synapse attribute" )), row, col++, 1, 2 );
+  ++col;
+  synLayout->addWidget( _comboSynapseMapAttrib, row, col, 1, 2 );
+
+  ++row;
+  col = 0;
+
+  synLayout->addWidget( _frameColorSynapseMapGradient, row, col++, 1, 2 );
+  ++col;
+
+  synLayout->addWidget( _spinBoxSynapseMapSize, row, col++, 1, 1 );
+  synLayout->addWidget( _sliderAlphaSynapseMap, row, col, 1, 2 );
+
+
+  ++row;
+  col = 0;
+
 
   // Paths
 
@@ -324,7 +425,7 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   pathLayout->addWidget( _frameColorPathsPre, row, col++, 1, 1 );
-  pathLayout->addWidget( checkPathsPre, row, col++, 1, 2 );
+  pathLayout->addWidget( _checkPathsPre, row, col++, 1, 2 );
 //  pathLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
   ++col;
   pathLayout->addWidget( _spinBoxPathsPre, row, col++, 1, 1 );
@@ -334,7 +435,7 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   pathLayout->addWidget( _frameColorPathsPost, row, col++, 1, 1 );
-  pathLayout->addWidget( checkPathsPost, row, col++, 1, 2 );
+  pathLayout->addWidget( _checkPathsPost, row, col++, 1, 2 );
 //  pathLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
   ++col;
   pathLayout->addWidget( _spinBoxPathsPost, row, col++, 1, 1 );
@@ -374,23 +475,33 @@ void MainWindow::initColorDock( void )
   connect( _frameColorPathsPost, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
 
+  connect( _frameColorSynapseMapGradient, SIGNAL( clicked( )),
+           this, SLOT( colorSynapseMapClicked()));
 
-  connect( checkMorphoPre, SIGNAL( stateChanged( int )),
+  connect(  _checkMorphoPre, SIGNAL( stateChanged( int )),
            _openGLWidget, SLOT( showSelectedPre( int )));
-  connect( checkMorphoPost, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showSelectedPost( int )));
-  connect( checkMorphoRelated, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showRelated( int )));
-  connect( checkMorphoContext, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showContext( int )));
-  connect( checkSynapsesPre, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showSynapsesPre( int )));
-  connect( checkSynapsesPost, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showSynapsesPost( int )));
-  connect( checkPathsPre, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showPathsPre( int )));
-  connect( checkPathsPost, SIGNAL( stateChanged( int )),
-             _openGLWidget, SLOT( showPathsPost( int )));
+  connect(  _checkMorphoPost, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showSelectedPost( int )));
+  connect(  _checkMorphoRelated, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showRelated( int )));
+  connect(  _checkMorphoContext, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showContext( int )));
+  connect(  _checkSynapsesPre, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showSynapsesPre( int )));
+  connect(  _checkSynapsesPost, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showSynapsesPost( int )));
+  connect(  _checkPathsPre, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showPathsPre( int )));
+  connect(  _checkPathsPost, SIGNAL( stateChanged( int )),
+           _openGLWidget, SLOT( showPathsPost( int )));
+
+  connect( checkMapSynapses, SIGNAL( stateChanged( int )),
+           this, SLOT( setSynapseMappingState( int )));
+
+  connect( _comboSynapseMapAttrib, SIGNAL( currentIndexChanged( int )),
+           _openGLWidget, SLOT( setSynapseMapping( int )));
+
+  checkMapSynapses->setChecked( false );
 
   _dockColor->setWidget( container );
   addDockWidget( Qt::RightDockWidgetArea, _dockColor );
@@ -513,7 +624,7 @@ void MainWindow::updateInfoDock( void )
 
     QFrame* line = new QFrame( );
     line->setFrameShape( QFrame::VLine );
-   line->setFrameShadow( QFrame::Sunken );
+    line->setFrameShadow( QFrame::Sunken );
 
     upperLayout->addWidget( new QLabel( "  GID" ), 0, currentColumn++, 1, 1 );
 
@@ -694,6 +805,39 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
   updateInfoDock( );
 }
 
+
+void MainWindow::setSynapseMappingState( int state )
+{
+//  if( !state )
+//  {
+//    // Disable GUI
+//
+//    std::cout << "Normal mode" << std::endl;
+//  }
+//  else
+//  {
+//
+//    // Enable GUI
+//    std::cout << "Mapping mode" << std::endl;
+//  }
+
+  _frameColorSynapsesPre->setEnabled( !state );
+  _frameColorSynapsesPost->setEnabled( !state );
+  _checkSynapsesPre->setEnabled( !state );
+  _checkSynapsesPost->setEnabled( !state );
+  _sliderAlphaSynapsesPre->setEnabled( !state );
+  _sliderAlphaSynapsesPost->setEnabled( !state );
+  _spinBoxSynapsesPre->setEnabled( !state );
+  _spinBoxSynapsesPost->setEnabled( !state );
+
+  _comboSynapseMapAttrib->setEnabled( state );
+  _sliderAlphaSynapseMap->setEnabled( state );
+  _spinBoxSynapseMapSize->setEnabled( state );
+  _frameColorSynapseMapGradient->setEnabled( state );
+
+  _openGLWidget->setSynapseMappingState( state );
+}
+
 void MainWindow::clear( void )
 {
   _openGLWidget->clear( );
@@ -744,6 +888,7 @@ void MainWindow::colorSelectionClicked( void )
       color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
     else if( frame == _frameColorPathsPost )
       color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
+
     else
     {
       std::cout << "Warning: Frame " << frame << " clicked not connected." << std::endl;
@@ -773,6 +918,39 @@ void MainWindow::colorSelectionClicked( void )
     frame->setStyleSheet( "background-color: " + color.name( ));
 
   }
+}
+
+void MainWindow::colorSynapseMapClicked( void )
+{
+  if( !_colorMapWidget )
+  {
+    _colorMapWidget = new PaletteColorWidget( );
+    _colorMapWidget->init( );
+    _colorMapWidget->loadScoopPalletes( );
+
+    connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
+             this, SLOT( colorSynapseMapAccepted( void )));
+
+    connect( _colorMapWidget, SIGNAL( cancelClicked( void )),
+                 this, SLOT( colorSynapseMapCancelled( void )));
+  }
+
+  _colorMapWidget->show( );
+}
+
+void MainWindow::colorSynapseMapAccepted( void )
+{
+  _frameColorSynapseMapGradient->setGradientStops(
+      _colorMapWidget->getGradientStops( ));
+
+  _openGLWidget->colorSynapseMap( _colorMapWidget->getColors( ));
+
+  _colorMapWidget->hide( );
+}
+
+void MainWindow::colorSynapseMapCancelled( void )
+{
+  _colorMapWidget->hide( );
 }
 
 void MainWindow::dynamic( void )

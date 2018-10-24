@@ -55,6 +55,7 @@ common_find_package( nsol REQUIRED )
 common_find_package( Brion REQUIRED )
 common_find_package( OpenMP )
 common_find_package( gmrvlex )
+common_find_package( scoop REQUIRED )
 
 
 list( APPEND SYNCOPA_DEPENDENT_LIBRARIES

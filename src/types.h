@@ -32,11 +32,16 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <QColor>
+
 typedef Eigen::Vector3f vec3;
 typedef Eigen::Vector4f vec4;
 typedef Eigen::Matrix4f mat4;
 
 typedef std::vector< vec3 > tPosVec;
+
+typedef std::vector< std::pair< float, QColor >> tQColorVec;
+typedef std::vector< std::pair< float, glm::vec4 >> tColorVec;
 
 namespace syncopa
 {
@@ -68,6 +73,23 @@ namespace syncopa
     PATH_FROM_TO,
     PATH_DEPTH
   };
+
+  const double invRGBNormFactor = 1.0 / 255;
+
+  inline glm::vec4 qtToGLM( const QColor& value )
+  {
+    glm::vec4 result( value.red( ) * invRGBNormFactor,
+                      value.green( ) * invRGBNormFactor,
+                      value.blue( ) * invRGBNormFactor,
+                      value.alpha( ) * invRGBNormFactor );
+
+    result.x = std::min( std::max( 0.0f, result.x ), 1.0f );
+    result.y = std::min( std::max( 0.0f, result.y ), 1.0f );
+    result.z = std::min( std::max( 0.0f, result.z ), 1.0f );
+    result.w = std::min( std::max( 0.0f, result.w ), 1.0f );
+
+    return result;
+  }
 
   inline glm::vec3 eigenToGLM( const Eigen::Vector3f& value )
   {

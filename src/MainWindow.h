@@ -18,8 +18,14 @@
 #include <QStandardItemModel>
 #include <QGridLayout>
 #include <QDoubleSpinBox>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QPolygonF>
+
+#include "GradientWidget.h"
 
 #include "OpenGLWidget.h"
+#include "PaletteColorWidget.h"
 
 #include "ui_syncopa.h"
 
@@ -50,7 +56,14 @@ protected slots:
   void presynapticNeuronClicked( const QModelIndex& index );
   void postsynapticNeuronClicked( const QModelIndex& index );
 
+  void setSynapseMappingState( int state );
+
+
+
   void colorSelectionClicked( void );
+  void colorSynapseMapClicked( void );
+  void colorSynapseMapAccepted( void );
+  void colorSynapseMapCancelled( void );
 
   void clear( void );
 
@@ -94,15 +107,39 @@ protected:
   QPushButton* _frameColorPathsPre;
   QPushButton* _frameColorPathsPost;
 
+  QCheckBox* _checkMorphoPre;
+  QCheckBox* _checkMorphoPost;
+  QCheckBox* _checkMorphoRelated;
+  QCheckBox* _checkMorphoContext;
+  QCheckBox* _checkSynapsesPre;
+  QCheckBox* _checkSynapsesPost;
+  QCheckBox* _checkPathsPre;
+  QCheckBox* _checkPathsPost;
+
+  GradientWidget* _frameColorSynapseMapGradient;
+  PaletteColorWidget* _colorMapWidget;
+
   QSlider* _sliderAlphaSynapsesPre;
   QSlider* _sliderAlphaSynapsesPost;
   QSlider* _sliderAlphaPathsPre;
   QSlider* _sliderAlphaPathsPost;
+
+  QSlider* _sliderAlphaSynapseMap;
 
   QDoubleSpinBox* _spinBoxSynapsesPre;
   QDoubleSpinBox* _spinBoxSynapsesPost;
   QDoubleSpinBox* _spinBoxPathsPre;
   QDoubleSpinBox* _spinBoxPathsPost;
 
+  QDoubleSpinBox* _spinBoxSynapseMapSize;
+
+  QLabel* _labelTransSynPre;
+  QLabel* _labelTransSynPost;
+  QLabel* _labelTransPathPre;
+  QLabel* _labelTransPathPost;
+  QLabel* _labelTransSynMap;
+
   QPushButton* _buttonDynamic;
+
+  QComboBox* _comboSynapseMapAttrib;
 };

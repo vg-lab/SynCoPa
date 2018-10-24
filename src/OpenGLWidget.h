@@ -81,6 +81,10 @@ public slots:
   void colorPathsPre( const syncopa::vec3& color );
   void colorPathsPost( const syncopa::vec3& color );
 
+  void colorSynapseMapPre( const syncopa::vec3& color );
+  void colorSynapseMapPost( const syncopa::vec3& color );
+  void colorSynapseMap( const tQColorVec& colors );
+
 
   const syncopa::vec3& colorSelectedPre( void ) const;
   const syncopa::vec3& colorSelectedPost( void ) const;
@@ -91,6 +95,9 @@ public slots:
   const syncopa::vec3& colorPathsPre( void ) const;
   const syncopa::vec3& colorPathsPost( void ) const;
 
+  const syncopa::vec3& colorSynapseMapPre( void ) const;
+  std::vector< std::pair< float, QColor >> colorSynapseMap( void ) const;
+
   void showSelectedPre( int state );
   void showSelectedPost( int state );
   void showRelated( int state );
@@ -100,8 +107,14 @@ public slots:
   void showPathsPre( int state );
   void showPathsPost( int state );
 
+  void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
+  void setSynapseMappingState( bool state );
+
   void startDynamic( void );
   void stopDynamic( void );
+
+  void updatePathsVisibility( void );
+  void updateSynapsesVisibility( void );
 
 protected:
 
@@ -119,12 +132,10 @@ protected:
 
   void setupNeuronMorphologies( void );
 
-  void setupSynapses( const gidUSet& gidsPre,
-                      const gidUSet& gidsPost = gidUSet( ));
+  void setupSynapses( void );
+  void setupSynapses( const tsynapseVec& synapses );
   void setupPaths( const gidUSet& gidsPre,
                    const gidUSet& gidsPost );
-
-  void setupDynamicPath( unsigned int gidPre );
 
   void paintParticles( void );
 
@@ -194,10 +205,17 @@ protected:
   syncopa::vec3 _colorPathsPre;
   syncopa::vec3 _colorPathsPost;
 
+  syncopa::vec3 _colorSynMapPre;
+  syncopa::vec3 _colorSynMapPost;
+
+  tQColorVec _colorSynMap;
+
   float _alphaSynapsesPre;
   float _alphaSynapsesPost;
   float _alphaPathsPre;
   float _alphaPathsPost;
+
+  float _alphaSynapseMapPre;
 
   bool _showSelectedPre;
   bool _showSelectedPost;
@@ -231,7 +249,8 @@ protected:
 
   Eigen::Vector2f _inverseResolution;
 
-
+  bool _mapSynapseValues;
+  TBrainSynapseAttribs _currentSynapseAttrib;
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__

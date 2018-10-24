@@ -39,13 +39,33 @@ namespace syncopa
     tpi_found
   };
 
-  enum tSynapseFixInfo
+  enum TBrainSynapse
   {
-    tsfi_pointer = 0,
-    tsfi_section,
-    tsfi_segmentID,
-    tsfi_distance
+    TBS_SECTION_ID = 0,
+    TBS_SEGMENT_INDEX,
+    TBS_SEGMENT_DISTANCE
   };
+
+  enum TBrainSynapseAttribs
+  {
+    TBSA_SYNAPSE_DELAY = 0,
+    TBSA_SYNAPSE_CONDUCTANCE,
+    TBSA_SYNAPSE_UTILIZATION,
+    TBSA_SYNAPSE_DEPRESSION,
+    TBSA_SYNAPSE_FACILITATION,
+    TBSA_SYNAPSE_DECAY,
+    TBSA_SYNAPSE_EFFICACY,
+    TBSA_SYNAPSE_OTHER
+  };
+
+  enum TBrainSynapseInfo
+  {
+    TBSI_ATTRIBUTES = 0,
+    TBSI_PRESYNAPTIC,
+    TBSI_POSTSYNAPTIC
+  };
+
+
 
   typedef std::tuple< vec3, float, float, unsigned int, bool > tFixedSynapseInfo;
 
@@ -61,10 +81,12 @@ namespace syncopa
 
   typedef std::unordered_set< nsol::NeuronMorphologySectionPtr > tSectionsMap;
 
-  typedef std::tuple< nsolMSynapse_ptr, unsigned int, unsigned int, float > tBrainSynapse;
+  typedef std::tuple< unsigned int, unsigned int, float > tBrainSynapse;
+
+  typedef std::tuple< float, float, float, float, float, float, int > tBrainSynapseAttribs;
 
   typedef std::unordered_map< nsolMSynapse_ptr,
-      std::pair< tBrainSynapse, tBrainSynapse >> TSynapseInfo;
+      std::tuple< tBrainSynapseAttribs, tBrainSynapse, tBrainSynapse >> TSynapseInfo;
 
   class PathFinder
   {
@@ -74,6 +96,8 @@ namespace syncopa
     ~PathFinder( void );
 
     void dataset( nsol::DataSet* dataset_ );
+
+    void loadSynapses( const gidUSet& gids );
 
     void configure( unsigned int presynapticGid, const gidUSet& postsynapticGIDS );
 
