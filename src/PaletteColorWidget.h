@@ -12,6 +12,7 @@
 #include <QRadioButton>
 #include <QComboBox>
 #include <QPushButton>
+#include <QCheckBox>
 
 #include <scoop/scoop.h>
 #include "GradientWidget.h"
@@ -33,12 +34,12 @@ public:
 
   PaletteColorWidget( QWidget* parent_ = nullptr );
 
-  void init( void );
-
-  void loadScoopPalletes( unsigned int colorsNumber = 4 );
+  void init( bool dialog = true );
 
   tQColorVec getColors( void ) const;
   const QGradientStops& getGradientStops( void ) const;
+
+  void setPlot( QPolygonF plot );
 
 signals:
 
@@ -53,6 +54,8 @@ protected slots:
   void radioButtonClicked( bool checked );
   void paletteSelectionChanged( int pallete );
 
+  void checkInvertColorsToggled( int checked );
+
 protected:
 
   void _fillPaletteNames( void );
@@ -61,6 +64,7 @@ protected:
   int _selectionState;
   int _currentPallete;
   unsigned int _paletteSize;
+  bool _invertPaletteColors;
 
   tQColorVec _currentColors;
 
@@ -70,9 +74,11 @@ protected:
   QRadioButton* _radioCategorical;
 //  QRadioButton* _radioCustom; //TODO
 
+  QCheckBox* _checkInvertPalette;
+
   QComboBox* _comboPalettes;
 
-  QPushButton* _buttonAccept;
+  QPushButton* _buttonApply;
   QPushButton* _buttonCancel;
 
 };

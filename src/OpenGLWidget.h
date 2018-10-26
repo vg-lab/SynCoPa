@@ -116,6 +116,8 @@ public slots:
   void updatePathsVisibility( void );
   void updateSynapsesVisibility( void );
 
+  const QPolygonF& getSynapseMappingPlot( void ) const;
+
 protected:
 
   virtual void initializeGL( void );

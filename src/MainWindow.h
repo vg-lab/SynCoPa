@@ -57,7 +57,7 @@ protected slots:
   void postsynapticNeuronClicked( const QModelIndex& index );
 
   void setSynapseMappingState( int state );
-
+  void setSynapseMappingAttribute( int attrib );
 
 
   void colorSelectionClicked( void );
@@ -116,7 +116,7 @@ protected:
   QCheckBox* _checkPathsPre;
   QCheckBox* _checkPathsPost;
 
-  GradientWidget* _frameColorSynapseMapGradient;
+//  GradientWidget* _frameColorSynapseMapGradient;
   PaletteColorWidget* _colorMapWidget;
 
   QSlider* _sliderAlphaSynapsesPre;

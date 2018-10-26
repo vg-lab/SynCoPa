@@ -54,6 +54,7 @@ const QGradientStops& GradientWidget::getGradientStops() const
 void GradientWidget::plot( const QPolygonF& plot_ )
 {
   _plot = plot_;
+  update( );
 }
 
 QPolygonF GradientWidget::plot( void )

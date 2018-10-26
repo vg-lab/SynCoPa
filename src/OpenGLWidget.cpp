@@ -1293,3 +1293,7 @@ void OpenGLWidget::setSynapseMapping( int attrib )
                                  true, _currentSynapseAttrib );
 }
 
+const QPolygonF& OpenGLWidget::getSynapseMappingPlot( void ) const
+{
+  return _psManager->getSynapseMappingPlot( );
+}

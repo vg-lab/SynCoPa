@@ -26,8 +26,7 @@ const static std::vector< std::string > paletteNamesSequential =
 
 const static std::vector< std::string > paletteNamesCategoric =
 {
- "Accent", " Dark2", " Paired", " Pastel1",
- "Pastel2", " Set1", " Set2", " Set3"
+ "Accent", " Dark2", " Paired", " Pastel1", "Pastel2", " Set1", " Set2", " Set3"
 };
 
 PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
@@ -35,16 +34,18 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _selectionState( -1 )
 , _currentPallete( -1 )
 , _paletteSize( 4 )
+, _invertPaletteColors( false )
 , _frameResult( nullptr )
 , _radioSequential( nullptr )
 , _radioCategorical( nullptr )
 //  QRadioButton* _radioCustom; //TODO
+, _checkInvertPalette( nullptr )
 , _comboPalettes( nullptr )
-, _buttonAccept( nullptr )
+, _buttonApply( nullptr )
 , _buttonCancel( nullptr )
 { }
 
-void PaletteColorWidget::init( void )
+void PaletteColorWidget::init( bool dialog )
 {
   _frameResult = new GradientWidget( );
   _frameResult->setMinimumSize( 200, 50 );
@@ -56,8 +57,12 @@ void PaletteColorWidget::init( void )
 
   _comboPalettes = new QComboBox( );
 
-  _buttonAccept = new QPushButton( "Accept" );
-  _buttonCancel = new QPushButton( "Cancel" );
+  _checkInvertPalette = new QCheckBox( "Invert colors" );
+
+  _buttonApply = new QPushButton( "Apply" );
+
+  if( dialog )
+    _buttonCancel = new QPushButton( "Cancel" );
 
   QGroupBox* groupRadioButtons = new QGroupBox( "Palette type: " );
   QGroupBox* groupPaletteSelection= new QGroupBox( "Pallete: " );
@@ -71,23 +76,31 @@ void PaletteColorWidget::init( void )
   QWidget* confirmationButtonsContainer = new QWidget( );
 
   // Radio buttons widget
-  QVBoxLayout* layoutRadio = new QVBoxLayout( );
+  QHBoxLayout* layoutRadio = new QHBoxLayout( );
   layoutRadio->addWidget( _radioSequential );
   layoutRadio->addWidget( _radioCategorical );
 
   groupRadioButtons->setLayout( layoutRadio );
 
   // Palette selection widget
-  QVBoxLayout* paletteLayout = new QVBoxLayout( );
-  paletteLayout->addWidget( _comboPalettes );
-  paletteLayout->addWidget( _frameResult );
+  QGridLayout* paletteLayout = new QGridLayout( );
+  paletteLayout->addWidget( _comboPalettes, 0, 0, 1, 1 );
+  paletteLayout->addWidget( _checkInvertPalette, 0, 1, 1, 1 );
+  paletteLayout->addWidget( _frameResult, 1, 0, 1, ( dialog ? 2 : 1 ) );
   groupPaletteSelection->setLayout( paletteLayout );
 
-  // Confirmation buttons widget
-  QHBoxLayout* confirmLayout = new QHBoxLayout( );
-  confirmLayout->addWidget( _buttonCancel );
-  confirmLayout->addWidget( _buttonAccept );
-  confirmationButtonsContainer->setLayout( confirmLayout );
+  if( dialog )
+  {
+    // Confirmation buttons widget
+    QHBoxLayout* confirmLayout = new QHBoxLayout( );
+    confirmLayout->addWidget( _buttonCancel );
+    confirmLayout->addWidget( _buttonApply );
+    confirmationButtonsContainer->setLayout( confirmLayout );
+  }
+  else
+  {
+    paletteLayout->addWidget( _buttonApply, 1, 1, 1, 1 );
+  }
 
   uppestLayout->addWidget( groupRadioButtons );
   uppestLayout->addWidget( groupPaletteSelection );
@@ -104,19 +117,20 @@ void PaletteColorWidget::init( void )
   connect( _comboPalettes, SIGNAL( currentIndexChanged( int )),
            this, SLOT( paletteSelectionChanged( int )));
 
-  connect( _buttonAccept, SIGNAL( clicked( void )),
+  connect( _checkInvertPalette, SIGNAL( stateChanged( int )),
+           this, SLOT( checkInvertColorsToggled( int )));
+
+  connect( _buttonApply, SIGNAL( clicked( void )),
            this, SLOT( buttonAcceptClicked( void )));
 
-  connect( _buttonCancel, SIGNAL( clicked( void )),
-           this, SLOT( buttonCancelClicked( void )));
+  if( dialog )
+  {
+    connect( _buttonCancel, SIGNAL( clicked( void )),
+             this, SLOT( buttonCancelClicked( void )));
+  }
 
-_radioSequential->setChecked( true );
-}
+  _radioSequential->setChecked( true );
 
-void PaletteColorWidget::loadScoopPalletes( unsigned int )
-{
-//    unsigned int maxSequential = (( unsigned int ) scoop::ColorPalette::Reds ) + 1;
-//    unsigned int maxCategorical = (( unsigned int ) scoop::ColorPalette::Set3 ) + 1;
 }
 
 tQColorVec PaletteColorWidget::getColors( void ) const
@@ -175,8 +189,10 @@ void PaletteColorWidget::_fillColors( void )
 {
   auto colors =
       _selectionState == ( tColorType ) PALETTE_SEQUENTIAL ?
-          tscoopp::colorBrewerSequential(( tpSeq ) _currentPallete, _paletteSize ) :
-          tscoopp::colorBrewerQualitative(( tpCat ) _currentPallete, _paletteSize );
+          tscoopp::colorBrewerSequential(( tpSeq ) _currentPallete,
+                                         _paletteSize, _invertPaletteColors ) :
+          tscoopp::colorBrewerQualitative(( tpCat ) _currentPallete,
+                                          _paletteSize, _invertPaletteColors );
 
   assert( !colors.colors( ).empty( ));
 
@@ -219,3 +235,20 @@ void PaletteColorWidget::paletteSelectionChanged( int palette )
   _fillColors( );
 }
 
+void PaletteColorWidget::checkInvertColorsToggled( int checked )
+{
+  _invertPaletteColors = checked;
+
+  _fillColors( );
+}
+
+void PaletteColorWidget::setPlot( QPolygonF plot )
+{
+  _frameResult->plot( plot );
+
+  std::cout << "Plot: ";
+  for( auto bin : plot )
+    std::cout << " " << bin.x( ) << " " << bin.y( );
+  std::cout << std::endl;
+
+}

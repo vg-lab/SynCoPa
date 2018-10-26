@@ -71,7 +71,7 @@ MainWindow::MainWindow( QWidget* parent_,
 , _checkSynapsesPost( nullptr )
 , _checkPathsPre( nullptr )
 , _checkPathsPost( nullptr )
-, _frameColorSynapseMapGradient( nullptr )
+//, _frameColorSynapseMapGradient( nullptr )
 , _colorMapWidget( nullptr )
 , _sliderAlphaSynapsesPre( nullptr )
 , _sliderAlphaSynapsesPost( nullptr )
@@ -161,7 +161,7 @@ void MainWindow::initListDock( void )
 
 
   QDockWidget* dockList = new QDockWidget( tr( "Selection" ));
-  dockList->setMaximumHeight( 500 );
+  dockList->setMaximumHeight( 250 );
 
   QGridLayout* dockLayout = new QGridLayout( );
 //  dockList->setLayout( dockLayout );
@@ -187,6 +187,8 @@ void MainWindow::initListDock( void )
 void MainWindow::initColorDock( void )
 {
   _dockColor = new QDockWidget( "Aspect" );
+
+  QScrollArea* scrollArea = new QScrollArea( );
 
   QWidget* container = new QWidget( );
 
@@ -284,13 +286,13 @@ void MainWindow::initColorDock( void )
   color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
 
-  _frameColorSynapseMapGradient = new GradientWidget( );
-  _frameColorSynapseMapGradient->setDirection( GradientWidget::HORIZONTAL );
-  _frameColorSynapseMapGradient->setMinimumSize( 200, 50 );
-  _frameColorSynapseMapGradient->setMaximumSize( 200, 50 );
-
-  color = colorEigenToQt( _openGLWidget->colorSynapseMapPre( ));
-  _frameColorSynapseMapGradient->setStyleSheet( "background-color: " + color.name( ));
+//  _frameColorSynapseMapGradient = new GradientWidget( );
+//  _frameColorSynapseMapGradient->setDirection( GradientWidget::HORIZONTAL );
+//  _frameColorSynapseMapGradient->setMinimumSize( 200, 50 );
+//  _frameColorSynapseMapGradient->setMaximumSize( 200, 50 );
+//
+//  color = colorEigenToQt( _openGLWidget->colorSynapseMapPre( ));
+//  _frameColorSynapseMapGradient->setStyleSheet( "background-color: " + color.name( ));
 
   // Morphologies
 
@@ -319,6 +321,13 @@ void MainWindow::initColorDock( void )
 //  morphoLayout->addWidget( new QLabel( "Other" ), row, col, 1, 2 );
 //TODO
   // Synapses
+
+  _colorMapWidget = new PaletteColorWidget( );
+  _colorMapWidget->init( false );
+
+  connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
+           this, SLOT( colorSynapseMapAccepted( void )));
+
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
   _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
@@ -408,8 +417,8 @@ void MainWindow::initColorDock( void )
   ++row;
   col = 0;
 
-  synLayout->addWidget( _frameColorSynapseMapGradient, row, col++, 1, 2 );
-  ++col;
+//  synLayout->addWidget( _frameColorSynapseMapGradient, row, col++, 1, 2 );
+//  ++col;
 
   synLayout->addWidget( _spinBoxSynapseMapSize, row, col++, 1, 1 );
   synLayout->addWidget( _sliderAlphaSynapseMap, row, col, 1, 2 );
@@ -417,6 +426,8 @@ void MainWindow::initColorDock( void )
 
   ++row;
   col = 0;
+
+  synLayout->addWidget( _colorMapWidget, row, col, 4, 6 );
 
 
   // Paths
@@ -475,8 +486,8 @@ void MainWindow::initColorDock( void )
   connect( _frameColorPathsPost, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
 
-  connect( _frameColorSynapseMapGradient, SIGNAL( clicked( )),
-           this, SLOT( colorSynapseMapClicked()));
+//  connect( _frameColorSynapseMapGradient, SIGNAL( clicked( )),
+//           this, SLOT( colorSynapseMapClicked()));
 
   connect(  _checkMorphoPre, SIGNAL( stateChanged( int )),
            _openGLWidget, SLOT( showSelectedPre( int )));
@@ -495,15 +506,18 @@ void MainWindow::initColorDock( void )
   connect(  _checkPathsPost, SIGNAL( stateChanged( int )),
            _openGLWidget, SLOT( showPathsPost( int )));
 
+  checkMapSynapses->setChecked( true );
   connect( checkMapSynapses, SIGNAL( stateChanged( int )),
            this, SLOT( setSynapseMappingState( int )));
 
   connect( _comboSynapseMapAttrib, SIGNAL( currentIndexChanged( int )),
-           _openGLWidget, SLOT( setSynapseMapping( int )));
+           this, SLOT( setSynapseMappingAttribute( int )));
 
   checkMapSynapses->setChecked( false );
 
-  _dockColor->setWidget( container );
+  scrollArea->setWidget( container );
+
+  _dockColor->setWidget( scrollArea );
   addDockWidget( Qt::RightDockWidgetArea, _dockColor );
 }
 
@@ -833,9 +847,18 @@ void MainWindow::setSynapseMappingState( int state )
   _comboSynapseMapAttrib->setEnabled( state );
   _sliderAlphaSynapseMap->setEnabled( state );
   _spinBoxSynapseMapSize->setEnabled( state );
-  _frameColorSynapseMapGradient->setEnabled( state );
+  _colorMapWidget->setEnabled( state );
+//  _frameColorSynapseMapGradient->setEnabled( state );
 
   _openGLWidget->setSynapseMappingState( state );
+
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
+}
+
+void MainWindow::setSynapseMappingAttribute( int attrib )
+{
+  _openGLWidget->setSynapseMapping( attrib );
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
 }
 
 void MainWindow::clear( void )
@@ -922,35 +945,34 @@ void MainWindow::colorSelectionClicked( void )
 
 void MainWindow::colorSynapseMapClicked( void )
 {
-  if( !_colorMapWidget )
-  {
-    _colorMapWidget = new PaletteColorWidget( );
-    _colorMapWidget->init( );
-    _colorMapWidget->loadScoopPalletes( );
+//  if( !_colorMapWidget )
+//  {
+//    _colorMapWidget = new PaletteColorWidget( );
+//    _colorMapWidget->init( );
+//
+//    connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
+//             this, SLOT( colorSynapseMapAccepted( void )));
+//
+//    connect( _colorMapWidget, SIGNAL( cancelClicked( void )),
+//                 this, SLOT( colorSynapseMapCancelled( void )));
+//  }
 
-    connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
-             this, SLOT( colorSynapseMapAccepted( void )));
-
-    connect( _colorMapWidget, SIGNAL( cancelClicked( void )),
-                 this, SLOT( colorSynapseMapCancelled( void )));
-  }
-
-  _colorMapWidget->show( );
+//  _colorMapWidget->show( );
 }
 
 void MainWindow::colorSynapseMapAccepted( void )
 {
-  _frameColorSynapseMapGradient->setGradientStops(
-      _colorMapWidget->getGradientStops( ));
+//  _frameColorSynapseMapGradient->setGradientStops(
+//      _colorMapWidget->getGradientStops( ));
 
   _openGLWidget->colorSynapseMap( _colorMapWidget->getColors( ));
 
-  _colorMapWidget->hide( );
+//  _colorMapWidget->hide( );
 }
 
 void MainWindow::colorSynapseMapCancelled( void )
 {
-  _colorMapWidget->hide( );
+//  _colorMapWidget->hide( );
 }
 
 void MainWindow::dynamic( void )
