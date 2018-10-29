@@ -7,6 +7,7 @@
  *          Do not distribute without further notice.
  */
 
+
 #include <QMainWindow>
 #include <QDockWidget>
 #include <QPushButton>
@@ -22,12 +23,19 @@
 #include <QCheckBox>
 #include <QPolygonF>
 
-#include "GradientWidget.h"
 
 #include "OpenGLWidget.h"
-#include "PaletteColorWidget.h"
-
 #include "ui_syncopa.h"
+
+#include "GradientWidget.h"
+#include "PaletteColorWidget.h"
+#include "DomainManager.h"
+
+
+
+
+
+
 
 namespace Ui
 {
@@ -59,6 +67,14 @@ protected slots:
   void setSynapseMappingState( int state );
   void setSynapseMappingAttribute( int attrib );
 
+  void showSelectedPre( int state );
+  void showSelectedPost( int state );
+  void showRelated( int state );
+  void showContext( int state );
+  void showSynapsesPre( int state );
+  void showSynapsesPost( int state );
+  void showPathsPre( int state );
+  void showPathsPost( int state );
 
   void colorSelectionClicked( void );
   void colorSynapseMapClicked( void );
@@ -84,6 +100,7 @@ protected:
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
+  syncopa::DomainManager* _domainManager;
 
   QDockWidget* _dockList;
   QListView* _listPresynaptic;

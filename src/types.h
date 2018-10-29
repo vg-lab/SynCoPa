@@ -17,11 +17,12 @@
 
 // types.h should be the first file included to ensure
 // GLEW is included before any other GL file
-//#ifndef syncopa_SKIP_GLEW_INCLUDE
+//#ifndef SYNCOPA_SKIP_GLEW_INCLUDE
 //#include <GL/glew.h>
 //#endif
 
 #include <nsol/nsol.h>
+#include <nlgeometry/nlgeometry.h>
 
 #include <Eigen/Eigen>
 
@@ -128,6 +129,35 @@ namespace syncopa
   inline std::ostream& operator<<( std::ostream& stream, const glm::vec3& vec )
   {
     return stream << "("<< vec.x << ", " << vec.y << ", " << vec.z << ")";
+  }
+
+  inline void expandBoundingBox( nlgeometry::AxisAlignedBoundingBox& boundingBox,
+                                 const tPosVec& positions, bool clear_ = false )
+  {
+
+    Eigen::Array3f minimum;
+    Eigen::Array3f maximum;
+
+    if( clear_ )
+    {
+       minimum = Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+       maximum = Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+    }
+    else
+    {
+      minimum = boundingBox.minimum( );
+      maximum = boundingBox.maximum( );
+    }
+
+    for( auto pos : positions )
+    {
+      Eigen::Array3f aux( pos );
+      minimum = minimum.min( aux );
+      maximum = maximum.max( aux );
+    }
+
+    boundingBox.minimum( ) = minimum;
+    boundingBox.maximum( ) = maximum;
   }
 }
 

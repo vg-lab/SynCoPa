@@ -6,13 +6,11 @@
  * @remarks Copyright (c) GMRV/URJC. All rights reserved.
  *          Do not distribute without further notice.
  */
-
 #include "types.h"
 
 #include <QApplication>
 #include "MainWindow.h"
 #include <QDebug>
-
 
 #include <syncopa/version.h>
 

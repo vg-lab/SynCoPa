@@ -16,79 +16,36 @@ namespace syncopa
 {
 
   PathFinder::PathFinder( nsol::DataSet* dataset_ )
-  {
-    dataset( dataset_ );
-  }
+  : _dataset( dataset_ )
+  , _synapseFixInfo( nullptr )
+  , _presynapticGID( 0 )
+  , _maxDepth( 0 )
+  { }
 
   PathFinder::~PathFinder( void )
   {
 
   }
 
-  void PathFinder::dataset( nsol::DataSet* dataset_ )
+  void PathFinder::dataset( nsol::DataSet* dataset_,
+                            TSynapseInfo* synapseInfo )
   {
     _dataset = dataset_;
 
-    if( _dataset )
-    {
-      auto blueConfig = _dataset->blueConfig( );
-
-      brain::Circuit brainCircuit( *blueConfig );
-      brion::GIDSet gidSetBrain = brainCircuit.getGIDs( _dataset->blueConfigTarget( ));
-
-      const brain::Synapses& brainSynapses =
-          brainCircuit.getAfferentSynapses( gidSetBrain,
-                                            brain::SynapsePrefetch::attributes );
-
-      auto synapses = _dataset->circuit( ).synapses( );
-      for( unsigned int i = 0; i < synapses.size( ); ++i )
-      {
-        auto synapse = dynamic_cast< nsolMSynapse_ptr >( synapses[ i ]);
-        auto brainSynapse = brainSynapses[ synapse->gid( ) - 1 ];
-
-        tBrainSynapse infoPre =
-            std::make_tuple( brainSynapse.getPresynapticSectionID( ),
-                             brainSynapse.getPresynapticSegmentID( ),
-                             brainSynapse.getPresynapticDistance( ));
-
-        tBrainSynapse infoPost =
-            std::make_tuple( brainSynapse.getPostsynapticSectionID( ),
-                             brainSynapse.getPostsynapticSegmentID( ),
-                             brainSynapse.getPostsynapticDistance( ));
-
-        tBrainSynapseAttribs attribs =
-            std::make_tuple( brainSynapse.getDelay( ),
-                             brainSynapse.getConductance( ),
-                             brainSynapse.getUtilization( ),
-                             brainSynapse.getDepression( ),
-                             brainSynapse.getFacilitation( ),
-                             brainSynapse.getDecay( ),
-                             brainSynapse.getEfficacy( ));
-
-        _synapseFixInfo.insert(
-            std::make_pair( synapse, std::make_tuple( attribs, infoPre, infoPost )));
-
-      }
-
-      std::cout << "Loaded BRAIN synapse info of " << _synapseFixInfo.size( ) << std::endl;
-      //      calculateFixedSynapseSections( );
-    }
+    _synapseFixInfo = synapseInfo;
   }
 
   void PathFinder::configure( unsigned int presynapticGid,
-                              const gidUSet& postsynapticGIDs )
+                              const gidUSet& postsynapticGIDs,
+                              const tsynapseVec& synapses )
   {
     clear( );
-
-    _loadSynapses( presynapticGid, postsynapticGIDs );
 
     std::cout << "Configuring for presynaptic " << presynapticGid
               << " and post ";
     for( auto gid : postsynapticGIDs )
       std::cout << gid << " ";
     std::cout << std::endl;
-
-    auto& synapses = getSynapses( );
 
     _populateTrees( synapses );
 
@@ -181,8 +138,6 @@ namespace syncopa
 
     _infoSections.clear( );
 
-    _synapses.clear( );
-
     _maxDepth = 0;
   }
 
@@ -190,6 +145,7 @@ namespace syncopa
 
   std::vector< vec3 > PathFinder::getAllPathsPoints( unsigned int gid,
                                                      const gidUSet& gidsPost,
+                                                     const tsynapseVec& synapses,
                                                      float pointSize,
                                                      TNeuronConnection type ) const
   {
@@ -198,7 +154,6 @@ namespace syncopa
     vec3 synapsePos;
 
     std::set< unsigned int > gids = { gid };
-    auto& synapses = getSynapses( );
 
 //    auto synapseSections = processSections( synapses, currentGid, gidsPost );
 //    auto synapseSections = parseSections( synapses, type );
@@ -217,8 +172,8 @@ namespace syncopa
     {
       if( !gidsPost.empty( ) && gidsPost.find( syn->postSynapticNeuron( )) == gidsPost.end( ))
       {
-        std::cout << "ERROR: synapse post neuron " << syn->postSynapticNeuron( )
-                  << " not found in gid set with size" << gidsPost.size( ) << std::endl;
+//        std::cout << "ERROR: synapse post neuron " << syn->gid( )
+//                  << " not found in gid set with size" << gidsPost.size( ) << std::endl;
         continue;
       }
 
@@ -397,8 +352,8 @@ namespace syncopa
 
     for( auto synapse : synapses )
     {
-      auto synInfo = _synapseFixInfo.find( synapse );
-      if( synInfo == _synapseFixInfo.end( ))
+      auto synInfo = _synapseFixInfo->find( synapse );
+      if( synInfo == _synapseFixInfo->end( ))
       {
         std::cout << "ERROR: Synapse " << synapse->gid( ) << " info NOT FOUND" << std::endl;
         continue;
@@ -725,8 +680,8 @@ namespace syncopa
           const auto& sectionSynapses = std::get< tsi_Synapses >( infoSection->second );
           for( auto synapse : sectionSynapses )
           {
-            auto it = _synapseFixInfo.find( synapse.first );
-            if( it != _synapseFixInfo.end( ))
+            auto it = _synapseFixInfo->find( synapse.first );
+            if( it != _synapseFixInfo->end( ))
             {
               auto presynInfo = std::get< TBSI_PRESYNAPTIC >( it->second );
 
@@ -827,160 +782,6 @@ namespace syncopa
   }
 
 
-  const std::vector< nsolMSynapse_ptr >& PathFinder::getSynapses( void ) const
-  {
-    return _synapses;
-  }
-
-  void PathFinder::loadSynapses( const gidUSet& gids )
-  {
-    if( gids.empty( ))
-      return;
-
-    std::vector< nsolMSynapse_ptr > result;
-
-    std::set< unsigned int > gidset( gids.begin( ), gids.end( ));
-
-    auto& circuit = _dataset->circuit( );
-    auto synapseSet = circuit.synapses( gidset,
-                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
-
-    result.reserve( synapseSet.size( ));
-
-    for( auto syn : synapseSet )
-    {
-
-      auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
-      if( !msyn)
-      {
-        std::cout << "EMPTY SYNAPSE " << std::endl;
-        continue;
-      }
-
-      auto sectionPre = msyn->preSynapticSection( );
-      auto sectionPost = msyn->postSynapticSection( );
-
-      // axo-somatic
-      if( !sectionPre || ( !sectionPost &&
-          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
-        continue;
-
-
-      auto synInfo = _synapseFixInfo.find( msyn );
-      if( synInfo == _synapseFixInfo.end( ))
-        continue;
-
-      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
-      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
-
-      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
-          sectionPre->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with pre segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
-                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
-
-      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
-          sectionPost->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with post segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
-                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
-
-      result.push_back( msyn );
-    }
-
-    result.shrink_to_fit( );
-
-    _synapses = result;
-
-    std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
-
-  }
-
-  void PathFinder::_loadSynapses( unsigned int presynapticGID,
-                                  const gidUSet& postsynapticGIDs )
-  {
-    if( presynapticGID == _presynapticGID && postsynapticGIDs.empty( ))
-      return;
-
-    std::vector< nsolMSynapse_ptr > result;
-
-    std::set< unsigned int > gidsPre = { presynapticGID };
-
-    auto& circuit = _dataset->circuit( );
-    auto synapseSet = circuit.synapses( gidsPre,
-                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
-
-
-    result.reserve( synapseSet.size( ));
-
-    for( auto syn : synapseSet )
-    {
-      if( !postsynapticGIDs.empty( ) &&
-          postsynapticGIDs.find( syn->postSynapticNeuron( )) == postsynapticGIDs.end( ))
-        continue;
-
-
-      auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
-      if( !msyn)
-      {
-        std::cout << "EMPTY SYNAPSE " << std::endl;
-        continue;
-      }
-
-      auto sectionPre = msyn->preSynapticSection( );
-      auto sectionPost = msyn->postSynapticSection( );
-
-      // axo-somatic
-      if( !sectionPre || ( !sectionPost &&
-          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
-        continue;
-
-
-      auto synInfo = _synapseFixInfo.find( msyn );
-      if( synInfo == _synapseFixInfo.end( ))
-        continue;
-
-      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
-      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
-
-      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
-          sectionPre->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with pre segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
-                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
-
-      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
-          sectionPost->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with post segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
-                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
-
-      result.push_back( msyn );
-    }
-
-    result.shrink_to_fit( );
-
-    _synapses = result;
-
-    std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
-
-  }
 //
 //  std::vector< nsolMSynapse_ptr > PathFinder::getSynapses( const std::set< unsigned int >& gidsPre ) const
 //  {
@@ -992,11 +793,6 @@ namespace syncopa
 //
 //    return result;
 //  }
-
-  const TSynapseInfo& PathFinder::synapsesInfo( void ) const
-  {
-    return _synapseFixInfo;
-  }
 
   utils::EventPolylineInterpolation PathFinder::getPostsynapticPath( nsolMSynapse_ptr synapse ) const
   {

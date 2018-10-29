@@ -245,10 +245,4 @@ void PaletteColorWidget::checkInvertColorsToggled( int checked )
 void PaletteColorWidget::setPlot( QPolygonF plot )
 {
   _frameResult->plot( plot );
-
-  std::cout << "Plot: ";
-  for( auto bin : plot )
-    std::cout << " " << bin.x( ) << " " << bin.y( );
-  std::cout << std::endl;
-
 }

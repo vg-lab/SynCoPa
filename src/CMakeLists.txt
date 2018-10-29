@@ -5,7 +5,8 @@
 #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-add_definitions(-DSYNCOPA_SKIP_GLEW_INCLUDE )
+add_definitions(-DNEUROLOTS_SKIP_GLEW_INCLUDE )
+#add_definitions(-DSKIP_GLEW_INCLUDE )
 
 set(PROJECT_VERSION_ABI ${${PROJECT_NAME}_VERSION_ABI})
 
@@ -21,8 +22,8 @@ configure_file(${CMAKE_SOURCE_DIR}/CMake/common/cpp/version.h
 configure_file(${CMAKE_SOURCE_DIR}/CMake/common/cpp/version.cpp
   ${PROJECT_BINARY_DIR}/src/syncopa/version.cpp @ONLY)
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
+#set(CMAKE_AUTOMOC ON)
+#set(CMAKE_AUTOUIC ON)
 
 
 set(SYNCOPA_SOURCES
@@ -32,12 +33,14 @@ set(SYNCOPA_SOURCES
   OpenGLWidget.cpp
   PaletteColorWidget.cpp
   GradientWidget.cpp
+  ext/ctkrangeslider.cpp
   
   NeuronScene.cpp
   PSManager.cpp
   PathFinder.cpp
   ConnectivityTree.cpp
   DynamicPathManager.cpp
+  DomainManager.cpp
   
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
@@ -51,16 +54,18 @@ set(SYNCOPA_SOURCES
 
 set(SYNCOPA_HEADERS
   ${PROJECT_BINARY_DIR}/include/syncopa/version.h
-  OpenGLWidget.h
-  MainWindow.h
-  PaletteColorWidget.h
+#  MainWindow.h
+#  OpenGLWidget.h
+#  PaletteColorWidget.h
   GradientWidget.h
+  ext/ctkrangeslider.h
   
   NeuronScene.h
   PSManager.h
   PathFinder.h
   ConnectivityTree.h
   DynamicPathManager.h
+  DomainManager.h
   
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h
@@ -69,6 +74,13 @@ set(SYNCOPA_HEADERS
   
   prefr/PrefrShaders.h
 )
+
+set(SYNCOPA_MOC_HEADERS
+  MainWindow.h
+  OpenGLWidget.h
+  PaletteColorWidget.h
+  )
+
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/include ${PROJECT_BINARY_DIR}/src)

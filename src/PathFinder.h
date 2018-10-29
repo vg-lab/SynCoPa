@@ -88,6 +88,7 @@ namespace syncopa
   typedef std::unordered_map< nsolMSynapse_ptr,
       std::tuple< tBrainSynapseAttribs, tBrainSynapse, tBrainSynapse >> TSynapseInfo;
 
+
   class PathFinder
   {
   public:
@@ -95,15 +96,16 @@ namespace syncopa
     PathFinder( nsol::DataSet* dataset = nullptr );
     ~PathFinder( void );
 
-    void dataset( nsol::DataSet* dataset_ );
+    void dataset( nsol::DataSet* dataset_, TSynapseInfo* synapseInfo  );
 
-    void loadSynapses( const gidUSet& gids );
 
-    void configure( unsigned int presynapticGid, const gidUSet& postsynapticGIDS );
+    void configure( unsigned int presynapticGid,
+                    const gidUSet& postsynapticGIDS,
+                    const tsynapseVec& synapses );
 
     void clear( void );
 
-    const std::vector< nsolMSynapse_ptr >& getSynapses( void ) const;
+//    const std::vector< nsolMSynapse_ptr >& getSynapses( void ) const;
 //    std::vector< nsolMSynapse_ptr > getSynapses( unsigned int gidPre ) const;
 //    std::vector< nsolMSynapse_ptr > getSynapses( const std::set< unsigned int >& gidsPre ) const;
 
@@ -113,6 +115,7 @@ namespace syncopa
 
     std::vector< vec3 > getAllPathsPoints( unsigned int gid,
                                            const gidUSet& gidsPost,
+                                           const tsynapseVec& synapses,
                                            float pointSize,
                                            TNeuronConnection type = PRESYNAPTIC ) const;
 //
@@ -136,14 +139,10 @@ namespace syncopa
     void computedPathFrom( unsigned int sectionID, const utils::EventPolylineInterpolation& path );
     utils::EventPolylineInterpolation computeDeepestPathFrom( unsigned int sectionID );
 
-    const TSynapseInfo& synapsesInfo( void ) const;
-
     std::vector< vec3 > cutLeafSection( unsigned int sectionID ) const;
 
   protected:
 
-    void _loadSynapses( unsigned int presynapticGID,
-                        const gidUSet& postsynapticGIDs );
 
     void _populateTrees( const tsynapseVec& synapses );
 
@@ -163,6 +162,7 @@ namespace syncopa
                                        unsigned int index ) const;
 
     nsol::DataSet* _dataset;
+    TSynapseInfo* _synapseFixInfo;
 
     ConnectivityTree _treePre;
     std::unordered_map< unsigned int, ConnectivityTree > _treePost;
@@ -175,10 +175,6 @@ namespace syncopa
                         utils::PolylineInterpolation > _pathsPost;
 
     std::unordered_set< nsolMSynapse_ptr > _somaSynapses;
-
-    std::vector< nsolMSynapse_ptr > _synapses;
-
-    TSynapseInfo _synapseFixInfo;
 
     unsigned int _presynapticGID;
 

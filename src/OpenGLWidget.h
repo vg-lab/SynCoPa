@@ -7,8 +7,8 @@
  *          Do not distribute without further notice.
  */
 
-#ifndef __VISIMPL__OPENGLWIDGET__
-#define __VISIMPL__OPENGLWIDGET__
+#ifndef __SYNCOPA__OPENGLWIDGET__
+#define __SYNCOPA__OPENGLWIDGET__
 
 #include <QOpenGLFunctions>
 #include <QOpenGLWidget>
@@ -18,20 +18,30 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#define SYNCOPA_SKIP_GLEW_INCLUDE 1
 #define PREFR_SKIP_GLEW_INCLUDE 1
 #define NEUROLOTS_SKIP_GLEW_INCLUDE 1
+#define RETO_SKIP_GLEW_INCLUDE 1
 
-#define SIM_SLIDER_UPDATE_PERIOD 0.5f
 
 #include <nlrender/nlrender.h>
 #include <prefr/prefr.h>
 #include <reto/reto.h>
-#include <nsol/nsol.h>
+#include <nlgeometry/nlgeometry.h>
 
+
+
+#define SIM_SLIDER_UPDATE_PERIOD 0.5f
+
+//#include "types.h"
+
+//#include <nsol/nsol.h>
+//
+#include "DomainManager.h"
 #include "NeuronScene.h"
-#include "PSManager.h"
-#include "PathFinder.h"
-#include "DynamicPathManager.h"
+//#include "PSManager.h"
+//#include "PathFinder.h"
+//#include "DynamicPathManager.h"
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -47,17 +57,13 @@ public:
 
   ~OpenGLWidget( void );
 
-  void createParticleSystem( void );
+  void init( DomainManager* domainManager );
 
-  void loadBlueConfig( const std::string& blueConfigFilePath,
-                       const std::string& target );
-
-  void home( void );
-  void clear( void );
+  void home( nlgeometry::AxisAlignedBoundingBox boundingBox );
 
   void idleUpdate( bool idleUpdate_ = true );
 
-  nsol::DataSet* dataset( void );
+  nlrender::Renderer* nlRenderer( void ) const;
 
 public slots:
 
@@ -67,56 +73,6 @@ public slots:
   void toggleUpdateOnIdle( void );
   void toggleShowFPS( void );
 
-  void selectPresynapticNeuron( unsigned int gid );
-  void selectPostsynapticNeuron( const std::vector< unsigned int >& gid );
-
-  const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
-
-  void colorSelectedPre( const syncopa::vec3& color );
-  void colorSelectedPost( const syncopa::vec3& color );
-  void colorRelated( const syncopa::vec3& color );
-  void colorContext( const syncopa::vec3& color );
-  void colorSynapsesPre( const syncopa::vec3& color );
-  void colorSynapsesPost( const syncopa::vec3& color );
-  void colorPathsPre( const syncopa::vec3& color );
-  void colorPathsPost( const syncopa::vec3& color );
-
-  void colorSynapseMapPre( const syncopa::vec3& color );
-  void colorSynapseMapPost( const syncopa::vec3& color );
-  void colorSynapseMap( const tQColorVec& colors );
-
-
-  const syncopa::vec3& colorSelectedPre( void ) const;
-  const syncopa::vec3& colorSelectedPost( void ) const;
-  const syncopa::vec3& colorRelated( void ) const;
-  const syncopa::vec3& colorContext( void ) const;
-  const syncopa::vec3& colorSynapsesPre( void ) const;
-  const syncopa::vec3& colorSynapsesPost( void ) const;
-  const syncopa::vec3& colorPathsPre( void ) const;
-  const syncopa::vec3& colorPathsPost( void ) const;
-
-  const syncopa::vec3& colorSynapseMapPre( void ) const;
-  std::vector< std::pair< float, QColor >> colorSynapseMap( void ) const;
-
-  void showSelectedPre( int state );
-  void showSelectedPost( int state );
-  void showRelated( int state );
-  void showContext( int state );
-  void showSynapsesPre( int state );
-  void showSynapsesPost( int state );
-  void showPathsPre( int state );
-  void showPathsPost( int state );
-
-  void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
-  void setSynapseMappingState( bool state );
-
-  void startDynamic( void );
-  void stopDynamic( void );
-
-  void updatePathsVisibility( void );
-  void updateSynapsesVisibility( void );
-
-  const QPolygonF& getSynapseMappingPlot( void ) const;
 
 protected:
 
@@ -131,13 +87,6 @@ protected:
   virtual void wheelEvent( QWheelEvent* event );
   virtual void mouseMoveEvent( QMouseEvent* event );
   virtual void keyPressEvent( QKeyEvent* event );
-
-  void setupNeuronMorphologies( void );
-
-  void setupSynapses( void );
-  void setupSynapses( const tsynapseVec& synapses );
-  void setupPaths( const gidUSet& gidsPre,
-                   const gidUSet& gidsPost );
 
   void paintParticles( void );
 
@@ -166,24 +115,14 @@ protected:
   std::chrono::time_point< std::chrono::system_clock > _then;
   std::chrono::time_point< std::chrono::system_clock > _lastFrame;
 
+  syncopa::DomainManager* _domainManager;
   reto::ShaderProgram* _particlesShader;
-//  prefr::ParticleSystem* _particleSystem;
+  prefr::ParticleSystem* _particleSystem;
   nlrender::Renderer* _nlrenderer;
 
-  nsol::DataSet* _dataset;
   syncopa::NeuronScene* _neuronScene;
-  syncopa::PSManager* _psManager;
-  syncopa::PathFinder* _pathFinder;
-  syncopa::DynamicPathManager* _dynPathManager;
-
-  float _particleSizeThreshold;
 
 //  QTimer* _cameraTimer;
-
-  syncopa::TRenderMorpho _neuronsSelectedPre;
-  syncopa::TRenderMorpho _neuronsSelectedPost;
-  syncopa::TRenderMorpho _neuronsRelated;
-  syncopa::TRenderMorpho _neuronsContext;
 
   float _renderSpeed;
   float _maxFPS;
@@ -191,44 +130,6 @@ protected:
   float _elapsedTimeRenderAcc;
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
-
-  gidUSet _gidsAll;
-  gidUSet _gidsSelectedPre;
-  gidUSet _gidsSelectedPost;
-  gidUSet _gidsRelated;
-  gidUSet _gidsOther;
-
-  syncopa::vec3 _colorSelectedPre;
-  syncopa::vec3 _colorSelectedPost;
-  syncopa::vec3 _colorRelated;
-  syncopa::vec3 _colorContext;
-  syncopa::vec3 _colorSynapsesPre;
-  syncopa::vec3 _colorSynapsesPost;
-  syncopa::vec3 _colorPathsPre;
-  syncopa::vec3 _colorPathsPost;
-
-  syncopa::vec3 _colorSynMapPre;
-  syncopa::vec3 _colorSynMapPost;
-
-  tQColorVec _colorSynMap;
-
-  float _alphaSynapsesPre;
-  float _alphaSynapsesPost;
-  float _alphaPathsPre;
-  float _alphaPathsPost;
-
-  float _alphaSynapseMapPre;
-
-  bool _showSelectedPre;
-  bool _showSelectedPost;
-  bool _showRelated;
-  bool _showContext;
-  bool _showSynapsesPre;
-  bool _showSynapsesPost;
-  bool _showPathsPre;
-  bool _showPathsPost;
-
-  std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 
   // Render to texture
   QOpenGLFunctions_4_0_Core* _oglFunctions;
@@ -251,8 +152,6 @@ protected:
 
   Eigen::Vector2f _inverseResolution;
 
-  bool _mapSynapseValues;
-  TBrainSynapseAttribs _currentSynapseAttrib;
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__

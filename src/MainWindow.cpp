@@ -45,6 +45,7 @@ MainWindow::MainWindow( QWidget* parent_,
 : QMainWindow( parent_ )
 , _ui( new Ui::MainWindow )
 , _openGLWidget( nullptr )
+, _domainManager( nullptr )
 , _dockList( nullptr )
 , _listPresynaptic( nullptr )
 , _modelListPre( nullptr )
@@ -116,6 +117,7 @@ void MainWindow::init( void )
 
   _openGLWidget = new OpenGLWidget( 0, 0 );
   this->setCentralWidget( _openGLWidget );
+
   qDebug( ) << _openGLWidget->format( );
 
   if( _openGLWidget->format( ).version( ).first < 4 )
@@ -124,12 +126,15 @@ void MainWindow::init( void )
     exit( -1 );
   }
 
-  _openGLWidget->createParticleSystem( );
+  _domainManager = new syncopa::DomainManager( );
+
+  _domainManager->createParticleSystem( );
 
   initListDock( );
   initColorDock( );
   initInfoDock( );
 
+  _openGLWidget->init( _domainManager );
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
 
   connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),
@@ -234,56 +239,56 @@ void MainWindow::initColorDock( void )
   _frameColorMorphoPre->setMinimumSize( 20, 20 );
   _frameColorMorphoPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
+  color = colorEigenToQt( _domainManager->colorSelectedPre( ));
   _frameColorMorphoPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoPost = new QPushButton( );
   _frameColorMorphoPost->setMinimumSize( 20, 20 );
   _frameColorMorphoPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
+  color = colorEigenToQt( _domainManager->colorSelectedPost( ));
   _frameColorMorphoPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoRelated = new QPushButton( );
   _frameColorMorphoRelated->setMinimumSize( 20, 20 );
   _frameColorMorphoRelated->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt(_openGLWidget->colorRelated( ));
+  color = colorEigenToQt(_domainManager->colorRelated( ));
   _frameColorMorphoRelated->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoContext = new QPushButton( );
   _frameColorMorphoContext->setMinimumSize( 20, 20 );
   _frameColorMorphoContext->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorContext( ));
+  color = colorEigenToQt( _domainManager->colorContext( ));
   _frameColorMorphoContext->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPre = new QPushButton( );
   _frameColorSynapsesPre->setMinimumSize( 20, 20 );
   _frameColorSynapsesPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
+  color = colorEigenToQt( _domainManager->colorSynapsesPre( ));
   _frameColorSynapsesPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPost = new QPushButton( );
   _frameColorSynapsesPost->setMinimumSize( 20, 20 );
   _frameColorSynapsesPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
+  color = colorEigenToQt( _domainManager->colorSynapsesPost( ));
   _frameColorSynapsesPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPre = new QPushButton( );
   _frameColorPathsPre->setMinimumSize( 20, 20 );
   _frameColorPathsPre->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
+  color = colorEigenToQt( _domainManager->colorPathsPre( ));
   _frameColorPathsPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPost = new QPushButton( );
   _frameColorPathsPost->setMinimumSize( 20, 20 );
   _frameColorPathsPost->setMaximumSize( 20, 20 );
 
-  color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
+  color = colorEigenToQt( _domainManager->colorPathsPost( ));
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
 
 //  _frameColorSynapseMapGradient = new GradientWidget( );
@@ -490,21 +495,21 @@ void MainWindow::initColorDock( void )
 //           this, SLOT( colorSynapseMapClicked()));
 
   connect(  _checkMorphoPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSelectedPre( int )));
+            this, SLOT( showSelectedPre( int )));
   connect(  _checkMorphoPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSelectedPost( int )));
+            this, SLOT( showSelectedPost( int )));
   connect(  _checkMorphoRelated, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showRelated( int )));
+            this, SLOT( showRelated( int )));
   connect(  _checkMorphoContext, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showContext( int )));
+            this, SLOT( showContext( int )));
   connect(  _checkSynapsesPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSynapsesPre( int )));
+            this, SLOT( showSynapsesPre( int )));
   connect(  _checkSynapsesPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSynapsesPost( int )));
+            this, SLOT( showSynapsesPost( int )));
   connect(  _checkPathsPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showPathsPre( int )));
+            this, SLOT( showPathsPre( int )));
   connect(  _checkPathsPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showPathsPost( int )));
+            this, SLOT( showPathsPost( int )));
 
   checkMapSynapses->setChecked( true );
   connect( checkMapSynapses, SIGNAL( stateChanged( int )),
@@ -559,7 +564,7 @@ void MainWindow::updateInfoDock( void )
 {
   clearInfoDock( );
 
-  const auto& synapses = _openGLWidget->currentSynapses( );
+  const auto& synapses = _domainManager->getSynapses( );
 
   std::unordered_map< unsigned int, unsigned int > presentSynapsesPre;
   std::unordered_map< unsigned int, unsigned int > presentSynapsesPost;
@@ -707,14 +712,14 @@ void MainWindow::clearInfoDock( void )
 void MainWindow::loadData( const std::string& dataset,
                            const std::string& target )
 {
-  _openGLWidget->loadBlueConfig( dataset, target );
+  _domainManager->loadBlueConfig( dataset, target );
 
   loadPresynapticList( );
 }
 
 void MainWindow::loadPresynapticList( void )
 {
-  nsol::DataSet* nsolData = _openGLWidget->dataset( );
+  auto nsolData = _domainManager->dataSet( );
 
   if( _modelListPre )
     _modelListPre->clear( );
@@ -738,7 +743,7 @@ void MainWindow::loadPresynapticList( void )
 
 void MainWindow::loadPostsynapticList( unsigned int gid )
 {
-  nsol::DataSet* nsolData = _openGLWidget->dataset( );
+  auto nsolData = _domainManager->dataSet( );
 
   if( _modelListPost )
     _modelListPost->clear( );
@@ -788,7 +793,7 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
   QStandardItem* value = _modelListPre->itemFromIndex( index );
   gid = value->data( Qt::DisplayRole ).value< unsigned int >( );
 
-  _openGLWidget->selectPresynapticNeuron( gid );
+  _domainManager->selectPresynapticNeuron( gid );
 
   _buttonDynamic->setChecked( false );
 
@@ -797,6 +802,8 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
   loadPostsynapticList( gid );
 
   updateInfoDock( );
+
+  _openGLWidget->home( _domainManager->boundingBox( ));
 }
 
 void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
@@ -807,7 +814,7 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
     selection.push_back( _modelListPost->itemFromIndex( item )->data( Qt::DisplayRole ).value< unsigned int >( ));
   }
 
-  _openGLWidget->selectPostsynapticNeuron( selection );
+  _domainManager->selectPostsynapticNeuron( selection );
 
   _buttonDynamic->setChecked( false );
 
@@ -817,6 +824,8 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
   std::cout << std::endl;
 
   updateInfoDock( );
+
+  _openGLWidget->home( _domainManager->boundingBox( ));
 }
 
 
@@ -850,21 +859,20 @@ void MainWindow::setSynapseMappingState( int state )
   _colorMapWidget->setEnabled( state );
 //  _frameColorSynapseMapGradient->setEnabled( state );
 
-  _openGLWidget->setSynapseMappingState( state );
+  _domainManager->setSynapseMappingState( state );
 
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
+  _colorMapWidget->setPlot( _domainManager->getSynapseMappingPlot( ));
 }
 
 void MainWindow::setSynapseMappingAttribute( int attrib )
 {
-  _openGLWidget->setSynapseMapping( attrib );
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
+  _domainManager->setSynapseMapping( attrib );
+  _colorMapWidget->setPlot( _domainManager->getSynapseMappingPlot( ));
 }
 
 void MainWindow::clear( void )
 {
-  _openGLWidget->clear( );
-
+  _domainManager->clearSelection( );
   _modelListPost->clear( );
 
   updateInfoDock( );
@@ -896,21 +904,21 @@ void MainWindow::colorSelectionClicked( void )
     QString message;
 
     if( frame == _frameColorMorphoPre )
-      color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
+      color = colorEigenToQt( _domainManager->colorSelectedPre( ));
     else if( frame == _frameColorMorphoPost )
-      color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
+      color = colorEigenToQt( _domainManager->colorSelectedPost( ));
     else if( frame == _frameColorMorphoRelated )
-      color = colorEigenToQt( _openGLWidget->colorRelated( ));
+      color = colorEigenToQt( _domainManager->colorRelated( ));
     else if( frame == _frameColorMorphoContext )
-      color = colorEigenToQt( _openGLWidget->colorContext( ));
+      color = colorEigenToQt( _domainManager->colorContext( ));
     else if( frame == _frameColorSynapsesPre )
-      color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
+      color = colorEigenToQt( _domainManager->colorSynapsesPre( ));
     else if( frame == _frameColorSynapsesPost )
-      color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
+      color = colorEigenToQt( _domainManager->colorSynapsesPost( ));
     else if( frame == _frameColorPathsPre )
-      color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
+      color = colorEigenToQt( _domainManager->colorPathsPre( ));
     else if( frame == _frameColorPathsPost )
-      color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
+      color = colorEigenToQt( _domainManager->colorPathsPost( ));
 
     else
     {
@@ -921,27 +929,67 @@ void MainWindow::colorSelectionClicked( void )
     if( showDialog( color, message ))
     {
       if( frame == _frameColorMorphoPre )
-        _openGLWidget->colorSelectedPre( colorQtToEigen( color ));
+        _domainManager->colorSelectedPre( colorQtToEigen( color ));
       else if( frame == _frameColorMorphoPost )
-        _openGLWidget->colorSelectedPost( colorQtToEigen( color ));
+        _domainManager->colorSelectedPost( colorQtToEigen( color ));
       else if( frame == _frameColorMorphoRelated )
-        _openGLWidget->colorRelated( colorQtToEigen( color ));
+        _domainManager->colorRelated( colorQtToEigen( color ));
       else if( frame == _frameColorMorphoContext )
-        _openGLWidget->colorContext( colorQtToEigen( color ));
+        _domainManager->colorContext( colorQtToEigen( color ));
       else if( frame == _frameColorSynapsesPre )
-        _openGLWidget->colorSynapsesPre( colorQtToEigen( color ));
+        _domainManager->colorSynapsesPre( colorQtToEigen( color ));
       else if( frame == _frameColorSynapsesPost )
-        _openGLWidget->colorSynapsesPost( colorQtToEigen( color ));
+        _domainManager->colorSynapsesPost( colorQtToEigen( color ));
       else if( frame == _frameColorPathsPre )
-        _openGLWidget->colorPathsPre ( colorQtToEigen( color ));
+        _domainManager->colorPathsPre ( colorQtToEigen( color ));
       else if( frame == _frameColorPathsPost )
-        _openGLWidget->colorPathsPost( colorQtToEigen( color ));
+        _domainManager->colorPathsPost( colorQtToEigen( color ));
     }
 
     frame->setStyleSheet( "background-color: " + color.name( ));
 
   }
 }
+
+void MainWindow::showSelectedPre( int state )
+{
+  _domainManager->showSelectedPre( state );
+}
+
+void MainWindow::showSelectedPost( int state )
+{
+  _domainManager->showSelectedPost( state );
+}
+
+void MainWindow::showRelated( int state )
+{
+  _domainManager->showRelated( state );
+}
+
+void MainWindow::showContext( int state )
+{
+  _domainManager->showContext( state );
+}
+
+void MainWindow::showSynapsesPre( int state )
+{
+  _domainManager->showSynapsesPre( state );
+}
+void MainWindow::showSynapsesPost( int state )
+{
+  _domainManager->showSynapsesPost( state );
+}
+
+void MainWindow::showPathsPre( int state )
+{
+  _domainManager->showPathsPre( state );
+}
+
+void MainWindow::showPathsPost( int state )
+{
+  _domainManager->showPathsPost( state );
+}
+
 
 void MainWindow::colorSynapseMapClicked( void )
 {
@@ -965,7 +1013,7 @@ void MainWindow::colorSynapseMapAccepted( void )
 //  _frameColorSynapseMapGradient->setGradientStops(
 //      _colorMapWidget->getGradientStops( ));
 
-  _openGLWidget->colorSynapseMap( _colorMapWidget->getColors( ));
+  _domainManager->colorSynapseMap( _colorMapWidget->getColors( ));
 
 //  _colorMapWidget->hide( );
 }
@@ -978,8 +1026,8 @@ void MainWindow::colorSynapseMapCancelled( void )
 void MainWindow::dynamic( void )
 {
   if( _buttonDynamic->isChecked( ))
-    _openGLWidget->startDynamic( );
+    _domainManager->startDynamic( );
   else
-    _openGLWidget->stopDynamic( );
+    _domainManager->stopDynamic( );
 }
 
