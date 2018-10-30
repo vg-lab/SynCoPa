@@ -11,8 +11,6 @@
 
 #include "types.h"
 
-#include <QPolygonF>
-
 #include <prefr/prefr.h>
 #include <reto/reto.h>
 #include <nlgeometry/nlgeometry.h>
@@ -83,21 +81,18 @@ public:
     void releaseMobileSource( MobilePolylineSource* source_ );
 
     void configureSynapses( const tsynapseVec& synapses,
-                            bool mapValues = false,
-                            TBrainSynapseAttribs attrib = TBSA_SYNAPSE_OTHER,
                             TNeuronConnection type = ALL_CONNECTIONS );
 
-    void mapSynapses( const tsynapseVec& synapses,
-                      TNeuronConnection type, TBrainSynapseAttribs attrib );
-
-    const QPolygonF& getSynapseMappingPlot( void ) const;
+    void configureMappedSynapses( const tsynapseVec& synapses,
+                                  const tFloatVec& lifeValues,
+                                  TNeuronConnection type = ALL_CONNECTIONS );
 
 protected:
 
-    void _calculateSynapsesAttribValues( const tsynapseVec& synapses );
+    void _mapSynapses( const tPosVec& positions,
+                      const tFloatVec& lifeValues,
+                      TNeuronConnection type );
 
-    void _generateHistogram( const std::vector< float >& values,
-                             float minValue, float maxValue );
 
     void _updateBoundingBox( const std::vector< vec3 > positions,
                              bool clear = true );
@@ -117,7 +112,6 @@ protected:
     vec4 _colorSynPre;
     vec4 _colorSynPost;
 
-    TBrainSynapseAttribs _currentAttrib;
     prefr::Model* _modelSynMap;
 //    prefr::Model* _modelSynMapPost;
 
@@ -167,16 +161,6 @@ protected:
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
 
     std::unordered_map< unsigned int, unsigned int > _gidToParticleId;
-
-    std::vector< float > _currentAttribValues;
-    std::vector< float > _currentAttribNormValues;
-    float _maxValue;
-    float _minValue;
-
-    unsigned int _binsNumber;
-    std::vector< unsigned int > _synapseAttribHistogram;
-    QPolygonF _histoFunction;
-
 
   };
 

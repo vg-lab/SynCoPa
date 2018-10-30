@@ -32,6 +32,7 @@
 #include "PSManager.h"
 #include "PathFinder.h"
 #include "DynamicPathManager.h"
+#include "DomainManager.h"
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -135,7 +136,6 @@ protected:
   void setupNeuronMorphologies( void );
 
   void setupSynapses( void );
-  void setupSynapses( const tsynapseVec& synapses );
   void setupPaths( const gidUSet& gidsPre,
                    const gidUSet& gidsPost );
 
@@ -175,6 +175,7 @@ protected:
   syncopa::PSManager* _psManager;
   syncopa::PathFinder* _pathFinder;
   syncopa::DynamicPathManager* _dynPathManager;
+  syncopa::DomainManager* _domainManager;
 
   float _particleSizeThreshold;
 
@@ -253,6 +254,7 @@ protected:
 
   bool _mapSynapseValues;
   TBrainSynapseAttribs _currentSynapseAttrib;
+
 };
 
 #endif // __VISIMPL__OPENGLWIDGET__

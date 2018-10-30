@@ -17,7 +17,6 @@ namespace syncopa
   , _maxParticles( 0 )
   , _modelSynPre( nullptr )
   , _modelSynPost( nullptr )
-  , _currentAttrib( TBSA_SYNAPSE_OTHER )
   , _modelSynMap( nullptr )
   , _modelPathPre( nullptr )
   , _modelPathPost( nullptr )
@@ -40,7 +39,6 @@ namespace syncopa
   , _updaterSynapses( nullptr)
   , _updaterMapperSynapses( nullptr )
   , _normalUpdater( nullptr )
-  , _binsNumber( 20 )
   { }
 
   PSManager::~PSManager( void )
@@ -241,182 +239,89 @@ namespace syncopa
   }
 
   void PSManager::configureSynapses( const tsynapseVec& synapses,
-                                     bool mapValues,
-                                     TBrainSynapseAttribs attrib,
                                      const TNeuronConnection type )
   {
-    if( !mapValues )
+
+    std::vector< vec3 > positionsPre;
+    std::vector< vec3 > positionsPost;
+    positionsPre.reserve( synapses.size( ));
+    positionsPost.reserve( synapses.size( ));
+
+    unsigned int counter = 0;
+    for( auto syn : synapses )
     {
+      positionsPre.push_back( syn->preSynapticSurfacePosition( ));
+      positionsPost.push_back( syn->postSynapticSurfacePosition( ));
 
-      std::vector< vec3 > positionsPre;
-      std::vector< vec3 > positionsPost;
-      positionsPre.reserve( synapses.size( ));
-      positionsPost.reserve( synapses.size( ));
-
-      unsigned int counter = 0;
-      for( auto syn : synapses )
-      {
-//        unsigned int postGid = syn->postSynapticNeuron( );
-
-        auto morphoSyn = dynamic_cast< nsol::MorphologySynapsePtr >( syn );
-
-        positionsPre.push_back( morphoSyn->preSynapticSurfacePosition( ));
-        positionsPost.push_back( morphoSyn->postSynapticSurfacePosition( ));
-
-        ++counter;
-      }
-
-      std::cout << " Loaded " << counter << " synapses." << std::endl;
-
-      if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
-        setupSynapses( positionsPre, PRESYNAPTIC );
-
-      if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
-        setupSynapses( positionsPost, POSTSYNAPTIC );
+      ++counter;
     }
-    else
-    {
-      _currentAttrib = attrib;
 
-      _calculateSynapsesAttribValues( synapses );
+    std::cout << " Loaded " << counter << " synapses." << std::endl;
 
-      if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
-        mapSynapses( synapses, PRESYNAPTIC, attrib );
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+      setupSynapses( positionsPre, PRESYNAPTIC );
 
-      if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
-        mapSynapses( synapses, POSTSYNAPTIC, attrib );
-    }
+    if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+      setupSynapses( positionsPost, POSTSYNAPTIC );
   }
 
-  void PSManager::_calculateSynapsesAttribValues( const tsynapseVec& synapses )
+  void PSManager::configureMappedSynapses( const tsynapseVec& synapses,
+                                           const tFloatVec& lifeValues,
+                                           TNeuronConnection type )
   {
-    auto& synapseInfoMap = _pathFinder->synapsesInfo( );
+    assert( synapses.size( ) == lifeValues.size( ));
 
-    std::vector< float > values;
-    values.reserve( synapses.size( ));
+    std::vector< vec3 > positionsPre;
+    std::vector< vec3 > positionsPost;
+    positionsPre.reserve( synapses.size( ));
+    positionsPost.reserve( synapses.size( ));
 
-    float maxValue = 0.0f;
-    float minValue = std::numeric_limits< float >::max( );
-
-    for( auto synapse : synapses )
- //    for( unsigned int i = 0; i < synapses.size( ); ++i )
+    unsigned int counter = 0;
+    for( auto syn : synapses )
     {
- //      auto synapse = synapses[ i ];
+      positionsPre.push_back( syn->preSynapticSurfacePosition( ));
+      positionsPost.push_back( syn->postSynapticSurfacePosition( ));
 
-      auto synapseInfo = synapseInfoMap.find( synapse );
-      assert( synapseInfo != synapseInfoMap.end( ));
-//      if( synapseInfo == synapseInfoMap.end( ))
-//      {
-//        std::cout << "ERROR: " << i << " synapse info " << synapse->gid( ) << " not found." << std::endl;
-//        continue;
-//      }
-
-
-      float value = 0.0f;
-      auto synapseAttribs = std::get< TBSI_ATTRIBUTES >( synapseInfo->second );
-
-      switch( _currentAttrib )
-      {
-        case TBSA_SYNAPSE_DELAY:
-          value = std::get< TBSA_SYNAPSE_DELAY >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_CONDUCTANCE:
-          value = std::get< TBSA_SYNAPSE_CONDUCTANCE >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_UTILIZATION:
-          value = std::get< TBSA_SYNAPSE_UTILIZATION >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_DEPRESSION:
-          value = std::get< TBSA_SYNAPSE_DEPRESSION >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_FACILITATION:
-          value = std::get< TBSA_SYNAPSE_FACILITATION >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_DECAY:
-          value = std::get< TBSA_SYNAPSE_DECAY >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_EFFICACY:
-          value = std::get< TBSA_SYNAPSE_EFFICACY >( synapseAttribs );
-          break;
-        case TBSA_SYNAPSE_OTHER:
-          value = ( unsigned int ) synapse->synapseType( );
-          break;
-      }
-
-      maxValue = std::max( maxValue, value );
-      minValue = std::min( minValue, value );
-
-      values.emplace_back( value );
-
+      ++counter;
     }
 
-    _currentAttribValues = values;
+    std::cout << " Loaded " << counter << " synapses." << std::endl;
 
-    _currentAttribNormValues.clear( );
-    _currentAttribNormValues.resize( values.size( ), 0.0f );
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+      _mapSynapses( positionsPre, lifeValues, PRESYNAPTIC );
 
-    _minValue = minValue;
-    _maxValue = maxValue;
+    if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+      _mapSynapses( positionsPost, lifeValues, POSTSYNAPTIC );
 
-    double invRange = 1.0 / ( maxValue - minValue );
-
-    _generateHistogram( values, minValue, maxValue );
-
-    for( unsigned int i = 0; i < values.size( ); ++i )
-    {
-      float normalizedValue = ( values[ i ] - minValue ) * invRange;
-      normalizedValue = std::min( std::max( 0.0f, normalizedValue ), 1.0f );
-//      _gidToParticleId.insert( std::make_pair( synapses[ i ]->gid( ),
-//                                               particle.id( )));
-      _currentAttribNormValues[ i ] = normalizedValue;
-    }
   }
 
-  void PSManager::mapSynapses( const tsynapseVec& synapses,
-                               TNeuronConnection type,
-                               TBrainSynapseAttribs attrib )
+
+  void PSManager::_mapSynapses( const tPosVec& positions,
+                               const tFloatVec& lifeValues,
+                               TNeuronConnection type )
   {
-    if( synapses.empty( ))
+    if( positions.empty( ))
       return;
 
-    if( _currentAttrib != attrib )
-    {
-      std::cout << "Attributes not matching " << ( unsigned int ) attrib
-                << " " << ( unsigned int ) _currentAttrib
-                << std::endl;
-      return;
-    }
+    assert( positions.size( ) == lifeValues.size( ));
 
     clearSynapses( type );
 
 //    _gidToParticleId.clear( );
 
     auto availableParticles =
-           _particleSystem->retrieveUnused( synapses.size( ));
-
-    tPosVec positions;
-
-    positions.reserve( synapses.size( ));
-
+           _particleSystem->retrieveUnused( positions.size( ));
 
     auto source = ( type == syncopa::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
     auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
     auto model = ( type == syncopa::PRESYNAPTIC ? _modelSynMap : _modelSynMap ); //TODO
 
-//    using tsyn = nsol::MorphologySynapse;
 
-    for( auto synapse : synapses )
-    {
-      positions.emplace_back( ( type == PRESYNAPTIC ) ?
-          synapse->preSynapticSurfacePosition( ) :
-          synapse->postSynapticSurfacePosition( ));
-    }
-
-    for( unsigned int i = 0; i < _currentAttribNormValues.size( ); ++i )
+    for( unsigned int i = 0; i < lifeValues.size( ); ++i )
     {
       auto particle = availableParticles.at( i );
 
-      particle.set_life( _currentAttribNormValues[ i ] );
+      particle.set_life( lifeValues[ i ] );
 
 //      _gidToParticleId.insert( std::make_pair( synapses[ i ]->gid( ),
 //                                               particle.id( )));
@@ -437,68 +342,6 @@ namespace syncopa
     _updateBoundingBox( positions );
   }
 
-  void PSManager::_generateHistogram( const std::vector< float >& values,
-                                      float minValue, float maxValue )
-  {
-    assert( _binsNumber > 0 );
-
-    std::cout << "Total values: " << values.size( ) << std::endl;
-
-    _synapseAttribHistogram.clear( );
-    if( _synapseAttribHistogram.size( ) != _binsNumber )
-      _synapseAttribHistogram.resize( _binsNumber, 0 );
-
-    _histoFunction.clear( );
-
-    float invNormValues = 1.0f / ( maxValue - minValue );
-
-    unsigned int maxBin = 0;
-    unsigned int minBin = std::numeric_limits< unsigned int >::max( );
-
-    for( auto value : values )
-    {
-      unsigned int pos = (( value - minValue ) * invNormValues ) * ( _binsNumber - 1 );
-
-      unsigned int& bin = _synapseAttribHistogram[ pos ];
-      bin += 1;
-    }
-
-    std::cout << "Bins: ";
-    for( auto bin : _synapseAttribHistogram )
-    {
-      std::cout << " " << bin;
-
-      if( bin > maxBin )
-        maxBin = bin;
-
-      if( bin < minBin )
-        minBin = bin;
-
-    }
-    std::cout << std::endl;
-
-    std::cout << "Max bin " << maxBin << " min bin " << minBin << std::endl;
-
-    float step = 1.0f / ( _binsNumber - 1 );
-    float acc = 0.0f;
-
-    double invNormHistogram = 1.0 / ( maxBin - minBin );
-
-    std::cout << "Histogram: ";
-    for( auto bin : _synapseAttribHistogram )
-    {
-      double normalizedY = ( bin - minBin ) * invNormHistogram;
-      double normalizedX = acc;
-
-      _histoFunction.append( QPointF( normalizedX, normalizedY ));
-
-      std::cout << " (" << normalizedX << ", " << normalizedY << ")";
-
-      acc += step;
-    }
-    std::cout << std::endl;
-
-  }
 
   void PSManager::setupSynapses( const std::vector< vec3 > positions,
                                  TNeuronConnection type )
@@ -819,11 +662,5 @@ namespace syncopa
 
 //    _sourceDynPre->restart( );
   }
-
-  const QPolygonF& PSManager::getSynapseMappingPlot( void ) const
-  {
-    return _histoFunction;
-  }
-
 }
 

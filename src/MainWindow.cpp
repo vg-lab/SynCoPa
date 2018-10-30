@@ -851,6 +851,7 @@ void MainWindow::setSynapseMappingState( int state )
 //  _frameColorSynapseMapGradient->setEnabled( state );
 
   _openGLWidget->setSynapseMappingState( state );
+//  setSynapseMappingAttribute( _comboSynapseMapAttrib->currentIndex( ));
 
   _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
 }

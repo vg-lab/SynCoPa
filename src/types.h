@@ -55,10 +55,45 @@ namespace syncopa
   typedef std::vector< unsigned int > gidVec;
   typedef std::set< unsigned int > gidSet;
   typedef std::unordered_set< unsigned int > gidUSet;
+  typedef std::vector< float > tFloatVec;
 
   typedef Eigen::Vector3f vec3;
   typedef Eigen::Vector4f vec4;
   typedef Eigen::Matrix4f mat4;
+
+  typedef std::tuple< unsigned int, unsigned int, float > tBrainSynapse;
+
+  typedef std::tuple< float, float, float, float, float, float, int > tBrainSynapseAttribs;
+
+  typedef std::tuple< tBrainSynapseAttribs, tBrainSynapse, tBrainSynapse > tSynapseData;
+
+  typedef std::unordered_map< nsolMSynapse_ptr, tSynapseData > TSynapseInfo;
+
+  enum TBrainSynapse
+  {
+    TBS_SECTION_ID = 0,
+    TBS_SEGMENT_INDEX,
+    TBS_SEGMENT_DISTANCE
+  };
+
+  enum TBrainSynapseAttribs
+  {
+    TBSA_SYNAPSE_DELAY = 0,
+    TBSA_SYNAPSE_CONDUCTANCE,
+    TBSA_SYNAPSE_UTILIZATION,
+    TBSA_SYNAPSE_DEPRESSION,
+    TBSA_SYNAPSE_FACILITATION,
+    TBSA_SYNAPSE_DECAY,
+    TBSA_SYNAPSE_EFFICACY,
+    TBSA_SYNAPSE_OTHER
+  };
+
+  enum TBrainSynapseInfo
+  {
+    TBSI_ATTRIBUTES = 0,
+    TBSI_PRESYNAPTIC,
+    TBSI_POSTSYNAPTIC
+  };
 
   enum TNeuronConnection
   {
@@ -128,6 +163,43 @@ namespace syncopa
   inline std::ostream& operator<<( std::ostream& stream, const glm::vec3& vec )
   {
     return stream << "("<< vec.x << ", " << vec.y << ", " << vec.z << ")";
+  }
+
+  inline float getSynapseAttribValue( const nsolMSynapse_ptr synapse,
+                                      const tBrainSynapseAttribs& data,
+                                      TBrainSynapseAttribs attrib )
+  {
+    float value;
+
+    switch( attrib )
+    {
+      case TBSA_SYNAPSE_DELAY:
+        value = std::get< TBSA_SYNAPSE_DELAY >( data );
+        break;
+      case TBSA_SYNAPSE_CONDUCTANCE:
+        value = std::get< TBSA_SYNAPSE_CONDUCTANCE >( data );
+        break;
+      case TBSA_SYNAPSE_UTILIZATION:
+        value = std::get< TBSA_SYNAPSE_UTILIZATION >( data );
+        break;
+      case TBSA_SYNAPSE_DEPRESSION:
+        value = std::get< TBSA_SYNAPSE_DEPRESSION >( data );
+        break;
+      case TBSA_SYNAPSE_FACILITATION:
+        value = std::get< TBSA_SYNAPSE_FACILITATION >( data );
+        break;
+      case TBSA_SYNAPSE_DECAY:
+        value = std::get< TBSA_SYNAPSE_DECAY >( data );
+        break;
+      case TBSA_SYNAPSE_EFFICACY:
+        value = std::get< TBSA_SYNAPSE_EFFICACY >( data );
+        break;
+      case TBSA_SYNAPSE_OTHER:
+        value = ( unsigned int ) synapse->synapseType( );
+        break;
+    }
+
+    return value;
   }
 }
 

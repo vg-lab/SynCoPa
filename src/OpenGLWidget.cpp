@@ -88,6 +88,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _psManager( nullptr )
 , _pathFinder( nullptr )
 , _dynPathManager( nullptr )
+, _domainManager( nullptr )
 , _particleSizeThreshold( 0.45 )
 , _elapsedTimeRenderAcc( 0.0f )
 , _alphaBlendingAccumulative( true )
@@ -127,7 +128,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _currentWidth( 0 )
 , _currentHeight( 0 )
 , _mapSynapseValues( false )
-, _currentSynapseAttrib( TBSA_SYNAPSE_OTHER )
+, _currentSynapseAttrib(( TBrainSynapseAttribs ) 0 )
 {
   _camera = new reto::Camera( );
   _camera->farPlane( 5000 );
@@ -138,7 +139,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 
   _pathFinder = new syncopa::PathFinder( );
   _dynPathManager = new syncopa::DynamicPathManager( );
-
+  _domainManager = new syncopa::DomainManager( );
 
   _lastCameraPosition = glm::vec3( 0, 0, 0 );
 
@@ -238,7 +239,9 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   std::cout << "Loading connectivity..." << std::endl;
   _dataset->loadBlueConfigConnectivityWithMorphologies( );
 
-  _pathFinder->dataset( _dataset );
+  _domainManager->dataset( _dataset );
+
+  _pathFinder->dataset( _dataset, &_domainManager->synapsesInfo( ));
 
   _neuronScene = new syncopa::NeuronScene( _dataset );
   std::cout << "Generating meshes..." << std::endl;
@@ -258,9 +261,8 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
 
   createParticleSystem( );
 
-  _pathFinder->loadSynapses( _gidsAll );
-  auto& synapses = _pathFinder->getSynapses( );
-  setupSynapses( synapses );
+  _domainManager->loadSynapses( _gidsAll );
+  setupSynapses( );
 
   home( );
 }
@@ -315,32 +317,39 @@ void OpenGLWidget::createParticleSystem( void )
   _dynPathManager->init( _pathFinder, _psManager );
 }
 
+
 void OpenGLWidget::setupSynapses( void )
 {
-  auto& synapses = _pathFinder->getSynapses( );
-  setupSynapses( synapses );
-}
 
-void OpenGLWidget::setupSynapses( const tsynapseVec& synapses )
-{
-  _psManager->configureSynapses( synapses, _mapSynapseValues, _currentSynapseAttrib);
+  if( !_mapSynapseValues )
+    _psManager->configureSynapses( _domainManager->getSynapses( ) );
+  else
+  {
+    _domainManager->updateSynapseMapping( );
+    _psManager->configureMappedSynapses( _domainManager->getFilteredSynapses( ),
+                                         _domainManager->getFilteredNormValues( ));
+  }
 }
 
 void OpenGLWidget::setupPaths( const gidUSet& gidsPre,
                                const gidUSet& gidsPost )
 {
 
+  auto& synapses = _domainManager->getFilteredSynapses( );
+
   float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
 
   // TODO FIX MULTIPLE PRESYNAPTIC SELECTION
   unsigned int gidPre = *gidsPre.begin( );
   auto points =
-      _pathFinder->getAllPathsPoints( gidPre, gidsPost, pointSize, PRESYNAPTIC );
+      _pathFinder->getAllPathsPoints( gidPre, gidsPost, synapses, pointSize,
+                                      PRESYNAPTIC );
 
   _psManager->setupPath( points, PRESYNAPTIC );
 
   std::cout << "GENERATING POSTSYNAPTIC PATHS" << std::endl;
-  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, pointSize, POSTSYNAPTIC );
+  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, synapses,
+                                           pointSize, POSTSYNAPTIC );
 
   _psManager->setupPath( points, POSTSYNAPTIC );
 }
@@ -398,10 +407,12 @@ void OpenGLWidget::setupNeuronMorphologies( void )
 void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 {
   _gidsSelectedPre = { gid };
-
-  _gidsRelated = _pathFinder->connectedTo( gid );
-
   _gidsSelectedPost.clear( );
+  _dynPathManager->clear( );
+
+  _domainManager->loadSynapses( gid, _gidsSelectedPost );
+
+  _gidsRelated = _domainManager->connectedTo( gid );
 
   _gidsOther = _gidsAll;
 
@@ -414,9 +425,7 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
   for( auto gidToDelete : _gidsRelated )
     _gidsOther.erase( gidToDelete );
 
-
-  _dynPathManager->clear( );
-  _pathFinder->configure( gid, _gidsSelectedPost );
+  _pathFinder->configure( gid, _gidsSelectedPost, _domainManager->getSynapses( ));
 
 //  _gidsOther.erase( _gidsSelectedPre.begin( ), _gidsSelectedPre.end( ));
 //  _gidsOther.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
@@ -438,10 +447,13 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
 void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& gidsv )
 {
+  unsigned int gidPre = *_gidsSelectedPre.begin( );
+
   _gidsSelectedPost = gidUSet( gidsv.begin( ), gidsv.end( ));
 
-  unsigned int gidPre = *_gidsSelectedPre.begin( );
-  _gidsRelated = _pathFinder->connectedTo( gidPre );
+  _domainManager->loadSynapses( gidPre, _gidsSelectedPost );
+
+  _gidsRelated = _domainManager->connectedTo( gidPre );
 
   for( auto gid : _gidsSelectedPost )
     _gidsRelated.erase( gid );
@@ -450,7 +462,7 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
   _gidsOther.clear( );
 
   _dynPathManager->clear( );
-  _pathFinder->configure( *_gidsSelectedPre.begin( ), _gidsSelectedPost );
+  _pathFinder->configure( gidPre , _gidsSelectedPost, _domainManager->getSynapses( ) );
 
   setupNeuronMorphologies( );
 
@@ -1036,7 +1048,7 @@ nsol::DataSet* OpenGLWidget::dataset( void )
 
 const std::vector< nsol::MorphologySynapsePtr >& OpenGLWidget::currentSynapses( void )
 {
-  return _pathFinder->getSynapses( );
+  return _domainManager->getSynapses( );
 }
 
 void OpenGLWidget::colorSelectedPre( const syncopa::vec3& color )
@@ -1276,24 +1288,37 @@ void OpenGLWidget::stopDynamic( void )
 
 void OpenGLWidget::setSynapseMappingState( bool state )
 {
+  if( !_dataset )
+    return;
+
   _mapSynapseValues = state;
-  _psManager->configureSynapses( _pathFinder->getSynapses( ),
-                                 state, _currentSynapseAttrib );
+
+  setupSynapses( );
+  _domainManager->synapseMappingAttrib( _currentSynapseAttrib );
+
+  setupSynapses( );
+//  _psManager->configureSynapses( _pathFinder->getSynapses( ),
+//                                 state, _currentSynapseAttrib );
 }
 
 void OpenGLWidget::setSynapseMapping( int attrib )
 {
+  if( !_dataset )
+      return;
+
   if( attrib < 0 || ( attrib > (int) TBSA_SYNAPSE_OTHER ))
     return;
 
   std::cout << "Synapse mapping changed to attribute " << attrib << std::endl;
 
   _currentSynapseAttrib = ( TBrainSynapseAttribs ) attrib;
-  _psManager->configureSynapses( _pathFinder->getSynapses( ),
-                                 true, _currentSynapseAttrib );
+
+  _domainManager->synapseMappingAttrib( _currentSynapseAttrib );
+
+  setupSynapses( );
 }
 
 const QPolygonF& OpenGLWidget::getSynapseMappingPlot( void ) const
 {
-  return _psManager->getSynapseMappingPlot( );
+  return _domainManager->getSynapseMappingPlot( );
 }

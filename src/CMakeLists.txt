@@ -32,6 +32,7 @@ set(SYNCOPA_SOURCES
   OpenGLWidget.cpp
   PaletteColorWidget.cpp
   GradientWidget.cpp
+  DomainManager.cpp
   
   NeuronScene.cpp
   PSManager.cpp
@@ -55,6 +56,7 @@ set(SYNCOPA_HEADERS
   MainWindow.h
   PaletteColorWidget.h
   GradientWidget.h
+  DomainManager.h
   
   NeuronScene.h
   PSManager.h
