@@ -285,7 +285,7 @@ namespace syncopa
       ++counter;
     }
 
-    std::cout << " Loaded " << counter << " synapses." << std::endl;
+    std::cout << "Configuring " << counter << " mapped synapses." << std::endl;
 
     if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
       _mapSynapses( positionsPre, lifeValues, PRESYNAPTIC );

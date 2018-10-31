@@ -328,6 +328,11 @@ void MainWindow::initColorDock( void )
   connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
            this, SLOT( colorSynapseMapAccepted( void )));
 
+  connect( _colorMapWidget, SIGNAL( filterStateChanged( void )),
+           this, SLOT( filteringStateChanged( void )));
+
+  connect( _colorMapWidget, SIGNAL( filterBoundsChanged( void )),
+             this, SLOT( filteringBoundsChanged( void )));
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
   _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
@@ -982,5 +987,16 @@ void MainWindow::dynamic( void )
     _openGLWidget->startDynamic( );
   else
     _openGLWidget->stopDynamic( );
+}
+
+void MainWindow::filteringStateChanged( void )
+{
+  _openGLWidget->filteringState( _colorMapWidget->filter( ));
+}
+
+void MainWindow::filteringBoundsChanged( void )
+{
+  auto bounds = _colorMapWidget->filterBounds( );
+  _openGLWidget->filteringBounds( bounds.first, bounds.second );
 }
 

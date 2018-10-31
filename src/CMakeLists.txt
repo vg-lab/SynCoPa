@@ -45,6 +45,8 @@ set(SYNCOPA_SOURCES
   prefr/UpdaterMappedValue.cpp
   prefr/MobilePolylineSource.cpp
   
+  ext/ctkrangeslider.cpp
+  
   CMakeSetup.rc
   syncopa.ui
   resources.qrc
@@ -68,6 +70,8 @@ set(SYNCOPA_HEADERS
   prefr/UpdaterStaticPosition.h
   prefr/UpdaterMappedValue.h
   prefr/MobilePolylineSource.h
+  
+  ext/ctkrangeslider.h
   
   prefr/PrefrShaders.h
 )

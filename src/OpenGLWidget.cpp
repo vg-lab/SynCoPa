@@ -115,6 +115,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showSynapsesPost( true )
 , _showPathsPre( true )
 , _showPathsPost( true )
+, _showPaths( false )
 , _oglFunctions( nullptr )
 , _screenPlaneShader( nullptr )
 , _screenPlaneVao( 0 )
@@ -262,6 +263,8 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
   createParticleSystem( );
 
   _domainManager->loadSynapses( _gidsAll );
+  _domainManager->updateSynapseMapping( );
+
   setupSynapses( );
 
   home( );
@@ -325,30 +328,38 @@ void OpenGLWidget::setupSynapses( void )
     _psManager->configureSynapses( _domainManager->getSynapses( ) );
   else
   {
-    _domainManager->updateSynapseMapping( );
     _psManager->configureMappedSynapses( _domainManager->getFilteredSynapses( ),
                                          _domainManager->getFilteredNormValues( ));
   }
 }
 
-void OpenGLWidget::setupPaths( const gidUSet& gidsPre,
-                               const gidUSet& gidsPost )
+void OpenGLWidget::setupPaths( const gidUSet& ,
+                               const gidUSet& )
 {
+  updatePaths( );
+}
+
+void OpenGLWidget::updatePaths( void )
+{
+  if( !_showPaths )
+    return;
 
   auto& synapses = _domainManager->getFilteredSynapses( );
+
+  std::cout << "Generating paths for " << synapses.size( ) << " synpses." << std::endl;
 
   float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
 
   // TODO FIX MULTIPLE PRESYNAPTIC SELECTION
-  unsigned int gidPre = *gidsPre.begin( );
-  auto points =
-      _pathFinder->getAllPathsPoints( gidPre, gidsPost, synapses, pointSize,
-                                      PRESYNAPTIC );
+  unsigned int gidPre = *_lastSelectedPre->begin( );
+
+  auto points = _pathFinder->getAllPathsPoints( gidPre, *_lastSelectedPost,
+                                                synapses, pointSize, PRESYNAPTIC );
 
   _psManager->setupPath( points, PRESYNAPTIC );
 
   std::cout << "GENERATING POSTSYNAPTIC PATHS" << std::endl;
-  points = _pathFinder->getAllPathsPoints( gidPre, gidsPost, synapses,
+  points = _pathFinder->getAllPathsPoints( gidPre, *_lastSelectedPost, synapses,
                                            pointSize, POSTSYNAPTIC );
 
   _psManager->setupPath( points, POSTSYNAPTIC );
@@ -411,6 +422,7 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
   _dynPathManager->clear( );
 
   _domainManager->loadSynapses( gid, _gidsSelectedPost );
+  _domainManager->updateSynapseMapping( );
 
   _gidsRelated = _domainManager->connectedTo( gid );
 
@@ -424,6 +436,11 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
   for( auto gidToDelete : _gidsRelated )
     _gidsOther.erase( gidToDelete );
+
+  _lastSelectedPre = &_gidsSelectedPre;
+  _lastSelectedPost = &_gidsRelated;
+
+  _showPaths = true;
 
   _pathFinder->configure( gid, _gidsSelectedPost, _domainManager->getSynapses( ));
 
@@ -452,6 +469,7 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
   _gidsSelectedPost = gidUSet( gidsv.begin( ), gidsv.end( ));
 
   _domainManager->loadSynapses( gidPre, _gidsSelectedPost );
+  _domainManager->updateSynapseMapping( );
 
   _gidsRelated = _domainManager->connectedTo( gidPre );
 
@@ -460,6 +478,11 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
 //  _gidsRelated.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
 
   _gidsOther.clear( );
+
+  _lastSelectedPre = &_gidsSelectedPre;
+  _lastSelectedPost = &_gidsSelectedPost;
+
+  _showPaths = true;
 
   _dynPathManager->clear( );
   _pathFinder->configure( gidPre , _gidsSelectedPost, _domainManager->getSynapses( ) );
@@ -1293,7 +1316,6 @@ void OpenGLWidget::setSynapseMappingState( bool state )
 
   _mapSynapseValues = state;
 
-  setupSynapses( );
   _domainManager->synapseMappingAttrib( _currentSynapseAttrib );
 
   setupSynapses( );
@@ -1322,3 +1344,17 @@ const QPolygonF& OpenGLWidget::getSynapseMappingPlot( void ) const
 {
   return _domainManager->getSynapseMappingPlot( );
 }
+
+void OpenGLWidget::filteringState( bool state )
+{
+  _domainManager->setSynapseFilteringState( state );
+}
+
+void OpenGLWidget::filteringBounds( float min, float max )
+{
+  _domainManager->setSynapseFilter( min, max, false );
+
+  setupSynapses( );
+  updatePaths( );
+}
+

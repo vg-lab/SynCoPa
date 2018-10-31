@@ -40,9 +40,17 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _radioCategorical( nullptr )
 //  QRadioButton* _radioCustom; //TODO
 , _checkInvertPalette( nullptr )
+, _checkFilterActive( nullptr )
 , _comboPalettes( nullptr )
 , _buttonApply( nullptr )
 , _buttonCancel( nullptr )
+, _rangeFilterSlider( nullptr )
+, _minPosSlider( 0 )
+, _maxPosSlider( 100 )
+, _invPosSlider( 0 )
+, _filtering( false )
+, _currentLowerLimit( 0.0f )
+, _currentUpperLimit( 1.0f )
 { }
 
 void PaletteColorWidget::init( bool dialog )
@@ -58,11 +66,23 @@ void PaletteColorWidget::init( bool dialog )
   _comboPalettes = new QComboBox( );
 
   _checkInvertPalette = new QCheckBox( "Invert colors" );
+  _checkFilterActive = new QCheckBox( "Filtering" );
 
   _buttonApply = new QPushButton( "Apply" );
 
+  unsigned int colDialog = 1;
+
   if( dialog )
+  {
     _buttonCancel = new QPushButton( "Cancel" );
+    colDialog = 2;
+  }
+
+  _rangeFilterSlider = new ctkRangeSlider( Qt::Horizontal );
+  _rangeFilterSlider->setValues( 0, 100 );
+  _rangeFilterSlider->setPositions( 0, 100 );
+  _rangeFilterSlider->setEnabled( false );
+  _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider );
 
   QGroupBox* groupRadioButtons = new QGroupBox( "Palette type: " );
   QGroupBox* groupPaletteSelection= new QGroupBox( "Pallete: " );
@@ -86,7 +106,7 @@ void PaletteColorWidget::init( bool dialog )
   QGridLayout* paletteLayout = new QGridLayout( );
   paletteLayout->addWidget( _comboPalettes, 0, 0, 1, 1 );
   paletteLayout->addWidget( _checkInvertPalette, 0, 1, 1, 1 );
-  paletteLayout->addWidget( _frameResult, 1, 0, 1, ( dialog ? 2 : 1 ) );
+  paletteLayout->addWidget( _frameResult, 1, 0, 1, colDialog );
   groupPaletteSelection->setLayout( paletteLayout );
 
   if( dialog )
@@ -101,6 +121,9 @@ void PaletteColorWidget::init( bool dialog )
   {
     paletteLayout->addWidget( _buttonApply, 1, 1, 1, 1 );
   }
+
+  paletteLayout->addWidget( _rangeFilterSlider, 2, 0, 1, colDialog );
+  paletteLayout->addWidget( _checkFilterActive, 2, colDialog, 1, 1 );
 
   uppestLayout->addWidget( groupRadioButtons );
   uppestLayout->addWidget( groupPaletteSelection );
@@ -128,6 +151,12 @@ void PaletteColorWidget::init( bool dialog )
     connect( _buttonCancel, SIGNAL( clicked( void )),
              this, SLOT( buttonCancelClicked( void )));
   }
+
+  connect( _checkFilterActive, SIGNAL( toggled( bool )),
+           this, SLOT( setFilterActive( bool )));
+
+  connect( _rangeFilterSlider, SIGNAL( positionsChanged( int, int )),
+           this, SLOT( filterSliderChanged( int, int )));
 
   _radioSequential->setChecked( true );
 
@@ -251,4 +280,43 @@ void PaletteColorWidget::setPlot( QPolygonF plot )
     std::cout << " " << bin.x( ) << " " << bin.y( );
   std::cout << std::endl;
 
+}
+
+bool PaletteColorWidget::filter( void ) const
+{
+  return _filtering;
+}
+
+std::pair< float, float > PaletteColorWidget::filterBounds( void ) const
+{
+  return std::make_pair( _currentLowerLimit, _currentUpperLimit );
+}
+
+void PaletteColorWidget::setFilterActive( bool active )
+{
+  std::cout << "Filtering " << std::boolalpha << active << std::endl;
+
+  _filtering = active;
+
+  _rangeFilterSlider->setEnabled( active );
+
+  _frameResult->showLimits( active );
+  _frameResult->update( );
+
+  emit filterStateChanged( );
+}
+
+
+void PaletteColorWidget::filterSliderChanged( int min, int max )
+{
+  _currentLowerLimit = std::min( std::max( min * _invPosSlider, 0.0f ), 1.0f );
+  _currentUpperLimit = std::min( std::max( max * _invPosSlider, 0.0f ), 1.0f );
+
+  std::cout << "Slider min " << _currentLowerLimit
+            << " max " << _currentUpperLimit << std::endl;
+
+  _frameResult->limits( _currentLowerLimit, _currentUpperLimit );
+  _frameResult->update( );
+
+  emit filterBoundsChanged( );
 }

@@ -19,6 +19,8 @@
 
 #include "types.h"
 
+#include "ext/ctkrangeslider.h"
+
 class PaletteColorWidget : public QWidget
 {
 
@@ -41,10 +43,16 @@ public:
 
   void setPlot( QPolygonF plot );
 
+  bool filter( void ) const;
+  std::pair< float, float > filterBounds( void ) const;
+
 signals:
 
   void acceptClicked( );
   void cancelClicked( );
+
+  void filterStateChanged( );
+  void filterBoundsChanged( );
 
 protected slots:
 
@@ -55,6 +63,9 @@ protected slots:
   void paletteSelectionChanged( int pallete );
 
   void checkInvertColorsToggled( int checked );
+
+  void setFilterActive( bool active );
+  void filterSliderChanged( int min, int max );
 
 protected:
 
@@ -75,12 +86,21 @@ protected:
 //  QRadioButton* _radioCustom; //TODO
 
   QCheckBox* _checkInvertPalette;
+  QCheckBox* _checkFilterActive;
 
   QComboBox* _comboPalettes;
 
   QPushButton* _buttonApply;
   QPushButton* _buttonCancel;
 
+  ctkRangeSlider* _rangeFilterSlider;
+  int _minPosSlider;
+  int _maxPosSlider;
+  float _invPosSlider;
+
+  bool _filtering;
+  float _currentLowerLimit;
+  float _currentUpperLimit;
 };
 
 #endif /* SRC_PALETTECOLORWIDGET_H_ */

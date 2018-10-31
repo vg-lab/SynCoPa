@@ -34,6 +34,9 @@ public:
 
   void clearPlot( void );
 
+  void limits( float min, float max );
+  void showLimits( bool show );
+
 signals:
 
   void clicked( void );
@@ -47,6 +50,10 @@ protected:
   QGradientStops _stops;
 
   QPolygonF _plot;
+
+  bool _showLimits;
+  float _limitMin;
+  float _limitMax;
 
 private:
 

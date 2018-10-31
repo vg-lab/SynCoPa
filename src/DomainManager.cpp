@@ -18,12 +18,11 @@ namespace syncopa
   , _maxValue( 0 )
   , _minValue( 0 )
   , _binsNumber( 20 )
+  , _filtering( false )
   , _filterMinValue( std::numeric_limits< float >::min( ) )
   , _filterMaxValue( std::numeric_limits< float >::max( ))
   , _filterInvert( false )
-  {
-
-  }
+  { }
 
   void DomainManager::dataset( nsol::DataSet* dataset_ )
    {
@@ -256,12 +255,23 @@ namespace syncopa
     _generateHistogram( _currentAttribValues, _minValue, _maxValue );
   }
 
-  void DomainManager::setSynapseFilter( float maxValue, float minValue,
+  void DomainManager::setSynapseFilteringState( bool state )
+  {
+    std::cout << "Established filtering to " << std::boolalpha << state << std::endl;
+    _filtering = state;
+  }
+
+  void DomainManager::setSynapseFilter( float minValue, float maxValue,
                                         bool invertFilter )
   {
-    _filterMaxValue = maxValue;
-    _filterMinValue = minValue;
+    double rangeFactor = ( _maxValue - _minValue );
+
+    _filterMaxValue = ( maxValue * rangeFactor ) + _minValue;
+    _filterMinValue = ( minValue * rangeFactor ) + _minValue;
     _filterInvert = invertFilter;
+
+    std::cout << "Filtering range: " << _filterMinValue
+              << " " << _filterMaxValue << std::endl;
 
     _filterSynapses( );
   }
@@ -280,7 +290,7 @@ namespace syncopa
 
       float value = _currentAttribValues[ idx->second ];
 
-      if( value <= _minValue || value >= _maxValue )
+      if( value < _minValue || value > _maxValue )
         std::cout << "Synapse attrib " << ( unsigned int )_currentAttrib
                   << " value out of bounds " << _minValue
                   << " - " << _maxValue
@@ -306,11 +316,16 @@ namespace syncopa
 
     _filteredSynapses.shrink_to_fit( );
 
+    std::cout << "Filtered synapses " << _filteredSynapses.size( )<< std::endl;
+
   }
 
   const tsynapseVec& DomainManager::getFilteredSynapses(  ) const
   {
-    return _filteredSynapses;
+    if( !_filtering )
+      return _synapses;
+    else
+      return _filteredSynapses;
   }
 
   const tFloatVec& DomainManager::getNormValues( void ) const
@@ -320,6 +335,9 @@ namespace syncopa
 
   tFloatVec DomainManager::getFilteredNormValues( void ) const
   {
+    if( !_filtering )
+      return _currentAttribNormValues;
+
     tFloatVec result;
     result.reserve( _currentAttribNormValues.size( ));
 

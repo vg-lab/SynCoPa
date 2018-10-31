@@ -67,14 +67,25 @@ void GradientWidget::clearPlot( void )
   _plot.clear( );
 }
 
+void GradientWidget::limits( float min, float max )
+{
+  _limitMin = min;
+  _limitMax = max;
+}
+
+void GradientWidget::showLimits( bool show )
+{
+  _showLimits = show;
+}
+
 float GradientWidget::xPos( float x_ )
 {
-  return x_ * width( );// + x( );
+  return x_ * width( );
 }
 
 float GradientWidget::yPos( float y_ )
 {
-  return (1.0f - y_) * height( );// + y( );
+  return ( 1.0f - y_ ) * height( );
 }
 
 
@@ -111,5 +122,25 @@ void GradientWidget::paintEvent(QPaintEvent* /*e*/)
 
         prevPoint = point;
       }
+
+    }
+
+    if( _showLimits )
+    {
+      float xCoord = xPos( _limitMin );
+
+      QPointF upperPoint( xCoord, yPos( 1.0 ));
+      QPointF lowerPoint( xCoord, yPos( 0.0 ));
+
+      painter.setBrush( QBrush( QColor( 0, 0, 0 )));
+
+      painter.drawLine( lowerPoint, upperPoint );
+
+      xCoord = xPos( _limitMax );
+
+      upperPoint = { xCoord, yPos( 1.0 ) };
+      lowerPoint = { xCoord, yPos( 0.0 ) };
+
+      painter.drawLine( lowerPoint, upperPoint );
     }
 }

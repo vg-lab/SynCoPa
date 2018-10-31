@@ -65,6 +65,9 @@ protected slots:
   void colorSynapseMapAccepted( void );
   void colorSynapseMapCancelled( void );
 
+  void filteringStateChanged( void );
+  void filteringBoundsChanged( void );
+
   void clear( void );
 
   void dynamic( void );

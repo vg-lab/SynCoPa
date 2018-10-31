@@ -119,6 +119,9 @@ public slots:
 
   const QPolygonF& getSynapseMappingPlot( void ) const;
 
+  void filteringState( bool state );
+  void filteringBounds( float min, float max );
+
 protected:
 
   virtual void initializeGL( void );
@@ -138,6 +141,8 @@ protected:
   void setupSynapses( void );
   void setupPaths( const gidUSet& gidsPre,
                    const gidUSet& gidsPost );
+
+  void updatePaths( void );
 
   void paintParticles( void );
 
@@ -199,6 +204,9 @@ protected:
   gidUSet _gidsRelated;
   gidUSet _gidsOther;
 
+  const gidUSet* _lastSelectedPre;
+  const gidUSet* _lastSelectedPost;
+
   syncopa::vec3 _colorSelectedPre;
   syncopa::vec3 _colorSelectedPost;
   syncopa::vec3 _colorRelated;
@@ -228,6 +236,8 @@ protected:
   bool _showSynapsesPost;
   bool _showPathsPre;
   bool _showPathsPost;
+
+  bool _showPaths;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 

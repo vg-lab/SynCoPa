@@ -35,6 +35,7 @@ namespace syncopa
 
     const TSynapseInfo& synapsesInfo( void ) const;
 
+    void setSynapseFilteringState( bool state );
     void setSynapseFilter( float maxValue, float minValue, bool invertFilter );
 
     const tsynapseVec& getSynapses( void ) const;
@@ -83,6 +84,7 @@ namespace syncopa
     QPolygonF _histoFunction;
 
     // Filter attributes
+    bool _filtering;
     float _filterMinValue;
     float _filterMaxValue;
     bool _filterInvert;
