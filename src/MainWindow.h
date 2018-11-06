@@ -20,6 +20,7 @@
 #include <QDoubleSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QGroupBox>
 #include <QPolygonF>
 
 #include "GradientWidget.h"
@@ -68,6 +69,8 @@ protected slots:
   void filteringStateChanged( void );
   void filteringBoundsChanged( void );
 
+  void modeChanged( bool state );
+
   void clear( void );
 
   void dynamic( void );
@@ -94,6 +97,9 @@ protected:
 
   QListView* _listPostsynaptic;
   QStandardItemModel* _modelListPost;
+
+  QRadioButton* _radioModeSynapses;
+  QRadioButton* _radioModePaths;
 
   QDockWidget* _dockInfo;
   QVBoxLayout* _layoutInfo;
@@ -145,4 +151,8 @@ protected:
   QPushButton* _buttonDynamic;
 
   QComboBox* _comboSynapseMapAttrib;
+
+  QGroupBox* _groupBoxMorphologies;
+  QGroupBox* _groupBoxSynapses;
+  QGroupBox* _groupBoxPaths;
 };

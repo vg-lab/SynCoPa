@@ -54,11 +54,15 @@ public:
                        const std::string& target );
 
   void home( void );
+  void defaultScene( void );
   void clear( void );
 
   void idleUpdate( bool idleUpdate_ = true );
 
   nsol::DataSet* dataset( void );
+
+  void mode( TMode mode_ );
+  TMode mode( void ) const;
 
 public slots:
 
@@ -69,6 +73,7 @@ public slots:
   void toggleShowFPS( void );
 
   void selectPresynapticNeuron( unsigned int gid );
+  void selectPresynapticNeuron( const std::vector< unsigned int >& gid );
   void selectPostsynapticNeuron( const std::vector< unsigned int >& gid );
 
   const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
@@ -108,6 +113,9 @@ public slots:
   void showPathsPre( int state );
   void showPathsPost( int state );
 
+  void showMorphologies( bool show );
+  void showFullMorphologies( bool show );
+
   void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
   void setSynapseMappingState( bool state );
 
@@ -138,18 +146,16 @@ protected:
 
   void setupNeuronMorphologies( void );
 
+  void setupSynapses( const gidUSet& gids );
   void setupSynapses( void );
-  void setupPaths( const gidUSet& gidsPre,
-                   const gidUSet& gidsPost );
-
-  void updatePaths( void );
+  void setupPaths( void );
 
   void paintParticles( void );
+  void paintMorphologies( void );
 
   void initRenderToTexture( void );
   void generateDepthTexture( int width_, int height_ );
   void performMSAA( void );
-  void paintMorphologies( void );
 
   QLabel _fpsLabel;
   bool _showFps;
@@ -181,6 +187,8 @@ protected:
   syncopa::PathFinder* _pathFinder;
   syncopa::DynamicPathManager* _dynPathManager;
   syncopa::DomainManager* _domainManager;
+
+  syncopa::TMode _mode;
 
   float _particleSizeThreshold;
 
@@ -237,7 +245,10 @@ protected:
   bool _showPathsPre;
   bool _showPathsPost;
 
+  bool _showSynapses;
   bool _showPaths;
+  bool _showMorphologies;
+  bool _showFullMorphologies;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 

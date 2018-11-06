@@ -1,5 +1,5 @@
 /*
- * @file  PalleteColorWidget.cpp
+ * @file  PaletteColorWidget.cpp
  * @brief
  * @author Sergio E. Galindo <sergio.galindo@urjc.es>
  * @date
@@ -32,7 +32,7 @@ const static std::vector< std::string > paletteNamesCategoric =
 PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 : QWidget( parent_ )
 , _selectionState( -1 )
-, _currentPallete( -1 )
+, _currentPalette( -1 )
 , _paletteSize( 4 )
 , _invertPaletteColors( false )
 , _frameResult( nullptr )
@@ -85,7 +85,7 @@ void PaletteColorWidget::init( bool dialog )
   _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider );
 
   QGroupBox* groupRadioButtons = new QGroupBox( "Palette type: " );
-  QGroupBox* groupPaletteSelection= new QGroupBox( "Pallete: " );
+  QGroupBox* groupPaletteSelection= new QGroupBox( "Palette: " );
 
 //    QWidget* uppestContainer = new QWidget( );
   QGridLayout* uppestLayout = new QGridLayout( );
@@ -179,7 +179,7 @@ void PaletteColorWidget::radioButtonClicked( bool checked )
   else
     _selectionState = ( int ) PALETTE_CATEGORICAL;
 
-  _currentPallete = 0;
+  _currentPalette = 0;
 
   _fillPaletteNames( );
   _fillColors( );
@@ -218,9 +218,9 @@ void PaletteColorWidget::_fillColors( void )
 {
   auto colors =
       _selectionState == ( tColorType ) PALETTE_SEQUENTIAL ?
-          tscoopp::colorBrewerSequential(( tpSeq ) _currentPallete,
+          tscoopp::colorBrewerSequential(( tpSeq ) _currentPalette,
                                          _paletteSize, _invertPaletteColors ) :
-          tscoopp::colorBrewerQualitative(( tpCat ) _currentPallete,
+          tscoopp::colorBrewerQualitative(( tpCat ) _currentPalette,
                                           _paletteSize, _invertPaletteColors );
 
   assert( !colors.colors( ).empty( ));
@@ -259,7 +259,7 @@ void PaletteColorWidget::paletteSelectionChanged( int palette )
   if( palette < 0 )
     return;
 
-  _currentPallete = palette;
+  _currentPalette = palette;
 
   _fillColors( );
 }

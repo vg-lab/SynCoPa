@@ -169,7 +169,7 @@ namespace syncopa
                                       const tBrainSynapseAttribs& data,
                                       TBrainSynapseAttribs attrib )
   {
-    float value;
+    float value = 0.0f;
 
     switch( attrib )
     {

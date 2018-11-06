@@ -12,7 +12,6 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QGridLayout>
-#include <QGroupBox>
 #include <QScrollArea>
 #include <QColorDialog>
 
@@ -50,6 +49,8 @@ MainWindow::MainWindow( QWidget* parent_,
 , _modelListPre( nullptr )
 , _listPostsynaptic( nullptr )
 , _modelListPost( nullptr )
+, _radioModeSynapses( nullptr )
+, _radioModePaths( nullptr )
 , _dockInfo( nullptr )
 , _layoutInfo( nullptr )
 , _widgetInfoPre( nullptr )
@@ -142,23 +143,30 @@ void MainWindow::init( void )
 
   connect( _ui->actionShowFPSOnIdleUpdate, SIGNAL( triggered( )),
            _openGLWidget, SLOT( toggleShowFPS( )));
+
+  _radioModeSynapses->setChecked( true );
+
 }
 
 void MainWindow::initListDock( void )
 {
-  _listPresynaptic = new QListView( );
-  _listPresynaptic->setMaximumWidth( 100 );
+  _radioModeSynapses = new QRadioButton( tr( "Synapses" ));
+  _radioModePaths = new QRadioButton( tr( "Paths" ));
 
-  connect( _listPresynaptic, SIGNAL( clicked( const QModelIndex& )),
-           this, SLOT( presynapticNeuronClicked( const QModelIndex& )));
+  QGroupBox* groupSelection = new QGroupBox( "Selection mode" );
+  QHBoxLayout* selectionLayout = new QHBoxLayout( );
+
+  selectionLayout->addWidget( _radioModeSynapses );
+  selectionLayout->addWidget( _radioModePaths );
+
+  groupSelection->setLayout( selectionLayout );
+
+  _listPresynaptic = new QListView( );
+  _listPresynaptic->setMaximumWidth( 150 );
 
   _listPostsynaptic = new QListView( );
-  _listPostsynaptic->setMaximumWidth( 100 );
+  _listPostsynaptic->setMaximumWidth( 150 );
   _listPostsynaptic->setSelectionMode( QAbstractItemView::ExtendedSelection );
-
-  connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
-           this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
-
 
   QDockWidget* dockList = new QDockWidget( tr( "Selection" ));
   dockList->setMaximumHeight( 250 );
@@ -172,13 +180,38 @@ void MainWindow::initListDock( void )
   connect( clearButton, SIGNAL( clicked( void )),
            this, SLOT( clear( void )));
 
-  dockLayout->addWidget( new QLabel( "Presynaptic:" ), 0, 0, 1, 1 );
-  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), 0, 1, 1, 1 );
-  dockLayout->addWidget( _listPresynaptic, 1, 0, 1, 1 );
-  dockLayout->addWidget( _listPostsynaptic, 1, 1, 1, 1);
+  unsigned int row = 0;
+  unsigned int col = 0;
+
+  dockLayout->addWidget( groupSelection, row, col, 1, 4 );
+  ++row;
+  col = 0;
+
+  dockLayout->addWidget( new QLabel( "Presynaptic:" ), row, col++, 1, 2 );
+  ++col;
+
+  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), row, col, 1, 2 );
+
+  ++row;
+  col = 0;
+
+  dockLayout->addWidget( _listPresynaptic, row, col++, 1, 2 );
+  ++col;
+  dockLayout->addWidget( _listPostsynaptic, row, col, 1, 2 );
+
   dockLayout->addWidget( clearButton );
 
   dockList->setWidget( container );
+
+
+  connect( _radioModeSynapses, SIGNAL( toggled( bool )),
+           this, SLOT( modeChanged( bool )));
+
+  connect( _listPresynaptic, SIGNAL( clicked( const QModelIndex& )),
+           this, SLOT( presynapticNeuronClicked( const QModelIndex& )));
+
+  connect( _listPostsynaptic, SIGNAL( clicked( const QModelIndex& )),
+           this, SLOT( postsynapticNeuronClicked( const QModelIndex& )));
 
   addDockWidget( Qt::RightDockWidgetArea, dockList );
 
@@ -187,6 +220,7 @@ void MainWindow::initListDock( void )
 void MainWindow::initColorDock( void )
 {
   _dockColor = new QDockWidget( "Aspect" );
+  _dockColor->setMinimumHeight( 300 );
 
   QScrollArea* scrollArea = new QScrollArea( );
 
@@ -196,9 +230,9 @@ void MainWindow::initColorDock( void )
 
   container->setLayout( layout );
 
-  QGroupBox* groupBoxMorphologies = new QGroupBox( "Morphologies" );
-  QGroupBox* groupBoxSynapses = new QGroupBox( "Synapses" );
-  QGroupBox* groupBoxPaths = new QGroupBox( "Paths" );
+  _groupBoxMorphologies = new QGroupBox( "Morphologies" );
+  _groupBoxSynapses = new QGroupBox( "Synapses" );
+  _groupBoxPaths = new QGroupBox( "Paths" );
 
   _checkMorphoPre = new QCheckBox( "Presynaptic" );
   _checkMorphoPost = new QCheckBox( "Postsynaptic" );
@@ -219,13 +253,13 @@ void MainWindow::initColorDock( void )
   _checkPathsPost->setChecked( true );
 
   QGridLayout* morphoLayout = new QGridLayout( );
-  groupBoxMorphologies->setLayout( morphoLayout );
+  _groupBoxMorphologies->setLayout( morphoLayout );
 
   QGridLayout* synLayout = new QGridLayout( );
-  groupBoxSynapses->setLayout( synLayout );
+  _groupBoxSynapses->setLayout( synLayout );
 
   QGridLayout* pathLayout = new QGridLayout( );
-  groupBoxPaths->setLayout( pathLayout );
+  _groupBoxPaths->setLayout( pathLayout );
 
   QPalette palette;
   QColor color;
@@ -362,7 +396,7 @@ void MainWindow::initColorDock( void )
   _spinBoxSynapseMapSize = new QDoubleSpinBox( );
   _spinBoxPathsPost->setValue( 3.0f );
 
-  QCheckBox* checkMapSynapses = new QCheckBox( tr( "Map color" ));
+  QCheckBox* checkMapSynapses = new QCheckBox( tr( "Map attribute to color" ));
   _comboSynapseMapAttrib = new QComboBox( );
 
   QStringList optionList = { "Delay",
@@ -392,7 +426,7 @@ void MainWindow::initColorDock( void )
   synLayout->addWidget( _frameColorSynapsesPre, row, col++, 1, 1 );
   synLayout->addWidget( _checkSynapsesPre, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Presynaptic" ), row, col++, 1, 2 );
-//  ++col;
+  ++col;
   synLayout->addWidget( _spinBoxSynapsesPre, row, col++, 1, 1 );
   synLayout->addWidget( _sliderAlphaSynapsesPre, row, col, 1, 2 );
 
@@ -402,7 +436,7 @@ void MainWindow::initColorDock( void )
   synLayout->addWidget( _frameColorSynapsesPost, row, col++, 1, 1 );
   synLayout->addWidget( _checkSynapsesPost, row, col++, 1, 2 );
 //  synLayout->addWidget( new QLabel( "Postsynaptic" ), row, col++, 1, 2 );
-//  ++col;
+  ++col;
   synLayout->addWidget( _spinBoxSynapsesPost, row, col++, 1, 1 );
   synLayout->addWidget( _sliderAlphaSynapsesPost, row, col, 1, 2 );
 
@@ -410,22 +444,23 @@ void MainWindow::initColorDock( void )
   col = 0;
 
   synLayout->addWidget( line, row, col, 1, 6 );
-
+//
   ++row;
-  synLayout->addWidget( checkMapSynapses, row, col++, 1, 2 );
-  ++row;
-  col = 0;
-  synLayout->addWidget( new QLabel( tr( "Synapse attribute" )), row, col++, 1, 2 );
+  synLayout->addWidget( checkMapSynapses, row, col++, 1, 4 );
+  ++col;
+//  ++row;
+//  col = 0;
+//  synLayout->addWidget( new QLabel( tr( "Synapse attribute" )), row, col++, 1, 2 );
+  ++col;
   ++col;
   synLayout->addWidget( _comboSynapseMapAttrib, row, col, 1, 2 );
-
+//
   ++row;
   col = 0;
 
-//  synLayout->addWidget( _frameColorSynapseMapGradient, row, col++, 1, 2 );
-//  ++col;
 
-  synLayout->addWidget( _spinBoxSynapseMapSize, row, col++, 1, 1 );
+  synLayout->addWidget( _spinBoxSynapseMapSize, row, col++, 1, 2 );
+  ++col;
   synLayout->addWidget( _sliderAlphaSynapseMap, row, col, 1, 2 );
 
 
@@ -457,15 +492,17 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( _spinBoxPathsPost, row, col++, 1, 1 );
   pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
 
-  layout->addWidget( groupBoxMorphologies );
-  layout->addWidget( groupBoxSynapses );
-  layout->addWidget( groupBoxPaths );
+  layout->addWidget( _groupBoxSynapses );
+  layout->addWidget( _groupBoxMorphologies );
+  layout->addWidget( _groupBoxPaths );
 
   _buttonDynamic = new QPushButton( "Dynamic" );
   _buttonDynamic->setCheckable( true );
-  connect( _buttonDynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
 
   layout->addWidget( _buttonDynamic );
+
+  connect( _buttonDynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
+
 
   connect( _frameColorMorphoPre, SIGNAL( clicked( )),
            this, SLOT( colorSelectionClicked()));
@@ -521,6 +558,7 @@ void MainWindow::initColorDock( void )
   checkMapSynapses->setChecked( false );
 
   scrollArea->setWidget( container );
+  scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
 
   _dockColor->setWidget( scrollArea );
   addDockWidget( Qt::RightDockWidgetArea, _dockColor );
@@ -606,8 +644,11 @@ void MainWindow::updateInfoDock( void )
   std::sort( vecSynPre.begin( ), vecSynPre.end( ), sortAscending );
   std::sort( vecSynPost.begin( ), vecSynPost.end( ), sortAscending );
 
-  for( unsigned int i = 0; i < 2; ++i )
+  unsigned int endLoop = ( _openGLWidget->mode( ) == syncopa::PATHS ) ? 2 : 1;
+
+  for( unsigned int i = 0; i < endLoop; ++i )
   {
+
     QWidget* widget = nullptr;
     std::vector< std::pair< unsigned int, unsigned int >>* presentSynapses;
 
@@ -788,18 +829,35 @@ void MainWindow::showStatusBarMessage ( const QString& message )
 
 void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
 {
-  unsigned int gid;
 
-  QStandardItem* value = _modelListPre->itemFromIndex( index );
-  gid = value->data( Qt::DisplayRole ).value< unsigned int >( );
+  if( _openGLWidget->mode( ) == syncopa::PATHS )
+  {
+    QStandardItem* value = _modelListPre->itemFromIndex( index );
+    unsigned int gid = value->data( Qt::DisplayRole ).value< unsigned int >( );
 
-  _openGLWidget->selectPresynapticNeuron( gid );
+    _openGLWidget->selectPresynapticNeuron( gid );
 
-  _buttonDynamic->setChecked( false );
+    loadPostsynapticList( gid );
 
-  std::cout << "Selected pre: " << gid << std::endl;
+    std::cout << "Selected pre: " << gid << std::endl;
+  }
+  else
+  {
+    std::vector< unsigned int > selection;
+    for( auto item : _listPresynaptic->selectionModel( )->selectedIndexes( ))
+    {
+      selection.push_back( _modelListPre->itemFromIndex( item )->data( Qt::DisplayRole ).value< unsigned int >( ));
+    }
 
-  loadPostsynapticList( gid );
+    _openGLWidget->selectPresynapticNeuron( selection );
+
+    std::cout << "Selected pre: ";
+    for( auto gid : selection )
+      std::cout << " " << gid;
+    std::cout << std::endl;
+  }
+
+  _buttonDynamic->setEnabled( false );
 
   updateInfoDock( );
 }
@@ -814,7 +872,7 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
 
   _openGLWidget->selectPostsynapticNeuron( selection );
 
-  _buttonDynamic->setChecked( false );
+  _buttonDynamic->setEnabled( true );
 
   std::cout << "Selected post: ";
   for( auto gid : selection )
@@ -871,9 +929,16 @@ void MainWindow::clear( void )
 {
   _openGLWidget->clear( );
 
-  _modelListPost->clear( );
+  _listPresynaptic->clearSelection( );
+  _listPostsynaptic->clearSelection( );
+
+  if( _modelListPost )
+    _modelListPost->clear( );
+
+  _openGLWidget->defaultScene( );
 
   updateInfoDock( );
+
 }
 
 
@@ -998,5 +1063,25 @@ void MainWindow::filteringBoundsChanged( void )
 {
   auto bounds = _colorMapWidget->filterBounds( );
   _openGLWidget->filteringBounds( bounds.first, bounds.second );
+}
+
+void MainWindow::modeChanged( bool selectedModeSynapses )
+{
+  _openGLWidget->mode( selectedModeSynapses ? syncopa::SYNAPSES : syncopa::PATHS );
+
+  _listPresynaptic->clearSelection( );
+  _listPostsynaptic->clearSelection( );
+
+  if( selectedModeSynapses && _modelListPost )
+    _modelListPost->clear( );
+
+  _listPostsynaptic->setEnabled( !selectedModeSynapses );
+
+  _groupBoxPaths->setEnabled( !selectedModeSynapses );
+
+  _listPresynaptic->setSelectionMode( selectedModeSynapses ?
+                                      QAbstractItemView::ExtendedSelection :
+                                      QAbstractItemView::SingleSelection );
+
 }
 

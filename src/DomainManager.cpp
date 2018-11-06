@@ -25,11 +25,11 @@ namespace syncopa
   { }
 
   void DomainManager::dataset( nsol::DataSet* dataset_ )
-   {
-     _dataset = dataset_;
+  {
+    _dataset = dataset_;
 
-     _loadSynapseInfo( );
-   }
+    _loadSynapseInfo( );
+  }
 
   void DomainManager::_loadSynapseInfo( void )
   {
@@ -316,7 +316,9 @@ namespace syncopa
 
     _filteredSynapses.shrink_to_fit( );
 
-    std::cout << "Filtered synapses " << _filteredSynapses.size( )<< std::endl;
+    std::cout << "Filtered synapses " << _filteredSynapses.size( )
+              << " out of " << _synapses.size( )
+              << std::endl;
 
   }
 

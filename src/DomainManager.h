@@ -16,6 +16,14 @@
 
 namespace syncopa
 {
+  enum TMode
+  {
+    SYNAPSES = 0,
+    PATHS,
+    UNDEFINED
+  };
+
+
   class DomainManager
   {
   public:

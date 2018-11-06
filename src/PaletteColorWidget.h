@@ -73,7 +73,7 @@ protected:
   void _fillColors( void );
 
   int _selectionState;
-  int _currentPallete;
+  int _currentPalette;
   unsigned int _paletteSize;
   bool _invertPaletteColors;
 
