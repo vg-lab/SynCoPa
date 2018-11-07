@@ -79,8 +79,8 @@ void PaletteColorWidget::init( bool dialog )
   }
 
   _rangeFilterSlider = new ctkRangeSlider( Qt::Horizontal );
-  _rangeFilterSlider->setValues( 0, 100 );
-  _rangeFilterSlider->setPositions( 0, 100 );
+  _rangeFilterSlider->setValues( _minPosSlider, _maxPosSlider );
+  _rangeFilterSlider->setPositions( _minPosSlider, _maxPosSlider );
   _rangeFilterSlider->setEnabled( false );
   _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider );
 
@@ -309,8 +309,10 @@ void PaletteColorWidget::setFilterActive( bool active )
 
 void PaletteColorWidget::filterSliderChanged( int min, int max )
 {
-  _currentLowerLimit = std::min( std::max( min * _invPosSlider, 0.0f ), 1.0f );
-  _currentUpperLimit = std::min( std::max( max * _invPosSlider, 0.0f ), 1.0f );
+
+  _currentLowerLimit = std::min( std::max( ( min - _minPosSlider ) * _invPosSlider, 0.0f ), 1.0f );
+
+  _currentUpperLimit = std::min( std::max(( max - _minPosSlider ) * _invPosSlider, 0.0f ), 1.0f );
 
   std::cout << "Slider min " << _currentLowerLimit
             << " max " << _currentUpperLimit << std::endl;

@@ -169,7 +169,7 @@ namespace syncopa
                                       const tBrainSynapseAttribs& data,
                                       TBrainSynapseAttribs attrib )
   {
-    float value = 0.0f;
+    float value;
 
     switch( attrib )
     {
@@ -196,6 +196,9 @@ namespace syncopa
         break;
       case TBSA_SYNAPSE_OTHER:
         value = ( unsigned int ) synapse->synapseType( );
+        break;
+      default:
+        value = 0.0f;
         break;
     }
 

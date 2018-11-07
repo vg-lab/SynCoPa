@@ -479,7 +479,8 @@ namespace syncopa
 
   }
 
-  void PathFinder::_processEndSections( unsigned int gidPre, const gidUSet& gidsPost )
+  void PathFinder::_processEndSections( unsigned int gidPre,
+                                        const gidUSet& gidsPost )
   {
     gidUSet gids = gidsPost;
     gids.insert( gidPre );
@@ -720,7 +721,8 @@ namespace syncopa
                 {
                   auto sec = postSections[ i ];
 
-                  for( auto nodeit = sec->nodes( ).rbegin( ); nodeit != sec->nodes( ).rend( ); ++nodeit )
+                  for( auto nodeit = sec->nodes( ).rbegin( );
+                      nodeit != sec->nodes( ).rend( ); ++nodeit )
 //                    for( auto nodeit = sec->nodes( ).begin( ); nodeit != sec->nodes( ).end( ); ++nodeit )
                     points.emplace_back( transformPoint( (*nodeit)->point( ), postTransform ));
                 }
@@ -757,7 +759,8 @@ namespace syncopa
 //                  << "\t" << interpolator.direction( i ) << std::endl;
 
 
-      auto it = _computedPaths.insert( std::make_pair( origin->section( )->id( ), interpolator ));
+      auto it = _computedPaths.insert( std::make_pair( origin->section( )->id( ),
+                                                       interpolator ));
 
 
 

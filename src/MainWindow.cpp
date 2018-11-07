@@ -92,7 +92,9 @@ MainWindow::MainWindow( QWidget* parent_,
 
 , _buttonDynamic( nullptr )
 , _comboSynapseMapAttrib( nullptr )
-
+, _groupBoxMorphologies( nullptr )
+, _groupBoxSynapses( nullptr )
+, _groupBoxPaths( nullptr )
 {
   _ui->setupUi( this );
 
@@ -172,6 +174,7 @@ void MainWindow::initListDock( void )
   dockList->setMaximumHeight( 250 );
 
   QGridLayout* dockLayout = new QGridLayout( );
+  dockLayout->setAlignment( Qt::AlignTop );
 //  dockList->setLayout( dockLayout );
   QWidget* container = new QWidget( );
   container->setLayout( dockLayout );
@@ -857,6 +860,7 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
     std::cout << std::endl;
   }
 
+  _buttonDynamic->setChecked( false );
   _buttonDynamic->setEnabled( false );
 
   updateInfoDock( );
@@ -872,6 +876,7 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
 
   _openGLWidget->selectPostsynapticNeuron( selection );
 
+  _buttonDynamic->setChecked( false );
   _buttonDynamic->setEnabled( true );
 
   std::cout << "Selected post: ";

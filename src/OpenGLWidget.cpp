@@ -349,6 +349,9 @@ void OpenGLWidget::setupPaths( void )
   if( _mode != PATHS )
     return;
 
+  if( _lastSelectedPre->empty( ))
+    return;
+
   auto& synapses = _domainManager->getFilteredSynapses( );
 
   std::cout << "Generating paths for " << synapses.size( ) << " synpses." << std::endl;
@@ -458,7 +461,7 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
   _showPaths = true;
 
-  _pathFinder->configure( gid, _gidsSelectedPost, _domainManager->getSynapses( ));
+  _pathFinder->configure( gid, _gidsRelated, _domainManager->getSynapses( ));
 
 //  _gidsOther.erase( _gidsSelectedPre.begin( ), _gidsSelectedPre.end( ));
 //  _gidsOther.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
@@ -1425,14 +1428,28 @@ void OpenGLWidget::mode( TMode mode_ )
     _showFullMorphologies = false;
 
     _dynPathManager->clear( );
+
+    _lastSelectedPre = &_gidsSelectedPre;
+    _lastSelectedPost = &_gidsRelated;
   }
   else if( _mode == PATHS )
   {
     _showPaths = true;
     _showMorphologies = true;
     _showFullMorphologies = true;
+
+    _dynPathManager->clear( );
+
+    _lastSelectedPre = &_gidsSelectedPre;
+    _lastSelectedPost = &_gidsSelectedPost;
   }
 
+
+
+  setupSynapses( );
+  setupPaths( );
+
+  updateSynapsesVisibility( );
   updatePathsVisibility( );
 }
 
