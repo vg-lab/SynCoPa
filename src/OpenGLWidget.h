@@ -55,7 +55,7 @@ public:
 
   void home( void );
   void defaultScene( void );
-  void clear( void );
+  void clearSelection( void );
 
   void idleUpdate( bool idleUpdate_ = true );
 
@@ -87,10 +87,7 @@ public slots:
   void colorPathsPre( const syncopa::vec3& color );
   void colorPathsPost( const syncopa::vec3& color );
 
-  void colorSynapseMapPre( const syncopa::vec3& color );
-  void colorSynapseMapPost( const syncopa::vec3& color );
   void colorSynapseMap( const tQColorVec& colors );
-
 
   const syncopa::vec3& colorSelectedPre( void ) const;
   const syncopa::vec3& colorSelectedPost( void ) const;
@@ -104,6 +101,36 @@ public slots:
   const syncopa::vec3& colorSynapseMapPre( void ) const;
   std::vector< std::pair< float, QColor >> colorSynapseMap( void ) const;
 
+  void alphaSynapsesPre( float transparency );
+  void alphaSynapsesPost( float transparency );
+  void alphaPathsPre( float transparency );
+  void alphaPathsPost( float transparency );
+
+  void alphaSynapseMap( const tQColorVec& colors, float transparency );
+
+  float alphaSynapsesPre( void ) const;
+  float alphaSynapsesPost( void ) const;
+  float alphaPathsPre( void ) const;
+  float alphaPathsPost( void ) const;
+
+  float alphaSynapsesMap( void ) const;
+
+  void sizeSynapsesPre( float );
+  void sizeSynapsesPost( float );
+  void sizePathsPre( float );
+  void sizePathsPost( float );
+
+  void sizeSynapseMap( float );
+  void sizeDynamic( float );
+
+  float sizeSynapsesPre( void ) const;
+  float sizeSynapsesPost( void ) const;
+  float sizePathsPre( void ) const;
+  float sizePathsPost( void ) const;
+
+  float sizeSynapseMap( void ) const;
+  float sizeDynamic( void ) const;
+
   void showSelectedPre( int state );
   void showSelectedPost( int state );
   void showRelated( int state );
@@ -113,8 +140,11 @@ public slots:
   void showPathsPre( int state );
   void showPathsPost( int state );
 
-  void showMorphologies( bool show );
-  void showFullMorphologies( bool show );
+//  void showMorphologies( bool show );
+  void showFullMorphologiesPre( bool show );
+  void showFullMorphologiesPost( bool show );
+  void showFullMorphologiesContext( bool show );
+  void showFullMorphologiesOther( bool show );
 
   void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
   void setSynapseMappingState( bool state );
@@ -196,8 +226,8 @@ protected:
 
   syncopa::TRenderMorpho _neuronsSelectedPre;
   syncopa::TRenderMorpho _neuronsSelectedPost;
-  syncopa::TRenderMorpho _neuronsRelated;
   syncopa::TRenderMorpho _neuronsContext;
+  syncopa::TRenderMorpho _neuronsOther;
 
   float _renderSpeed;
   float _maxFPS;
@@ -234,7 +264,7 @@ protected:
   float _alphaPathsPre;
   float _alphaPathsPost;
 
-  float _alphaSynapseMapPre;
+  float _alphaSynapsesMap;
 
   bool _showSelectedPre;
   bool _showSelectedPost;
@@ -247,8 +277,11 @@ protected:
 
   bool _showSynapses;
   bool _showPaths;
-  bool _showMorphologies;
-  bool _showFullMorphologies;
+//  bool _showMorphologies;
+  bool _showFullMorphologiesPre;
+  bool _showFullMorphologiesPost;
+  bool _showFullMorphologiesContext;
+  bool _showFullMorphologiesOther;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 

@@ -48,26 +48,25 @@ public:
     void setupPath( const std::vector< vec3 > nodePositions,
                     TNeuronConnection type = PRESYNAPTIC );
 
-    void setupDynamicPath( const tPosVec& positions );
-
     vec4 colorSynapses( TNeuronConnection type = PRESYNAPTIC ) const;
     void colorSynapses( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
 
     float sizeSynapses( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizeSynapses( float size, TNeuronConnection type = PRESYNAPTIC );
+    void sizeSynapses( float size, TNeuronConnection type );
 
     vec4 colorPaths( TNeuronConnection type = PRESYNAPTIC ) const;
-    void colorPaths( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
+    void colorPaths( const vec4& color, TNeuronConnection type );
 
     float sizePaths( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizePaths( float size, TNeuronConnection type = PRESYNAPTIC );
+    void sizePaths( float size, TNeuronConnection type );
 
-    vec4 colorSynapseMap( TNeuronConnection type = PRESYNAPTIC ) const;
-    void colorSynapseMap( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
     void colorSynapseMap( const tColorVec& colors );
 
     float sizeSynapseMap( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizeSynapseMap( float size, TNeuronConnection type = PRESYNAPTIC );
+    void sizeSynapsesMap( float size, TNeuronConnection type );
+
+    float sizeDynamic( void ) const;
+    void sizeDynamic( float newSize );
 
     void showSynapses( bool state, TNeuronConnection type = PRESYNAPTIC );
     void showPaths( bool state, TNeuronConnection type = PRESYNAPTIC );

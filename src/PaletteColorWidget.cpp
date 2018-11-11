@@ -32,7 +32,7 @@ const static std::vector< std::string > paletteNamesCategoric =
 PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 : QWidget( parent_ )
 , _selectionState( -1 )
-, _currentPalette( -1 )
+, _currentPalette( 0 )
 , _paletteSize( 4 )
 , _invertPaletteColors( false )
 , _frameResult( nullptr )

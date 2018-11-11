@@ -258,7 +258,7 @@ namespace syncopa
   unsigned int ConnectivityTree::addBranch( const std::vector< nsolMSection_ptr >& sections )
   {
 
-    std::cout << this << " Adding branch of " << sections.size( ) << " sections" << std::endl;
+//    std::cout << this << " Adding branch of " << sections.size( ) << " sections" << std::endl;
 
     if( sections.empty( ))
       return 0;

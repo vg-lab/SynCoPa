@@ -423,14 +423,18 @@ namespace syncopa
 
   void PSManager::colorSynapses( const vec4& color, TNeuronConnection type )
   {
+    std::cout << "Setting color " << color.w( ) << std::endl;
+
     if( type == PRESYNAPTIC )
     {
       _colorSynPre = color;
+      _modelSynPre->color.Clear();
       _modelSynPre->color.Insert( 0, eigenToGLM( color ));
     }
     else if( type == POSTSYNAPTIC )
     {
       _colorSynPost = color;
+      _modelSynPost->color.Clear();
       _modelSynPost->color.Insert( 0, eigenToGLM( color ));
     }
     else
@@ -438,6 +442,8 @@ namespace syncopa
       _colorSynPre = color;
       _colorSynPost = color;
 
+      _modelSynPre->color.Clear();
+      _modelSynPost->color.Clear();
       _modelSynPre->color.Insert( 0, eigenToGLM( color ));
       _modelSynPost->color.Insert( 0, eigenToGLM( color ));
     }
@@ -451,16 +457,22 @@ namespace syncopa
 
   void PSManager::sizeSynapses( float size, TNeuronConnection type )
   {
+    std::cout << "Setting size " << size <<std::endl;
+
     if( type == PRESYNAPTIC )
     {
+//      _modelSynPre->size.Clear( );
       _modelSynPre->size.Insert( 0, size );
     }
     else if( type == POSTSYNAPTIC )
     {
+//      _modelSynPost->size.Clear( );
       _modelSynPost->size.Insert( 0, size );
     }
     else
     {
+//      _modelSynPre->size.Clear( );
+//      _modelSynPost->size.Clear( );
       _modelSynPre->size.Insert( 0, size );
       _modelSynPost->size.Insert( 0, size );
     }
@@ -496,20 +508,6 @@ namespace syncopa
     }
   }
 
-  void PSManager::colorSynapseMap( const vec4& color, TNeuronConnection type )
-  {
-    if( type == PRESYNAPTIC )
-    {
-      _colorSynMapStart = color;
-      _modelSynMap->color.Insert( 0, eigenToGLM( color ));
-    }
-    else
-    {
-      _colorSynMapEnd = color;
-      _modelSynMap->color.Insert( 1.0, eigenToGLM( color ));
-    }
-  }
-
   void PSManager::colorSynapseMap( const tColorVec& colors )
   {
     _modelSynMap->color.Clear( );
@@ -537,6 +535,27 @@ namespace syncopa
 
     if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS)
       _modelPathPost->size.Insert( 0, size );
+  }
+
+  float PSManager::sizeSynapseMap( TNeuronConnection ) const
+  {
+    return _modelSynMap->size.GetFirstValue( );
+  }
+
+  void PSManager::sizeSynapsesMap( float newSize, TNeuronConnection )
+  {
+    _modelSynMap->size.Insert( 0, newSize );
+  }
+
+  float PSManager::sizeDynamic( void ) const
+  {
+    return _modelDynPre->size.GetFirstValue( );
+  }
+
+  void PSManager::sizeDynamic( float newSize )
+  {
+    _modelDynPre->size.Insert( 0.0f, newSize );
+    _modelDynPost->size.Insert( 0.0f, newSize );
   }
 
   nlgeometry::AxisAlignedBoundingBox PSManager::boundingBox( void ) const
@@ -621,46 +640,11 @@ namespace syncopa
     source_->finishedSection.disconnect_all_slots( );
     source_->reachedSynapse.disconnect_all_slots( );
 
-    std::cout << "-- Releasing source " << source_->gid( )
-              << " type " << (unsigned int) source_->functionType( ) << std::endl;
+//    std::cout << "-- Releasing source " << source_->gid( )
+//              << " type " << (unsigned int) source_->functionType( ) << std::endl;
 
     _particleSystem->detachSource( source_ );
   }
 
-
-  void PSManager::setupDynamicPath( const tPosVec&  )
-  {
-//    _particleSystem->detachSource( _sourceDynPre );
-//
-//    tPosVec posit;
-////    posit.push_back( vec3( 0, 0, 0 ));
-////    posit.push_back( vec3( 50, 50, 50 ));
-////    posit.push_back( vec3( 100, 100, 100 ));
-//    posit = positions;
-//
-//    _boundingBox.clear( );
-//    for( auto pos : posit )
-//    {
-//      _boundingBox.expand( pos );
-//    }
-//
-//    _sourceDynPre->path( posit );
-//    _sourceDynPre->velocityModule( 100 );
-//
-//    auto indices = _particleSystem->retrieveUnused( 1000 );
-//    // TODO SETUP PARTICLES AND SOURCE VALUES
-//    std::cout << "Using indices";
-//    for( auto idx : indices )
-//      std::cout << " " << idx.id( );
-//    std::cout << std::endl;
-//
-//    _clusterDyn->particles( indices );
-//    _clusterDyn->setSource( _sourceDynPre );
-//    _clusterDyn->setUpdater( _normalUpdater );
-//    _clusterDyn->setModel( _modelDyn );
-//    _particleSystem->addSource( _sourceDynPre, indices.indices( ));
-
-//    _sourceDynPre->restart( );
-  }
 }
 

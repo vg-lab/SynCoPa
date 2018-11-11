@@ -95,71 +95,80 @@ namespace syncopa
     if( gids.empty( ))
       return;
 
-    std::vector< nsolMSynapse_ptr > result;
+    _synapses = _loadSynapses( gids );
+    _filteredSynapses = _synapses;
+
+    std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
+
+  }
+
+  tsynapseVec DomainManager::_loadSynapses( const gidUSet& gids, bool log ) const
+  {
+    tsynapseVec result;
 
     std::set< unsigned int > gidset( gids.begin( ), gids.end( ));
 
-    auto& circuit = _dataset->circuit( );
-    auto synapseSet = circuit.synapses( gidset,
-                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
+     auto& circuit = _dataset->circuit( );
+     auto synapseSet = circuit.synapses( gidset,
+                                         nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
-    result.reserve( synapseSet.size( ));
+     result.reserve( synapseSet.size( ));
 
-    for( auto syn : synapseSet )
-    {
+     for( auto syn : synapseSet )
+     {
 
-      auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
-      if( !msyn)
-      {
-        std::cout << "EMPTY SYNAPSE " << std::endl;
-        continue;
-      }
+       auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
+       if( !msyn)
+       {
+         if( log )
+           std::cout << "EMPTY SYNAPSE " << std::endl;
+         continue;
+       }
 
-      auto sectionPre = msyn->preSynapticSection( );
-      auto sectionPost = msyn->postSynapticSection( );
+       auto sectionPre = msyn->preSynapticSection( );
+       auto sectionPost = msyn->postSynapticSection( );
 
-      // axo-somatic
-      if( !sectionPre || ( !sectionPost &&
-          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
-        continue;
+       // axo-somatic
+       if( !sectionPre || ( !sectionPost &&
+           msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
+         continue;
 
 
-      auto synInfo = _synapseFixInfo.find( msyn );
-      if( synInfo == _synapseFixInfo.end( ))
-        continue;
+       auto synInfo = _synapseFixInfo.find( msyn );
+       if( synInfo == _synapseFixInfo.end( ))
+         continue;
 
-      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
-      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
+       auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
+       auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
-      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
-          sectionPre->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with pre segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
-                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
+       if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
+           sectionPre->nodes( ).size( ) - 1 )
+       {
+         if( log )
+         std::cout << "Discarding synapse with pre segment "
+                   << std::get< TBS_SEGMENT_INDEX >( infoPre )
+                   << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
+                   << std::endl;
+         continue;
+       }
 
-      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
-          sectionPost->nodes( ).size( ) - 1 )
-      {
-        std::cout << "Discarding synapse with post segment "
-                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
-                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
-                  << std::endl;
-        continue;
-      }
+       if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
+           sectionPost->nodes( ).size( ) - 1 )
+       {
+         if( log )
+         std::cout << "Discarding synapse with post segment "
+                   << std::get< TBS_SEGMENT_INDEX >( infoPost )
+                   << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
+                   << std::endl;
+         continue;
+       }
 
-      result.push_back( msyn );
-    }
+       result.push_back( msyn );
+     }
 
-    result.shrink_to_fit( );
+     result.shrink_to_fit( );
 
-    _synapses = result;
-    _filteredSynapses = _synapses;
-    std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
-
+     return result;
   }
 
   void DomainManager::_loadSynapses( unsigned int presynapticGID,
@@ -495,9 +504,11 @@ namespace syncopa
 
   gidUSet DomainManager::connectedTo( unsigned int gid ) const
   {
-    gidUSet result;
+    gidUSet result = { gid };
 
-    for( auto syn : _synapses )
+    auto synapses = _loadSynapses( result );
+
+    for( auto syn : synapses )
     {
       if( syn->preSynapticNeuron( ) != gid )
         continue;

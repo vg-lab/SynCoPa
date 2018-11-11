@@ -62,6 +62,8 @@ namespace syncopa
 
     void _loadSynapseInfo( void );
 
+    tsynapseVec _loadSynapses( const gidUSet& gids, bool log = false ) const;
+
     void _loadSynapses( unsigned int presynapticGID,
                         const gidUSet& postsynapticGIDs );
 

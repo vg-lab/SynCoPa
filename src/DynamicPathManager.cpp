@@ -110,7 +110,7 @@ namespace syncopa
 
       _createSourceOnDeepestPath( rootNode->section( ), source );
 
-      std::cout << "Generating root node: " << rootNode->section( )->id( ) << std::endl;
+//      std::cout << "Generating root node: " << rootNode->section( )->id( ) << std::endl;
 
       _rootSources.insert( source );
     }

@@ -60,11 +60,15 @@ protected slots:
   void setSynapseMappingState( int state );
   void setSynapseMappingAttribute( int attrib );
 
-
   void colorSelectionClicked( void );
-  void colorSynapseMapClicked( void );
   void colorSynapseMapAccepted( void );
   void colorSynapseMapCancelled( void );
+
+  void transparencySliderMoved( int );
+
+  void sizeSpinBoxChanged( double );
+
+  void showFullMorphologyChecked( bool );
 
   void filteringStateChanged( void );
   void filteringBoundsChanged( void );
@@ -82,11 +86,14 @@ protected:
   void initListDock( void );
   void initColorDock( void );
   void initInfoDock( void );
+
   void updateInfoDock( void );
   void clearInfoDock( void );
 
   void loadPresynapticList( void );
   void loadPostsynapticList( unsigned int gid );
+
+  void _loadDefaultValues( void );
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
@@ -109,17 +116,25 @@ protected:
   QDockWidget* _dockColor;
   QPushButton* _frameColorMorphoPre;
   QPushButton* _frameColorMorphoPost;
-  QPushButton* _frameColorMorphoRelated;
   QPushButton* _frameColorMorphoContext;
+  QPushButton* _frameColorMorphoOther;
   QPushButton* _frameColorSynapsesPre;
   QPushButton* _frameColorSynapsesPost;
   QPushButton* _frameColorPathsPre;
   QPushButton* _frameColorPathsPost;
 
-  QCheckBox* _checkMorphoPre;
-  QCheckBox* _checkMorphoPost;
-  QCheckBox* _checkMorphoRelated;
-  QCheckBox* _checkMorphoContext;
+  QPushButton* _buttonShowFullMorphoPre;
+  QPushButton* _buttonShowFullMorphoPost;
+  QPushButton* _buttonShowFullMorphoContext;
+  QPushButton* _buttonShowFullMorphoOther;
+
+  QIcon _fullMorphoOn;
+  QIcon _fullMorphoOff;
+
+  QCheckBox* _checkShowMorphoPre;
+  QCheckBox* _checkShowMorphoPost;
+  QCheckBox* _checkShowMorphoContext;
+  QCheckBox* _checkShowMorphoOther;
   QCheckBox* _checkSynapsesPre;
   QCheckBox* _checkSynapsesPost;
   QCheckBox* _checkPathsPre;
@@ -133,14 +148,18 @@ protected:
   QSlider* _sliderAlphaPathsPre;
   QSlider* _sliderAlphaPathsPost;
 
-  QSlider* _sliderAlphaSynapseMap;
+  QSlider* _sliderAlphaSynapsesMap;
 
-  QDoubleSpinBox* _spinBoxSynapsesPre;
-  QDoubleSpinBox* _spinBoxSynapsesPost;
-  QDoubleSpinBox* _spinBoxPathsPre;
-  QDoubleSpinBox* _spinBoxPathsPost;
+  float _invRangeSliders;
+  int _sliderMin;
+  int _sliderMax;
 
-  QDoubleSpinBox* _spinBoxSynapseMapSize;
+  QDoubleSpinBox* _spinBoxSizeSynapsesPre;
+  QDoubleSpinBox* _spinBoxSizeSynapsesPost;
+  QDoubleSpinBox* _spinBoxSizePathsPre;
+  QDoubleSpinBox* _spinBoxSizePathsPost;
+
+  QDoubleSpinBox* _spinBoxSizeSynapsesMap;
 
   QLabel* _labelTransSynPre;
   QLabel* _labelTransSynPost;

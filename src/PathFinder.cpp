@@ -213,8 +213,8 @@ namespace syncopa
             std::get< tsi_leafSection >( parsedSection->second ))
         {
           auto points = std::get< tsi_fixedSection >( parsedSection->second );
-          std::cout << "Fixed section with " << points.size( )
-                    << " instead of " << nodes.size( ) << std::endl;
+//          std::cout << "Fixed section with " << points.size( )
+//                    << " instead of " << nodes.size( ) << std::endl;
 
           pathPoints.insert( points );
 //            accDist = pathPoints.totalDistance( );
