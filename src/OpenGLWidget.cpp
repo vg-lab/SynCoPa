@@ -92,7 +92,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _mode( UNDEFINED )
 , _particleSizeThreshold( 0.45 )
 , _elapsedTimeRenderAcc( 0.0f )
-, _alphaBlendingAccumulative( true )
+, _alphaBlendingAccumulative( false )
 , _lastSelectedPre( nullptr )
 , _lastSelectedPost( nullptr )
 , _colorSelectedPre( 0.5, 0.5, 1 )
@@ -107,8 +107,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _colorSynMapPost( 1, 0, 0 )
 , _alphaSynapsesPre( 0.55f )
 , _alphaSynapsesPost( 0.55f )
-, _alphaPathsPre( 0.3f )
-, _alphaPathsPost( 0.3f )
+, _alphaPathsPre( 0.8f )
+, _alphaPathsPost( 0.8f )
 , _alphaSynapsesMap( 0.20f )
 , _showSelectedPre( true )
 , _showSelectedPost( true )
@@ -1493,6 +1493,11 @@ void OpenGLWidget::filteringBounds( float min, float max )
   setupPaths( );
 }
 
+std::pair< float, float > OpenGLWidget::rangeBounds( void ) const
+{
+  return _domainManager->rangeBounds( );
+}
+
 void OpenGLWidget::mode( TMode mode_ )
 {
   _mode = mode_;
@@ -1513,6 +1518,8 @@ void OpenGLWidget::mode( TMode mode_ )
       selectPresynapticNeuron( selection );
     }
 
+    _alphaBlendingAccumulative = false;
+
   }
   else if( _mode == PATHS )
   {
@@ -1527,6 +1534,7 @@ void OpenGLWidget::mode( TMode mode_ )
     if( _lastSelectedPre && !_lastSelectedPre->empty( ))
       selectPresynapticNeuron( *_lastSelectedPre->begin( ));
 
+    _alphaBlendingAccumulative = true;
   }
 
 

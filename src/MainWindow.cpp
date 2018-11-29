@@ -1048,13 +1048,22 @@ void MainWindow::setSynapseMappingState( int state )
   _openGLWidget->setSynapseMappingState( state );
 //  setSynapseMappingAttribute( _comboSynapseMapAttrib->currentIndex( ));
 
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
+  auto rangeBounds = _openGLWidget->rangeBounds( );
+
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ),
+                            rangeBounds.first,
+                            rangeBounds.second );
 }
 
 void MainWindow::setSynapseMappingAttribute( int attrib )
 {
   _openGLWidget->setSynapseMapping( attrib );
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ));
+
+  auto rangeBounds = _openGLWidget->rangeBounds( );
+
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ),
+                            rangeBounds.first,
+                            rangeBounds.second );
 }
 
 void MainWindow::clear( void )
@@ -1271,6 +1280,7 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
     _buttonShowFullMorphoPost->setEnabled( false );
     _buttonShowFullMorphoContext->setEnabled( false );
     _buttonShowFullMorphoOther->setEnabled( false );
+
   }
   else
   {
@@ -1296,8 +1306,11 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
 
     _buttonShowFullMorphoContext->setChecked( false );
     _buttonShowFullMorphoOther->setChecked( false );
+
   }
 
+  _buttonDynamic->setChecked( false );
+  _buttonDynamic->setEnabled( false );
 
   if( selectedModeSynapses && _modelListPost )
     _modelListPost->clear( );

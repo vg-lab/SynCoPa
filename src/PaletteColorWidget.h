@@ -13,6 +13,7 @@
 #include <QComboBox>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QLabel>
 
 #include <scoop/scoop.h>
 #include "GradientWidget.h"
@@ -41,7 +42,7 @@ public:
   tQColorVec getColors( void ) const;
   const QGradientStops& getGradientStops( void ) const;
 
-  void setPlot( QPolygonF plot );
+  void setPlot( QPolygonF plot, float minRange, float maxRange );
 
   bool filter( void ) const;
   std::pair< float, float > filterBounds( void ) const;
@@ -93,6 +94,9 @@ protected:
   QPushButton* _buttonApply;
   QPushButton* _buttonCancel;
 
+  QLabel* _labelTotalRange;
+  QLabel* _labelActualRange;
+
   ctkRangeSlider* _rangeFilterSlider;
   int _minPosSlider;
   int _maxPosSlider;
@@ -101,6 +105,13 @@ protected:
   bool _filtering;
   float _currentLowerLimit;
   float _currentUpperLimit;
+
+  float _minRange;
+  float _maxRange;
+
+  float _currentMinValue;
+  float _currentMaxValue;
+
 };
 
 #endif /* SRC_PALETTECOLORWIDGET_H_ */

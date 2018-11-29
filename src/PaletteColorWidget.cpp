@@ -44,6 +44,8 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _comboPalettes( nullptr )
 , _buttonApply( nullptr )
 , _buttonCancel( nullptr )
+, _labelTotalRange( nullptr )
+, _labelActualRange( nullptr )
 , _rangeFilterSlider( nullptr )
 , _minPosSlider( 0 )
 , _maxPosSlider( 100 )
@@ -82,7 +84,10 @@ void PaletteColorWidget::init( bool dialog )
   _rangeFilterSlider->setValues( _minPosSlider, _maxPosSlider );
   _rangeFilterSlider->setPositions( _minPosSlider, _maxPosSlider );
   _rangeFilterSlider->setEnabled( false );
-  _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider );
+  _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider - 1 );
+
+  _labelTotalRange = new QLabel( "Min:" );
+  _labelActualRange = new QLabel( "Max:" );
 
   QGroupBox* groupRadioButtons = new QGroupBox( "Palette type: " );
   QGroupBox* groupPaletteSelection= new QGroupBox( "Palette: " );
@@ -124,6 +129,9 @@ void PaletteColorWidget::init( bool dialog )
 
   paletteLayout->addWidget( _rangeFilterSlider, 2, 0, 1, colDialog );
   paletteLayout->addWidget( _checkFilterActive, 2, colDialog, 1, 1 );
+
+  paletteLayout->addWidget( _labelActualRange, 3, 0, 1, 1 );
+  paletteLayout->addWidget( _labelTotalRange, 3, 1, 1, 1 );
 
   uppestLayout->addWidget( groupRadioButtons );
   uppestLayout->addWidget( groupPaletteSelection );
@@ -271,14 +279,35 @@ void PaletteColorWidget::checkInvertColorsToggled( int checked )
   _fillColors( );
 }
 
-void PaletteColorWidget::setPlot( QPolygonF plot )
+void PaletteColorWidget::setPlot( QPolygonF plot, float minRange, float maxRange )
 {
   _frameResult->plot( plot );
 
-  std::cout << "Plot: ";
-  for( auto bin : plot )
-    std::cout << " " << bin.x( ) << " " << bin.y( );
-  std::cout << std::endl;
+  _minRange = minRange;
+  _maxRange = maxRange;
+
+  QString rangetext = QString( "Total: [" ) +
+      QString::number( minRange, 'f', 3 ) +
+      QString( ", " ) +
+      QString::number( maxRange, 'f', 3 ) + QString( "]");
+
+  float range = ( _maxRange - _minRange );
+  _currentMinValue = _currentLowerLimit * range + _minRange;
+  _currentMaxValue = _currentUpperLimit * range + _minRange;
+
+  QString currentRangetext = QString( "Current: [" ) +
+      QString::number( _currentMinValue, 'f', 3 ) +
+      QString( ", " ) +
+      QString::number( _currentMaxValue, 'f', 3 ) + QString( "]");
+
+
+  _labelTotalRange->setText( rangetext );
+  _labelActualRange->setText( currentRangetext );
+
+//  std::cout << "Plot: ";
+//  for( auto bin : plot )
+//    std::cout << " " << bin.x( ) << " " << bin.y( );
+//  std::cout << std::endl;
 
 }
 
@@ -314,11 +343,22 @@ void PaletteColorWidget::filterSliderChanged( int min, int max )
 
   _currentUpperLimit = std::min( std::max(( max - _minPosSlider ) * _invPosSlider, 0.0f ), 1.0f );
 
-  std::cout << "Slider min " << _currentLowerLimit
-            << " max " << _currentUpperLimit << std::endl;
+  std::cout << "Slider min " << min << " " << _currentLowerLimit
+            << " max " << max << " " << _currentUpperLimit << std::endl;
 
   _frameResult->limits( _currentLowerLimit, _currentUpperLimit );
   _frameResult->update( );
+
+  float range = ( _maxRange - _minRange );
+  _currentMinValue = _currentLowerLimit * range + _minRange;
+  _currentMaxValue = _currentUpperLimit * range + _minRange;
+
+  QString currentRangetext = QString( "Current: [" ) +
+      QString::number( _currentMinValue, 'f', 3 ) +
+      QString( ", " ) +
+      QString::number( _currentMaxValue, 'f', 3 ) + QString( "]");
+
+  _labelActualRange->setText( currentRangetext );
 
   emit filterBoundsChanged( );
 }

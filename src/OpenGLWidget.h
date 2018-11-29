@@ -160,6 +160,8 @@ public slots:
   void filteringState( bool state );
   void filteringBounds( float min, float max );
 
+  std::pair< float, float > rangeBounds( void ) const;
+
 protected:
 
   virtual void initializeGL( void );

@@ -519,6 +519,11 @@ namespace syncopa
     return result;
   }
 
+  std::pair< float, float > DomainManager::rangeBounds( void ) const
+  {
+    return std::make_pair( _minValue, _maxValue );
+  }
+
 
 }
 

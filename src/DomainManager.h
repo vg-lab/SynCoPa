@@ -56,6 +56,8 @@ namespace syncopa
 
     gidUSet connectedTo( unsigned int gid ) const;
 
+    std::pair< float, float > rangeBounds( void ) const;
+
   protected:
 
     void _filterSynapses( void );
