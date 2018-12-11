@@ -31,6 +31,8 @@
 #include "NeuronScene.h"
 #include "PSManager.h"
 #include "PathFinder.h"
+#include "DynamicPathManager.h"
+#include "DomainManager.h"
 
 class OpenGLWidget
   : public QOpenGLWidget
@@ -52,11 +54,15 @@ public:
                        const std::string& target );
 
   void home( void );
-  void clear( void );
+  void defaultScene( void );
+  void clearSelection( void );
 
   void idleUpdate( bool idleUpdate_ = true );
 
   nsol::DataSet* dataset( void );
+
+  void mode( TMode mode_ );
+  TMode mode( void ) const;
 
 public slots:
 
@@ -67,6 +73,7 @@ public slots:
   void toggleShowFPS( void );
 
   void selectPresynapticNeuron( unsigned int gid );
+  void selectPresynapticNeuron( const std::vector< unsigned int >& gid );
   void selectPostsynapticNeuron( const std::vector< unsigned int >& gid );
 
   const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
@@ -80,6 +87,7 @@ public slots:
   void colorPathsPre( const syncopa::vec3& color );
   void colorPathsPost( const syncopa::vec3& color );
 
+  void colorSynapseMap( const tQColorVec& colors );
 
   const syncopa::vec3& colorSelectedPre( void ) const;
   const syncopa::vec3& colorSelectedPost( void ) const;
@@ -90,6 +98,39 @@ public slots:
   const syncopa::vec3& colorPathsPre( void ) const;
   const syncopa::vec3& colorPathsPost( void ) const;
 
+  const syncopa::vec3& colorSynapseMapPre( void ) const;
+  std::vector< std::pair< float, QColor >> colorSynapseMap( void ) const;
+
+  void alphaSynapsesPre( float transparency );
+  void alphaSynapsesPost( float transparency );
+  void alphaPathsPre( float transparency );
+  void alphaPathsPost( float transparency );
+
+  void alphaSynapseMap( const tQColorVec& colors, float transparency );
+
+  float alphaSynapsesPre( void ) const;
+  float alphaSynapsesPost( void ) const;
+  float alphaPathsPre( void ) const;
+  float alphaPathsPost( void ) const;
+
+  float alphaSynapsesMap( void ) const;
+
+  void sizeSynapsesPre( float );
+  void sizeSynapsesPost( float );
+  void sizePathsPre( float );
+  void sizePathsPost( float );
+
+  void sizeSynapseMap( float );
+  void sizeDynamic( float );
+
+  float sizeSynapsesPre( void ) const;
+  float sizeSynapsesPost( void ) const;
+  float sizePathsPre( void ) const;
+  float sizePathsPost( void ) const;
+
+  float sizeSynapseMap( void ) const;
+  float sizeDynamic( void ) const;
+
   void showSelectedPre( int state );
   void showSelectedPost( int state );
   void showRelated( int state );
@@ -98,6 +139,28 @@ public slots:
   void showSynapsesPost( int state );
   void showPathsPre( int state );
   void showPathsPost( int state );
+
+//  void showMorphologies( bool show );
+  void showFullMorphologiesPre( bool show );
+  void showFullMorphologiesPost( bool show );
+  void showFullMorphologiesContext( bool show );
+  void showFullMorphologiesOther( bool show );
+
+  void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
+  void setSynapseMappingState( bool state );
+
+  void startDynamic( void );
+  void stopDynamic( void );
+
+  void updatePathsVisibility( void );
+  void updateSynapsesVisibility( void );
+
+  const QPolygonF& getSynapseMappingPlot( void ) const;
+
+  void filteringState( bool state );
+  void filteringBounds( float min, float max );
+
+  std::pair< float, float > rangeBounds( void ) const;
 
 protected:
 
@@ -115,18 +178,16 @@ protected:
 
   void setupNeuronMorphologies( void );
 
-  void setupSynapses( const std::set< unsigned int >& gidsPre,
-                      const std::set< unsigned int >& gidsPost = std::set< unsigned int >( ));
-  void setupPaths( const std::set< unsigned int >& gidsPre,
-                   const std::set< unsigned int >& gidsPost );
+  void setupSynapses( const gidUSet& gids );
+  void setupSynapses( void );
+  void setupPaths( void );
 
   void paintParticles( void );
+  void paintMorphologies( void );
 
   void initRenderToTexture( void );
   void generateDepthTexture( int width_, int height_ );
   void performMSAA( void );
-  void paintMorphologies( void );
-
 
   QLabel _fpsLabel;
   bool _showFps;
@@ -156,6 +217,10 @@ protected:
   syncopa::NeuronScene* _neuronScene;
   syncopa::PSManager* _psManager;
   syncopa::PathFinder* _pathFinder;
+  syncopa::DynamicPathManager* _dynPathManager;
+  syncopa::DomainManager* _domainManager;
+
+  syncopa::TMode _mode;
 
   float _particleSizeThreshold;
 
@@ -163,8 +228,8 @@ protected:
 
   syncopa::TRenderMorpho _neuronsSelectedPre;
   syncopa::TRenderMorpho _neuronsSelectedPost;
-  syncopa::TRenderMorpho _neuronsRelated;
   syncopa::TRenderMorpho _neuronsContext;
+  syncopa::TRenderMorpho _neuronsOther;
 
   float _renderSpeed;
   float _maxFPS;
@@ -173,11 +238,14 @@ protected:
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
 
-  std::set< unsigned int > _gidsAll;
-  std::set< unsigned int > _gidsSelectedPre;
-  std::set< unsigned int > _gidsSelectedPost;
-  std::set< unsigned int > _gidsRelated;
-  std::set< unsigned int > _gidsOther;
+  gidUSet _gidsAll;
+  gidUSet _gidsSelectedPre;
+  gidUSet _gidsSelectedPost;
+  gidUSet _gidsRelated;
+  gidUSet _gidsOther;
+
+  const gidUSet* _lastSelectedPre;
+  const gidUSet* _lastSelectedPost;
 
   syncopa::vec3 _colorSelectedPre;
   syncopa::vec3 _colorSelectedPost;
@@ -188,10 +256,17 @@ protected:
   syncopa::vec3 _colorPathsPre;
   syncopa::vec3 _colorPathsPost;
 
+  syncopa::vec3 _colorSynMapPre;
+  syncopa::vec3 _colorSynMapPost;
+
+  tQColorVec _colorSynMap;
+
   float _alphaSynapsesPre;
   float _alphaSynapsesPost;
   float _alphaPathsPre;
   float _alphaPathsPost;
+
+  float _alphaSynapsesMap;
 
   bool _showSelectedPre;
   bool _showSelectedPost;
@@ -201,6 +276,14 @@ protected:
   bool _showSynapsesPost;
   bool _showPathsPre;
   bool _showPathsPost;
+
+  bool _showSynapses;
+  bool _showPaths;
+//  bool _showMorphologies;
+  bool _showFullMorphologiesPre;
+  bool _showFullMorphologiesPost;
+  bool _showFullMorphologiesContext;
+  bool _showFullMorphologiesOther;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 
@@ -225,6 +308,8 @@ protected:
 
   Eigen::Vector2f _inverseResolution;
 
+  bool _mapSynapseValues;
+  TBrainSynapseAttribs _currentSynapseAttrib;
 
 };
 

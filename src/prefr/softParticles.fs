@@ -26,9 +26,9 @@ void main()
 
   float screenDepth = texture( depthMap, screenCoord ).r;
 
-  float fragmentDepth = gl_FragCoord.z / gl_FragCoord.w / zFar;
+  float fragmentDepth = gl_FragCoord.z / gl_FragCoord.w;
 
-  float linealScreenDepth = LinearizeDepth( screenDepth ) / zFar;
+  float linealScreenDepth = LinearizeDepth( screenDepth );
 
   if( fragmentDepth > linealScreenDepth )
   	discard;

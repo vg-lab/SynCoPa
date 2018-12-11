@@ -13,20 +13,32 @@ namespace syncopa
 
   PSManager::PSManager( void )
   : _particleSystem( nullptr )
+  , _pathFinder( nullptr )
   , _maxParticles( 0 )
   , _modelSynPre( nullptr )
   , _modelSynPost( nullptr )
+  , _modelSynMap( nullptr )
   , _modelPathPre( nullptr )
   , _modelPathPost( nullptr )
+  , _modelDynPre( nullptr )
+  , _modelDynPost( nullptr )
+  , _dynamicVelocityModule( 200 )
   , _sourceSynPre( nullptr )
   , _sourceSynPost( nullptr )
   , _sourcePathPre( nullptr )
   , _sourcePathPost( nullptr )
+  , _sampler( nullptr )
+  , _totalDynamicSources( 20 )
+  , _particlesPerDynamicSource( 2000 )
+  , _mobileSourcesEmissionRate( 0.2f )
+  , _clusterDyn( nullptr )
   , _clusterSynPre( nullptr )
   , _clusterSynPost( nullptr )
   , _clusterPathPre( nullptr )
   , _clusterPathPost( nullptr )
   , _updaterSynapses( nullptr)
+  , _updaterMapperSynapses( nullptr )
+  , _normalUpdater( nullptr )
   { }
 
   PSManager::~PSManager( void )
@@ -40,11 +52,13 @@ namespace syncopa
     return _particleSystem;
   }
 
-  void PSManager::init( unsigned int maxParticles )
+  void PSManager::init( PathFinder* pathFinder, unsigned int maxParticles )
   {
+    _pathFinder = pathFinder;
+
     _particleSystem = new prefr::ParticleSystem( maxParticles );
 
-    _particleSystem->parallel( true );
+    _particleSystem->parallel( false );
 
     prefr::Model model = prefr::Model( 1.0f, 1.0f );
     model.velocity.Insert( 0.0f, 0.0f );
@@ -55,6 +69,14 @@ namespace syncopa
     _modelSynPost = new prefr::Model( model );
     _modelPathPre = new prefr::Model( model );
     _modelPathPost= new prefr::Model( model );
+
+    _modelSynMap = new prefr::Model( );
+    _modelSynMap->velocity.Insert( 0.0f, 0.0f );
+
+    _modelSynMap->size.Insert( 0.0f, 8.0f );
+    _modelSynMap->color.Insert( 0.0f, glm::vec4( 1, 0, 0, 0.8 ));
+    _modelSynMap->color.Insert( 1.0f, glm::vec4( 1, 1, 0, 0.8 ));
+
 
     _sourceSynPre = new SourceMultiPosition( );
     _sourceSynPost = new SourceMultiPosition( );
@@ -84,7 +106,37 @@ namespace syncopa
     _particleSystem->addCluster( _clusterPathPost );
 
     _updaterSynapses = new UpdaterStaticPosition( );
+    _updaterMapperSynapses = new UpdaterMappedValue( );
+
     _particleSystem->addUpdater( _updaterSynapses );
+    _particleSystem->addUpdater( _updaterMapperSynapses );
+
+    _normalUpdater = new prefr::Updater( );
+    _particleSystem->addUpdater( _normalUpdater );
+//TODO
+    _sampler = new prefr::SphereSampler( 1, 360 );
+
+    _clusterDyn = new prefr::Cluster( );
+
+    _modelDynPre = new prefr::Model( model );
+    _modelDynPre->setLife( 1, 1 );
+    _modelDynPre->color.Insert( 0.0f, glm::vec4( 0.5, 0.5, 1, 0.7 ));
+    _modelDynPre->color.Insert( 0.25f, glm::vec4( 0, 0.5, 1, 0.2 ));
+    _modelDynPre->color.Insert( 1.0f, glm::vec4( 0, 1, 1, 0 ));
+
+    _modelDynPre->size.Insert( 0.0f, 10 );
+    _modelDynPre->size.Insert( 0.2f, 5 );
+    _modelDynPre->size.Insert( 1.0f, 1 );
+
+    _modelDynPre->velocity.Insert( 0.0f, 0.0f );
+
+    _modelDynPost = new prefr::Model( *_modelDynPre );
+    _modelDynPost->color.Insert( 0.0f, glm::vec4( 1, 0.5, 0.5, 0.7 ));
+    _modelDynPost->color.Insert( 0.25f, glm::vec4( 1, 0.5, 0, 0.2 ));
+    _modelDynPost->color.Insert( 1.0f, glm::vec4( 1, 1, 0, 0 ));
+
+
+    _particleSystem->addCluster( _clusterDyn );
 
     prefr::Sorter* sorter = new prefr::Sorter( );
     prefr::GLRenderer* renderer = new prefr::GLRenderer( );
@@ -113,22 +165,15 @@ namespace syncopa
 
   void PSManager::clearSynapses( TNeuronConnection type )
   {
-    if( type == PRESYNAPTIC )
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
     {
       _sourceSynPre->clear( );
       _particleSystem->detachSource( _sourceSynPre );
 
     }
-    else if ( type == POSTSYNAPTIC )
-    {
-      _sourceSynPost->clear( );
-      _particleSystem->detachSource( _sourceSynPost );
-    }
-    else
-    {
-      _sourceSynPre->clear( );
-      _particleSystem->detachSource( _sourceSynPre );
 
+    if ( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+    {
       _sourceSynPost->clear( );
       _particleSystem->detachSource( _sourceSynPost );
     }
@@ -157,25 +202,22 @@ namespace syncopa
     }
   }
 
-  void PSManager::setupSynapses( const std::vector< vec3 > positions,
-                                 TNeuronConnection type )
+  void PSManager::_updateBoundingBox( const std::vector< vec3 > positions, bool clear_ )
   {
-    if( positions.empty( ))
-      return;
 
-    _particleSystem->run( false );
+    Eigen::Array3f minimum;
+    Eigen::Array3f maximum;
 
-    clearSynapses( type );
-
-    std::cerr << "Requesting particles " << positions.size( ) << std::endl;
-
-    auto availableParticles =
-        _particleSystem->retrieveUnused( positions.size( ));
-
-    Eigen::Array3f minimum =
-      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
-    Eigen::Array3f maximum =
-      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+    if( clear_ )
+    {
+       minimum = Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+       maximum = Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+    }
+    else
+    {
+      minimum = _boundingBox.minimum( );
+      maximum = _boundingBox.maximum( );
+    }
 
     for( auto pos : positions )
     {
@@ -194,11 +236,127 @@ namespace syncopa
     std::cout << "Bounding box max: " << maximum.x( )
                   << " " << maximum.y( )
                   << " " << maximum.z( ) << std::endl;
-//    if( availableParticles.size( ) != positions.size( ))
-//    {
-//      std::cerr << "There are no available particles " << positions.size( ) << std::endl;
-//      return;
-//    }
+  }
+
+  void PSManager::configureSynapses( const tsynapseVec& synapses,
+                                     const TNeuronConnection type )
+  {
+
+    std::vector< vec3 > positionsPre;
+    std::vector< vec3 > positionsPost;
+    positionsPre.reserve( synapses.size( ));
+    positionsPost.reserve( synapses.size( ));
+
+    unsigned int counter = 0;
+    for( auto syn : synapses )
+    {
+      positionsPre.push_back( syn->preSynapticSurfacePosition( ));
+      positionsPost.push_back( syn->postSynapticSurfacePosition( ));
+
+      ++counter;
+    }
+
+    std::cout << " Loaded " << counter << " synapses." << std::endl;
+
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+      setupSynapses( positionsPre, PRESYNAPTIC );
+
+    if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+      setupSynapses( positionsPost, POSTSYNAPTIC );
+  }
+
+  void PSManager::configureMappedSynapses( const tsynapseVec& synapses,
+                                           const tFloatVec& lifeValues,
+                                           TNeuronConnection type )
+  {
+    assert( synapses.size( ) == lifeValues.size( ));
+
+    std::vector< vec3 > positionsPre;
+    std::vector< vec3 > positionsPost;
+    positionsPre.reserve( synapses.size( ));
+    positionsPost.reserve( synapses.size( ));
+
+    unsigned int counter = 0;
+    for( auto syn : synapses )
+    {
+      positionsPre.push_back( syn->preSynapticSurfacePosition( ));
+      positionsPost.push_back( syn->postSynapticSurfacePosition( ));
+
+      ++counter;
+    }
+
+    std::cout << "Configuring " << counter << " mapped synapses." << std::endl;
+
+    if( type == PRESYNAPTIC || type == ALL_CONNECTIONS )
+      _mapSynapses( positionsPre, lifeValues, PRESYNAPTIC );
+
+    if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS )
+      _mapSynapses( positionsPost, lifeValues, POSTSYNAPTIC );
+
+  }
+
+
+  void PSManager::_mapSynapses( const tPosVec& positions,
+                               const tFloatVec& lifeValues,
+                               TNeuronConnection type )
+  {
+    if( positions.empty( ))
+      return;
+
+    assert( positions.size( ) == lifeValues.size( ));
+
+    clearSynapses( type );
+
+//    _gidToParticleId.clear( );
+
+    auto availableParticles =
+           _particleSystem->retrieveUnused( positions.size( ));
+
+    auto source = ( type == syncopa::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
+    auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
+    auto model = ( type == syncopa::PRESYNAPTIC ? _modelSynMap : _modelSynMap ); //TODO
+
+
+    for( unsigned int i = 0; i < lifeValues.size( ); ++i )
+    {
+      auto particle = availableParticles.at( i );
+
+      particle.set_life( lifeValues[ i ] );
+
+//      _gidToParticleId.insert( std::make_pair( synapses[ i ]->gid( ),
+//                                               particle.id( )));
+    }
+
+    source->addPositions( availableParticles.indices( ), positions );
+
+    cluster->particles( availableParticles );
+    //    std::cout << "Cluster " << cluster->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+
+    cluster->setModel( model );
+    cluster->setUpdater( _updaterMapperSynapses );
+    //    cluster->setSource( source );
+    _particleSystem->addSource( source, cluster->particles( ).indices( ) );
+
+    //    std::cout << "Source " << source->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+
+    _updateBoundingBox( positions );
+  }
+
+
+  void PSManager::setupSynapses( const std::vector< vec3 > positions,
+                                 TNeuronConnection type )
+  {
+    if( positions.empty( ))
+      return;
+
+    _particleSystem->run( true );
+
+    clearSynapses( type );
+
+    std::cerr << "Requesting particles " << positions.size( ) << std::endl;
+
+    auto availableParticles =
+        _particleSystem->retrieveUnused( positions.size( ));
 
     auto source = ( type == syncopa::PRESYNAPTIC ? _sourceSynPre : _sourceSynPost );
     auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterSynPre : _clusterSynPost );
@@ -214,7 +372,9 @@ namespace syncopa
 //    cluster->setSource( source );
     _particleSystem->addSource( source, cluster->particles( ).indices( ) );
 
-    std::cout << "Source " << source->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+//    std::cout << "Source " << source->particles( ).size( ) << " " << availableParticles.size( ) << std::endl;
+
+    _updateBoundingBox( positions );
 
     _particleSystem->run( true );
   }
@@ -233,36 +393,6 @@ namespace syncopa
 
     auto availableParticles =
         _particleSystem->retrieveUnused( positions.size( ));
-
-//    Eigen::Array3f minimum =
-//      Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
-//    Eigen::Array3f maximum =
-//      Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
-
-//    for( auto pos : positions )
-//    {
-//      Eigen::Array3f aux( pos );
-//      minimum = minimum.min( aux );
-//      maximum = maximum.max( aux );
-//    }
-//
-//    _boundingBox.minimum( ) = minimum;
-//    _boundingBox.maximum( ) = maximum;
-//
-//    std::cout << "Bounding box min: " << minimum.x( )
-//              << " " << minimum.y( )
-//              << " " << minimum.z( ) << std::endl;
-//
-//    std::cout << "Bounding box max: " << maximum.x( )
-//                  << " " << maximum.y( )
-//                  << " " << maximum.z( ) << std::endl;
-
-
-//    if( availableParticles.size( ) != positions.size( ))
-//    {
-//      std::cerr << "There are no available particles " << positions.size( ) << std::endl;
-//      return;
-//    }
 
     auto source = ( type == syncopa::PRESYNAPTIC ? _sourcePathPre : _sourcePathPost );
     auto cluster = ( type == syncopa::PRESYNAPTIC ? _clusterPathPre : _clusterPathPost );
@@ -293,12 +423,27 @@ namespace syncopa
 
   void PSManager::colorSynapses( const vec4& color, TNeuronConnection type )
   {
+    std::cout << "Setting color " << color.w( ) << std::endl;
+
     if( type == PRESYNAPTIC )
+    {
+      _colorSynPre = color;
+      _modelSynPre->color.Clear();
       _modelSynPre->color.Insert( 0, eigenToGLM( color ));
+    }
     else if( type == POSTSYNAPTIC )
+    {
+      _colorSynPost = color;
+      _modelSynPost->color.Clear();
       _modelSynPost->color.Insert( 0, eigenToGLM( color ));
+    }
     else
     {
+      _colorSynPre = color;
+      _colorSynPost = color;
+
+      _modelSynPre->color.Clear();
+      _modelSynPost->color.Clear();
       _modelSynPre->color.Insert( 0, eigenToGLM( color ));
       _modelSynPost->color.Insert( 0, eigenToGLM( color ));
     }
@@ -312,12 +457,22 @@ namespace syncopa
 
   void PSManager::sizeSynapses( float size, TNeuronConnection type )
   {
+    std::cout << "Setting size " << size <<std::endl;
+
     if( type == PRESYNAPTIC )
+    {
+//      _modelSynPre->size.Clear( );
       _modelSynPre->size.Insert( 0, size );
+    }
     else if( type == POSTSYNAPTIC )
+    {
+//      _modelSynPost->size.Clear( );
       _modelSynPost->size.Insert( 0, size );
+    }
     else
     {
+//      _modelSynPre->size.Clear( );
+//      _modelSynPost->size.Clear( );
       _modelSynPre->size.Insert( 0, size );
       _modelSynPost->size.Insert( 0, size );
     }
@@ -334,14 +489,37 @@ namespace syncopa
   void PSManager::colorPaths( const vec4& color, TNeuronConnection type )
   {
     if( type == PRESYNAPTIC )
-      _modelPathPre->color.Insert( 0, eigenToGLM( color ));
+    {
+      _colorPathPre = color;
+      _modelPathPre->color.Insert( 0, eigenToGLM( _colorPathPre ));
+    }
     else if( type == POSTSYNAPTIC )
-      _modelPathPost->color.Insert( 0, eigenToGLM( color ));
+    {
+      _colorPathPost = color;
+      _modelPathPost->color.Insert( 0, eigenToGLM( _colorPathPost ));
+    }
     else
     {
+      _colorPathPre = color;
+      _colorPathPost = color;
+
       _modelPathPre->color.Insert( 0, eigenToGLM( color ));
       _modelPathPost->color.Insert( 0, eigenToGLM( color ));
     }
+  }
+
+  void PSManager::colorSynapseMap( const tColorVec& colors )
+  {
+    _modelSynMap->color.Clear( );
+
+    std::cout << "Color mapping: ";
+    for( auto color : colors )
+    {
+      std::cout << " " << color.first;
+      _modelSynMap->color.Insert( color.first, color.second );
+    }
+
+    std::cout << std::endl;
   }
 
 
@@ -357,6 +535,27 @@ namespace syncopa
 
     if( type == POSTSYNAPTIC || type == ALL_CONNECTIONS)
       _modelPathPost->size.Insert( 0, size );
+  }
+
+  float PSManager::sizeSynapseMap( TNeuronConnection ) const
+  {
+    return _modelSynMap->size.GetFirstValue( );
+  }
+
+  void PSManager::sizeSynapsesMap( float newSize, TNeuronConnection )
+  {
+    _modelSynMap->size.Insert( 0, newSize );
+  }
+
+  float PSManager::sizeDynamic( void ) const
+  {
+    return _modelDynPre->size.GetFirstValue( );
+  }
+
+  void PSManager::sizeDynamic( float newSize )
+  {
+    _modelDynPre->size.Insert( 0.0f, newSize );
+    _modelDynPost->size.Insert( 0.0f, newSize );
   }
 
   nlgeometry::AxisAlignedBoundingBox PSManager::boundingBox( void ) const
@@ -391,5 +590,61 @@ namespace syncopa
     }
   }
 
+  MobilePolylineSource* PSManager::getSpareMobileSouce( TNeuronConnection type )
+  {
+
+    MobilePolylineSource* result;
+
+    if( _availableDynamicSources.empty( ))
+    {
+      result = new MobilePolylineSource( _mobileSourcesEmissionRate, vec3( 0, 0, 0 ));
+      std::cout << "Creating new source " << result->gid( ) << std::endl;
+    }
+    else
+    {
+      result = *_availableDynamicSources.begin( );
+      _availableDynamicSources.erase( result );
+//      std::cout << "Using old source " << result->gid( ) << std::endl;
+    }
+
+    _dynamicSources.insert( result );
+
+    auto indices = _particleSystem->retrieveUnused( _particlesPerDynamicSource );
+//    result->particles( ) = indices;
+
+    _clusterDyn->particles( indices );
+
+    _clusterDyn->setModel(( type == PRESYNAPTIC ) ? _modelDynPre : _modelDynPost );
+    _clusterDyn->setUpdater( _normalUpdater );
+
+    result->delay( 0 );
+    result->maxEmissionCycles( 0 );
+    result->autoDeactivateWhenFinished( true );
+    result->velocityModule( _dynamicVelocityModule );
+
+    result->sampler( _sampler );
+
+    _particleSystem->addSource( result, indices.indices( ) );
+
+    result->restart( );
+
+    return result;
+  }
+
+  void PSManager::releaseMobileSource( MobilePolylineSource* source_ )
+  {
+    _availableDynamicSources.insert( source_ );
+    _dynamicSources.erase( source_ );
+
+    source_->finishedPath.disconnect_all_slots( );
+    source_->finishedSection.disconnect_all_slots( );
+    source_->reachedSynapse.disconnect_all_slots( );
+
+//    std::cout << "-- Releasing source " << source_->gid( )
+//              << " type " << (unsigned int) source_->functionType( ) << std::endl;
+
+    _particleSystem->detachSource( source_ );
+  }
 
 }
+

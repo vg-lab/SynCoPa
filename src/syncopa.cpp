@@ -102,7 +102,7 @@ int main( int argc, char** argv )
 
   setFormat( );
   MainWindow mainWindow;
-  mainWindow.setWindowTitle("PReFr Editor");
+  mainWindow.setWindowTitle("SynCoPa");
 
   if ( initWindowSize )
     mainWindow.resize( initWindowWidth, initWindowHeight );

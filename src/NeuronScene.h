@@ -59,9 +59,9 @@ public:
 //    TRenderMorpho getRender( const std::vector< unsigned int >& gidsPre,
 //                             const std::vector< unsigned int >& gidsPost ) const;
 
-    TRenderMorpho getRender( const std::set< unsigned int >& gids ) const;
+    TRenderMorpho getRender( const gidUSet& gids ) const;
 
-    void computeBoundingBox( std::vector< unsigned int > indices_ );
+    void computeBoundingBox( const gidVec& indices_ );
 
     void computeBoundingBox( void );
 

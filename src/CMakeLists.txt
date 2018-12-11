@@ -30,13 +30,22 @@ set(SYNCOPA_SOURCES
   syncopa.cpp
   MainWindow.cpp
   OpenGLWidget.cpp
+  PaletteColorWidget.cpp
+  GradientWidget.cpp
+  DomainManager.cpp
   
   NeuronScene.cpp
   PSManager.cpp
   PathFinder.cpp
+  ConnectivityTree.cpp
+  DynamicPathManager.cpp
   
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
+  prefr/UpdaterMappedValue.cpp
+  prefr/MobilePolylineSource.cpp
+  
+  ext/ctkrangeslider.cpp
   
   CMakeSetup.rc
   syncopa.ui
@@ -47,13 +56,22 @@ set(SYNCOPA_HEADERS
   ${PROJECT_BINARY_DIR}/include/syncopa/version.h
   OpenGLWidget.h
   MainWindow.h
+  PaletteColorWidget.h
+  GradientWidget.h
+  DomainManager.h
   
   NeuronScene.h
   PSManager.h
   PathFinder.h
+  ConnectivityTree.h
+  DynamicPathManager.h
   
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h
+  prefr/UpdaterMappedValue.h
+  prefr/MobilePolylineSource.h
+  
+  ext/ctkrangeslider.h
   
   prefr/PrefrShaders.h
 )
@@ -73,6 +91,7 @@ set(SYNCOPA_LINK_LIBRARIES
   nlgeometry
   nlrender
   nlgenerator
+  scoop
 )
 
 if ( GMRVLEX_FOUND )
