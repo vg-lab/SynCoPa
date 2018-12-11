@@ -61,6 +61,8 @@ public:
 
   nsol::DataSet* dataset( void );
 
+  void alphaMode( bool alphaAccumulative = false );
+
   void mode( TMode mode_ );
   TMode mode( void ) const;
 

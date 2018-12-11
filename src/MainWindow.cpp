@@ -246,9 +246,13 @@ void MainWindow::initColorDock( void )
 
   container->setLayout( layout );
 
+  _groupBoxGeneral = new QGroupBox( "General" );
   _groupBoxMorphologies = new QGroupBox( "Morphologies" );
   _groupBoxSynapses = new QGroupBox( "Synapses" );
   _groupBoxPaths = new QGroupBox( "Paths" );
+
+  _radioAlphaModeNormal = new QRadioButton( "Normal" );
+  _radioAlphaModeAccumulative = new QRadioButton( "Accumulative" );
 
   _checkShowMorphoPre = new QCheckBox( "Presynaptic" );
   _checkShowMorphoPost = new QCheckBox( "Postsynaptic" );
@@ -267,6 +271,9 @@ void MainWindow::initColorDock( void )
   _checkSynapsesPost->setChecked( true );
   _checkPathsPre->setChecked( true );
   _checkPathsPost->setChecked( true );
+
+  QHBoxLayout* generalLayout = new QHBoxLayout( );
+  _groupBoxGeneral->setLayout( generalLayout );
 
   QGridLayout* morphoLayout = new QGridLayout( );
   _groupBoxMorphologies->setLayout( morphoLayout );
@@ -364,6 +371,11 @@ void MainWindow::initColorDock( void )
 //
 //  color = colorEigenToQt( _openGLWidget->colorSynapseMapPre( ));
 //  _frameColorSynapseMapGradient->setStyleSheet( "background-color: " + color.name( ));
+
+  // General controls
+
+  generalLayout->addWidget( _radioAlphaModeNormal );
+  generalLayout->addWidget( _radioAlphaModeAccumulative );
 
   // Morphologies
 
@@ -547,6 +559,7 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( _spinBoxSizePathsPost, row, col++, 1, 1 );
   pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
 
+  layout->addWidget( _groupBoxGeneral );
   layout->addWidget( _groupBoxMorphologies );
   layout->addWidget( _groupBoxSynapses );
   layout->addWidget( _groupBoxPaths );
@@ -555,6 +568,9 @@ void MainWindow::initColorDock( void )
   _buttonDynamic->setCheckable( true );
 
   layout->addWidget( _buttonDynamic );
+
+  connect( _radioAlphaModeNormal, SIGNAL( toggled( bool )),
+           this, SLOT( alphaModeChanged( bool )));
 
   connect( _buttonDynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
 
@@ -640,6 +656,8 @@ void MainWindow::initColorDock( void )
 
   connect( _comboSynapseMapAttrib, SIGNAL( currentIndexChanged( int )),
            this, SLOT( setSynapseMappingAttribute( int )));
+
+  _radioAlphaModeNormal->setChecked( true );
 
   checkMapSynapses->setChecked( false );
 
@@ -1326,5 +1344,10 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
   _openGLWidget->mode( mode );
 
 
+}
+
+void MainWindow::alphaModeChanged( bool state )
+{
+  _openGLWidget->alphaMode( !state );
 }
 

@@ -1498,6 +1498,12 @@ std::pair< float, float > OpenGLWidget::rangeBounds( void ) const
   return _domainManager->rangeBounds( );
 }
 
+
+void OpenGLWidget::alphaMode( bool alphaAccumulative )
+{
+  _alphaBlendingAccumulative = alphaAccumulative;
+}
+
 void OpenGLWidget::mode( TMode mode_ )
 {
   _mode = mode_;

@@ -74,6 +74,7 @@ protected slots:
   void filteringBoundsChanged( void );
 
   void modeChanged( bool state );
+  void alphaModeChanged( bool state );
 
   void clear( void );
 
@@ -107,6 +108,9 @@ protected:
 
   QRadioButton* _radioModeSynapses;
   QRadioButton* _radioModePaths;
+
+  QRadioButton* _radioAlphaModeNormal;
+  QRadioButton* _radioAlphaModeAccumulative;
 
   QDockWidget* _dockInfo;
   QVBoxLayout* _layoutInfo;
@@ -171,6 +175,7 @@ protected:
 
   QComboBox* _comboSynapseMapAttrib;
 
+  QGroupBox* _groupBoxGeneral;
   QGroupBox* _groupBoxMorphologies;
   QGroupBox* _groupBoxSynapses;
   QGroupBox* _groupBoxPaths;

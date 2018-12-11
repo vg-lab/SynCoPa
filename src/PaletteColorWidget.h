@@ -30,7 +30,9 @@ class PaletteColorWidget : public QWidget
   enum tColorType
   {
     PALETTE_SEQUENTIAL = 0,
-    PALETTE_CATEGORICAL
+    PALETTE_CATEGORICAL,
+    PALETTE_DIVERGING,
+    PALETTE_UNIFORM
   };
 
 public:
@@ -84,6 +86,8 @@ protected:
 
   QRadioButton* _radioSequential;
   QRadioButton* _radioCategorical;
+  QRadioButton* _radioDiverging;
+  QRadioButton* _radioUniform;
 //  QRadioButton* _radioCustom; //TODO
 
   QCheckBox* _checkInvertPalette;
