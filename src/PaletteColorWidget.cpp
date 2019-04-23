@@ -75,8 +75,8 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 void PaletteColorWidget::init( bool dialog )
 {
   _frameResult = new GradientWidget( );
-  _frameResult->setMinimumSize( 200, 50 );
-  _frameResult->setMaximumSize( 200, 50 );
+  _frameResult->setMinimumHeight( 50 );
+  _frameResult->setMaximumHeight( 50 );
   _frameResult->setDirection( GradientWidget::HORIZONTAL );
 
   _radioSequential = new QRadioButton( "Sequential" );

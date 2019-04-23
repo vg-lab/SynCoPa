@@ -1007,10 +1007,10 @@ void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
     _mouseY = event_->y( );
   }
 
-  if ( event_->button( ) ==  Qt::MidButton )
+  if ( event_->button( ) ==  Qt::RightButton )
   {
     _translation = true;
-    _mouseX = event_->x( );
+    _mouseX = event_->x ( );
     _mouseY = event_->y( );
   }
 
@@ -1025,7 +1025,7 @@ void OpenGLWidget::mouseReleaseEvent( QMouseEvent* event_ )
     _rotation = false;
   }
 
-  if ( event_->button( ) ==  Qt::MidButton )
+  if ( event_->button( ) ==  Qt::RightButton )
   {
     _translation = false;
   }
@@ -1043,11 +1043,18 @@ void OpenGLWidget::mouseMoveEvent( QMouseEvent* event_ )
     _mouseX = event_->x( );
     _mouseY = event_->y( );
   }
+
   if( _translation )
   {
-    _mouseX = event_->x( );
-    _mouseY = event_->y( );
+   float xDis = ( event_->x() - _mouseX ) * 0.001f * _camera->radius( );
+   float yDis = ( event_->y() - _mouseY ) * 0.001f * _camera->radius( );
+
+   _camera->localTranslation( Eigen::Vector3f( -xDis, yDis, 0.0f ));
+   _mouseX = event_->x( );
+   _mouseY = event_->y( );
   }
+
+
 
   this->update( );
 }
