@@ -23,3 +23,21 @@ build/
 bld/
 [Bb]in/
 [Oo]bj/
+
+# Dependencies
+Brion
+HighFive
+Keyv
+Lexis
+Lunchbox
+MVDTool
+ReTo
+Servus
+ZeroBuf
+ZeroEQ
+gmrvlex
+neurolots
+nsol
+prefr
+scoop
+vmmlib

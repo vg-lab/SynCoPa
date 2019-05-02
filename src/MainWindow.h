@@ -78,7 +78,9 @@ protected slots:
 
   void clear( void );
 
-  void dynamic( void );
+  void dynamicStart( void );
+  void dynamicPause( void );
+  void dynamicStop( void );
 
 protected:
 
@@ -171,7 +173,8 @@ protected:
   QLabel* _labelTransPathPost;
   QLabel* _labelTransSynMap;
 
-  QPushButton* _buttonDynamic;
+  QPushButton* _buttonDynamicStart;
+  QPushButton* _buttonDynamicStop;
 
   QComboBox* _comboSynapseMapAttrib;
 
@@ -179,4 +182,5 @@ protected:
   QGroupBox* _groupBoxMorphologies;
   QGroupBox* _groupBoxSynapses;
   QGroupBox* _groupBoxPaths;
+  QGroupBox* _groupBoxDynamic;
 };

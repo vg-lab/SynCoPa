@@ -51,6 +51,8 @@ MainWindow::MainWindow( QWidget* parent_,
 , _modelListPost( nullptr )
 , _radioModeSynapses( nullptr )
 , _radioModePaths( nullptr )
+, _radioAlphaModeNormal( nullptr )
+, _radioAlphaModeAccumulative( nullptr )
 , _dockInfo( nullptr )
 , _layoutInfo( nullptr )
 , _widgetInfoPre( nullptr )
@@ -96,12 +98,14 @@ MainWindow::MainWindow( QWidget* parent_,
 , _labelTransPathPre( nullptr )
 , _labelTransPathPost( nullptr )
 , _labelTransSynMap( nullptr )
-
-, _buttonDynamic( nullptr )
+, _buttonDynamicStart( nullptr )
+, _buttonDynamicStop( nullptr )
 , _comboSynapseMapAttrib( nullptr )
+, _groupBoxGeneral( nullptr )
 , _groupBoxMorphologies( nullptr )
 , _groupBoxSynapses( nullptr )
 , _groupBoxPaths( nullptr )
+, _groupBoxDynamic( nullptr )
 {
   _ui->setupUi( this );
 
@@ -235,8 +239,8 @@ void MainWindow::initListDock( void )
 
 void MainWindow::initColorDock( void )
 {
-  _dockColor = new QDockWidget( "Aspect" );
-  _dockColor->setMinimumHeight( 300 );
+  _dockColor = new QDockWidget( "Visual configuration" );
+//  _dockColor->setMinimumHeight( 300 );
 
   QScrollArea* scrollArea = new QScrollArea( );
 
@@ -246,17 +250,18 @@ void MainWindow::initColorDock( void )
 
   container->setLayout( layout );
 
-  _groupBoxGeneral = new QGroupBox( "General" );
+  _groupBoxGeneral = new QGroupBox( "Alpha blending" );
   _groupBoxMorphologies = new QGroupBox( "Morphologies" );
   _groupBoxSynapses = new QGroupBox( "Synapses" );
   _groupBoxPaths = new QGroupBox( "Paths" );
+  _groupBoxDynamic = new QGroupBox( "Dynamic" );
 
   _radioAlphaModeNormal = new QRadioButton( "Normal" );
   _radioAlphaModeAccumulative = new QRadioButton( "Accumulative" );
 
   _checkShowMorphoPre = new QCheckBox( "Presynaptic" );
   _checkShowMorphoPost = new QCheckBox( "Postsynaptic" );
-  _checkShowMorphoContext = new QCheckBox( "Context" );
+  _checkShowMorphoContext = new QCheckBox( "Connected" );
   _checkShowMorphoOther = new QCheckBox( "Other" );
   _checkSynapsesPre = new QCheckBox( "Presynaptic" );
   _checkSynapsesPost = new QCheckBox( "Postsynaptic" );
@@ -272,17 +277,49 @@ void MainWindow::initColorDock( void )
   _checkPathsPre->setChecked( true );
   _checkPathsPost->setChecked( true );
 
+  QWidget* containerGeneral = new QWidget( );
+  QVBoxLayout* layoutGeneral = new QVBoxLayout( );
+  containerGeneral->setLayout( layoutGeneral );
+  layoutGeneral->addWidget( _groupBoxGeneral );
+
   QHBoxLayout* generalLayout = new QHBoxLayout( );
+  generalLayout->setAlignment(  Qt::AlignTop );
   _groupBoxGeneral->setLayout( generalLayout );
 
+
+  QWidget* containerMorpho = new QWidget( );
+  QVBoxLayout* layoutMorpho = new QVBoxLayout( );
+  containerMorpho->setLayout( layoutMorpho );
+  layoutMorpho->addWidget( _groupBoxMorphologies );
+
+
   QGridLayout* morphoLayout = new QGridLayout( );
+  morphoLayout->setAlignment(  Qt::AlignTop );
   _groupBoxMorphologies->setLayout( morphoLayout );
 
+  QWidget* containerSynapses = new QWidget( );
+  QVBoxLayout* layoutSynapses = new QVBoxLayout( );
+  containerSynapses->setLayout( layoutSynapses );
+  layoutSynapses->addWidget( _groupBoxSynapses );
+
   QGridLayout* synLayout = new QGridLayout( );
+  synLayout->setAlignment(  Qt::AlignTop );
   _groupBoxSynapses->setLayout( synLayout );
 
+  QWidget* containerPaths = new QWidget( );
+  QVBoxLayout* layoutPaths = new QVBoxLayout( );
+  containerPaths->setLayout( layoutPaths );
+
+  layoutPaths->addWidget( _groupBoxPaths );
+  layoutPaths->addWidget( _groupBoxDynamic );
+
   QGridLayout* pathLayout = new QGridLayout( );
+  pathLayout->setAlignment(  Qt::AlignTop );
   _groupBoxPaths->setLayout( pathLayout );
+
+  QGridLayout* layoutDynamic = new QGridLayout( );
+  layoutDynamic->setAlignment( Qt::AlignTop );
+  _groupBoxDynamic->setLayout( layoutDynamic );
 
   QPalette palette;
   QColor color;
@@ -559,20 +596,44 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( _spinBoxSizePathsPost, row, col++, 1, 1 );
   pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
 
-  layout->addWidget( _groupBoxGeneral );
-  layout->addWidget( _groupBoxMorphologies );
-  layout->addWidget( _groupBoxSynapses );
-  layout->addWidget( _groupBoxPaths );
 
-  _buttonDynamic = new QPushButton( "Dynamic" );
-  _buttonDynamic->setCheckable( true );
+  _buttonDynamicStart = new QPushButton( "Start" );
+//  _buttonDynamicStart->setCheckable( true );
 
-  layout->addWidget( _buttonDynamic );
+  _buttonDynamicStop = new QPushButton( "Stop" );
+  layoutDynamic->addWidget( _buttonDynamicStart, 0, 0, 1, 1 );
+  layoutDynamic->addWidget( _buttonDynamicStop, 0, 1, 1, 1 );
 
+
+  QTabWidget* tabsWidget = new QTabWidget( );
+  tabsWidget->setTabPosition( QTabWidget::West );
+  tabsWidget->addTab( containerGeneral, "General" );
+  tabsWidget->addTab( containerMorpho, "Morphologies" );
+  tabsWidget->addTab( containerSynapses, "Synapses" );
+  tabsWidget->addTab( containerPaths, "Paths" );
+
+//  layout->addWidget( _groupBoxGeneral );
+//  layout->addWidget( _groupBoxMorphologies );
+//  layout->addWidget( _groupBoxSynapses );
+//  layout->addWidget( _groupBoxPaths );
+
+
+
+  scrollArea->setWidget( container );
+  scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+
+  _dockColor->setWidget( tabsWidget );
+  addDockWidget( Qt::RightDockWidgetArea, _dockColor );
+
+//  layout->addWidget( _buttonDynamicStart );
+
+
+  // SLOTS
   connect( _radioAlphaModeNormal, SIGNAL( toggled( bool )),
            this, SLOT( alphaModeChanged( bool )));
 
-  connect( _buttonDynamic, SIGNAL( clicked( )), this, SLOT( dynamic( )));
+  connect( _buttonDynamicStart, SIGNAL( clicked( )), this, SLOT( dynamicStart( )));
+  connect( _buttonDynamicStop, SIGNAL( clicked( )), this, SLOT( dynamicStop( )));
 
 
   connect( _frameColorMorphoPre, SIGNAL( clicked( )),
@@ -666,11 +727,7 @@ void MainWindow::initColorDock( void )
   _buttonShowFullMorphoContext->setChecked( false );
   _buttonShowFullMorphoOther->setChecked( false );
 
-  scrollArea->setWidget( container );
-  scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
 
-  _dockColor->setWidget( scrollArea );
-  addDockWidget( Qt::RightDockWidgetArea, _dockColor );
 }
 
 void MainWindow::initInfoDock( void )
@@ -689,7 +746,13 @@ void MainWindow::initInfoDock( void )
 
 //  _layoutInfo->addWidget(  );
 
-  _dockInfo->setWidget( container );
+  QScrollArea* scrollInfo = new QScrollArea( );
+  scrollInfo->setHorizontalScrollBarPolicy( Qt::ScrollBarAsNeeded );
+  scrollInfo->setVerticalScrollBarPolicy( Qt::ScrollBarAsNeeded );
+  scrollInfo->setWidget( container );
+  scrollInfo->setWidgetResizable( true );
+
+  _dockInfo->setWidget( scrollInfo );
 
   addDockWidget( Qt::RightDockWidgetArea, _dockInfo );
 
@@ -1005,8 +1068,13 @@ void MainWindow::presynapticNeuronClicked( const QModelIndex& index )
     std::cout << std::endl;
   }
 
-  _buttonDynamic->setChecked( false );
-  _buttonDynamic->setEnabled( false );
+  _groupBoxDynamic->setEnabled( false );
+  dynamicStop( );
+
+
+//  _buttonDynamicStart->setChecked( false );
+//  _buttonDynamicStart->setEnabled( false );
+
 
   updateInfoDock( );
 }
@@ -1021,8 +1089,10 @@ void MainWindow::postsynapticNeuronClicked( const QModelIndex&  )
 
   _openGLWidget->selectPostsynapticNeuron( selection );
 
-  _buttonDynamic->setChecked( false );
-  _buttonDynamic->setEnabled( true );
+//  _buttonDynamicStart->setChecked( false );
+//  _buttonDynamicStart->setEnabled( true );
+  _groupBoxDynamic->setEnabled( true );
+  dynamicStop( );
 
   std::cout << "Selected post: ";
   for( auto gid : selection )
@@ -1238,12 +1308,39 @@ void MainWindow::colorSynapseMapCancelled( void )
 //  _colorMapWidget->hide( );
 }
 
-void MainWindow::dynamic( void )
+void MainWindow::dynamicStart( void )
 {
-  if( _buttonDynamic->isChecked( ))
+//  if( _buttonDynamicStart->isChecked( ))
+//    _openGLWidget->startDynamic( );
+//  else
+//    _openGLWidget->stopDynamic( );
+
+  if( !_openGLWidget->dynamicActive( ))
+  {
+    _buttonDynamicStart->setText( "Pause" );
+    _buttonDynamicStop->setEnabled( true );
     _openGLWidget->startDynamic( );
+
+  }
   else
-    _openGLWidget->stopDynamic( );
+  {
+    dynamicPause( );
+  }
+
+}
+
+void MainWindow::dynamicPause( void )
+{
+  _openGLWidget->toggleDynamicMovement( );
+}
+
+void MainWindow::dynamicStop( void )
+{
+  _buttonDynamicStop->setEnabled( false  );
+  _buttonDynamicStart->setText( "Start" );
+
+  _openGLWidget->stopDynamic( );
+
 }
 
 void MainWindow::filteringStateChanged( void )
@@ -1327,8 +1424,9 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
 
   }
 
-  _buttonDynamic->setChecked( false );
-  _buttonDynamic->setEnabled( false );
+//  _buttonDynamicStart->setChecked( false );
+//  _buttonDynamicStart->setEnabled( false );
+  _groupBoxDynamic->setEnabled( false );
 
   if( selectedModeSynapses && _modelListPost )
     _modelListPost->clear( );

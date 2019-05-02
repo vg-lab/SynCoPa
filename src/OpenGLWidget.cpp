@@ -125,6 +125,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showFullMorphologiesPost( true )
 , _showFullMorphologiesContext( false )
 , _showFullMorphologiesOther( false )
+, _dynamicActive( false )
+, _dynamicMovement( true )
 , _oglFunctions( nullptr )
 , _screenPlaneShader( nullptr )
 , _screenPlaneVao( 0 )
@@ -168,6 +170,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
   _renderPeriodMicroseconds = _renderPeriod * 1000000;
 
   _renderSpeed = 1.f;
+
+  new QShortcut( QKeySequence( Qt::Key_Tab ), this, SLOT(toggleDynamicMovement()));
 
 }
 
@@ -911,7 +915,7 @@ void OpenGLWidget::paintGL( void )
         //TODO
         float delta = _elapsedTimeRenderAcc * 0.000001;
 //        std::cout << "Delta " << delta << std::endl;
-        _psManager->particleSystem( )->update( delta );
+        _psManager->particleSystem( )->update( _dynamicMovement ? delta : 0.0f );
         _elapsedTimeRenderAcc = 0.0f;
       }
 
@@ -1433,19 +1437,31 @@ void OpenGLWidget::showFullMorphologiesOther( bool show )
   _showFullMorphologiesOther = show;
 }
 
+bool OpenGLWidget::dynamicActive( void ) const
+{
+  return _dynamicActive;
+}
+
 void OpenGLWidget::startDynamic( void )
 {
-  if( _mode != PATHS )
+  if( _mode != PATHS || _dynamicActive )
     return;
 
   stopDynamic( );
   _dynPathManager->createRootSources( );
+  _dynamicMovement = true;
+  _dynamicActive = true;
 }
 
+void OpenGLWidget::toggleDynamicMovement( void )
+{
+  _dynamicMovement = !_dynamicMovement;
+}
 
 void OpenGLWidget::stopDynamic( void )
 {
   _dynPathManager->clear( );
+  _dynamicActive = false;
 }
 
 void OpenGLWidget::setSynapseMappingState( bool state )
