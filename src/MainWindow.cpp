@@ -25,6 +25,8 @@
 
 static float invRGB = 1.0 / 255;
 
+using namespace syncopa;
+
 syncopa::vec3 colorQtToEigen( const QColor& color_ )
 {
   return syncopa::vec3( std::min( 1.0f, std::max( 0.0f, color_.red( ) * invRGB )),

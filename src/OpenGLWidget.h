@@ -150,7 +150,7 @@ public slots:
   void showFullMorphologiesContext( bool show );
   void showFullMorphologiesOther( bool show );
 
-  void setSynapseMapping( int attrib = ( int ) TBSA_SYNAPSE_OTHER );
+  void setSynapseMapping( int attrib = ( int ) syncopa::TBSA_SYNAPSE_OTHER );
   void setSynapseMappingState( bool state );
 
   void startDynamic( void );
@@ -317,7 +317,7 @@ protected:
   Eigen::Vector2f _inverseResolution;
 
   bool _mapSynapseValues;
-  TBrainSynapseAttribs _currentSynapseAttrib;
+  syncopa::TBrainSynapseAttribs _currentSynapseAttrib;
 
 };
 
