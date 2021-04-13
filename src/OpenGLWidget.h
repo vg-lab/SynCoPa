@@ -63,8 +63,8 @@ public:
 
   void alphaMode( bool alphaAccumulative = false );
 
-  void mode( TMode mode_ );
-  TMode mode( void ) const;
+  void mode( syncopa::TMode mode_ );
+  syncopa::TMode mode( void ) const;
 
   bool dynamicActive( void ) const;
 
@@ -183,7 +183,7 @@ protected:
 
   void setupNeuronMorphologies( void );
 
-  void setupSynapses( const gidUSet& gids );
+  void setupSynapses( const syncopa::gidUSet& gids );
   void setupSynapses( void );
   void setupPaths( void );
 
@@ -243,14 +243,14 @@ protected:
   float _renderPeriodMicroseconds;
   bool _alphaBlendingAccumulative;
 
-  gidUSet _gidsAll;
-  gidUSet _gidsSelectedPre;
-  gidUSet _gidsSelectedPost;
-  gidUSet _gidsRelated;
-  gidUSet _gidsOther;
+  syncopa::gidUSet _gidsAll;
+  syncopa::gidUSet _gidsSelectedPre;
+  syncopa::gidUSet _gidsSelectedPost;
+  syncopa::gidUSet _gidsRelated;
+  syncopa::gidUSet _gidsOther;
 
-  const gidUSet* _lastSelectedPre;
-  const gidUSet* _lastSelectedPost;
+  const syncopa::gidUSet* _lastSelectedPre;
+  const syncopa::gidUSet* _lastSelectedPost;
 
   syncopa::vec3 _colorSelectedPre;
   syncopa::vec3 _colorSelectedPost;

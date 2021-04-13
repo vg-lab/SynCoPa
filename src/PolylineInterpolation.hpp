@@ -18,7 +18,7 @@
 
 #include <iostream>
 
-using namespace syncopa;
+//using namespace syncopa;
 
 namespace utils
 {
