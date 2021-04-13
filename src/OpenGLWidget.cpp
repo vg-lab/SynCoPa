@@ -125,6 +125,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showFullMorphologiesPost( true )
 , _showFullMorphologiesContext( false )
 , _showFullMorphologiesOther( false )
+, _dynamicActive( false )
+, _dynamicMovement( true )
 , _oglFunctions( nullptr )
 , _screenPlaneShader( nullptr )
 , _screenPlaneVao( 0 )
@@ -168,6 +170,8 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
   _renderPeriodMicroseconds = _renderPeriod * 1000000;
 
   _renderSpeed = 1.f;
+
+  new QShortcut( QKeySequence( Qt::Key_Tab ), this, SLOT(toggleDynamicMovement()));
 
 }
 
@@ -911,7 +915,7 @@ void OpenGLWidget::paintGL( void )
         //TODO
         float delta = _elapsedTimeRenderAcc * 0.000001;
 //        std::cout << "Delta " << delta << std::endl;
-        _psManager->particleSystem( )->update( delta );
+        _psManager->particleSystem( )->update( _dynamicMovement ? delta : 0.0f );
         _elapsedTimeRenderAcc = 0.0f;
       }
 
@@ -1007,10 +1011,10 @@ void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
     _mouseY = event_->y( );
   }
 
-  if ( event_->button( ) ==  Qt::MidButton )
+  if ( event_->button( ) ==  Qt::RightButton )
   {
     _translation = true;
-    _mouseX = event_->x( );
+    _mouseX = event_->x ( );
     _mouseY = event_->y( );
   }
 
@@ -1025,7 +1029,7 @@ void OpenGLWidget::mouseReleaseEvent( QMouseEvent* event_ )
     _rotation = false;
   }
 
-  if ( event_->button( ) ==  Qt::MidButton )
+  if ( event_->button( ) ==  Qt::RightButton )
   {
     _translation = false;
   }
@@ -1043,11 +1047,18 @@ void OpenGLWidget::mouseMoveEvent( QMouseEvent* event_ )
     _mouseX = event_->x( );
     _mouseY = event_->y( );
   }
+
   if( _translation )
   {
-    _mouseX = event_->x( );
-    _mouseY = event_->y( );
+   float xDis = ( event_->x() - _mouseX ) * 0.001f * _camera->radius( );
+   float yDis = ( event_->y() - _mouseY ) * 0.001f * _camera->radius( );
+
+   _camera->localTranslation( Eigen::Vector3f( -xDis, yDis, 0.0f ));
+   _mouseX = event_->x( );
+   _mouseY = event_->y( );
   }
+
+
 
   this->update( );
 }
@@ -1426,19 +1437,31 @@ void OpenGLWidget::showFullMorphologiesOther( bool show )
   _showFullMorphologiesOther = show;
 }
 
+bool OpenGLWidget::dynamicActive( void ) const
+{
+  return _dynamicActive;
+}
+
 void OpenGLWidget::startDynamic( void )
 {
-  if( _mode != PATHS )
+  if( _mode != PATHS || _dynamicActive )
     return;
 
   stopDynamic( );
   _dynPathManager->createRootSources( );
+  _dynamicMovement = true;
+  _dynamicActive = true;
 }
 
+void OpenGLWidget::toggleDynamicMovement( void )
+{
+  _dynamicMovement = !_dynamicMovement;
+}
 
 void OpenGLWidget::stopDynamic( void )
 {
   _dynPathManager->clear( );
+  _dynamicActive = false;
 }
 
 void OpenGLWidget::setSynapseMappingState( bool state )
@@ -1496,6 +1519,12 @@ void OpenGLWidget::filteringBounds( float min, float max )
 std::pair< float, float > OpenGLWidget::rangeBounds( void ) const
 {
   return _domainManager->rangeBounds( );
+}
+
+
+void OpenGLWidget::alphaMode( bool alphaAccumulative )
+{
+  _alphaBlendingAccumulative = alphaAccumulative;
 }
 
 void OpenGLWidget::mode( TMode mode_ )

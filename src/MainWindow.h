@@ -74,10 +74,13 @@ protected slots:
   void filteringBoundsChanged( void );
 
   void modeChanged( bool state );
+  void alphaModeChanged( bool state );
 
   void clear( void );
 
-  void dynamic( void );
+  void dynamicStart( void );
+  void dynamicPause( void );
+  void dynamicStop( void );
 
 protected:
 
@@ -107,6 +110,9 @@ protected:
 
   QRadioButton* _radioModeSynapses;
   QRadioButton* _radioModePaths;
+
+  QRadioButton* _radioAlphaModeNormal;
+  QRadioButton* _radioAlphaModeAccumulative;
 
   QDockWidget* _dockInfo;
   QVBoxLayout* _layoutInfo;
@@ -167,11 +173,14 @@ protected:
   QLabel* _labelTransPathPost;
   QLabel* _labelTransSynMap;
 
-  QPushButton* _buttonDynamic;
+  QPushButton* _buttonDynamicStart;
+  QPushButton* _buttonDynamicStop;
 
   QComboBox* _comboSynapseMapAttrib;
 
+  QGroupBox* _groupBoxGeneral;
   QGroupBox* _groupBoxMorphologies;
   QGroupBox* _groupBoxSynapses;
   QGroupBox* _groupBoxPaths;
+  QGroupBox* _groupBoxDynamic;
 };

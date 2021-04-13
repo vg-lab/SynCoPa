@@ -74,6 +74,9 @@ public:
     void run( void );
     void stop( void );
 
+    void dynamicVelocity( float velocityModule );
+    float dynamicVelocity( void ) const;
+
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
     MobilePolylineSource* getSpareMobileSouce( TNeuronConnection type = PRESYNAPTIC );

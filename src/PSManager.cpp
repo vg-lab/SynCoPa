@@ -590,6 +590,23 @@ namespace syncopa
     }
   }
 
+
+  void PSManager::dynamicVelocity( float velocityModule )
+  {
+    _dynamicVelocityModule = velocityModule;
+
+    for( auto source : _dynamicSources )
+    {
+      source->velocityModule( _dynamicVelocityModule );
+    }
+  }
+
+  float PSManager::dynamicVelocity( void ) const
+  {
+    return _dynamicVelocityModule;
+  }
+
+
   MobilePolylineSource* PSManager::getSpareMobileSouce( TNeuronConnection type )
   {
 
@@ -598,7 +615,7 @@ namespace syncopa
     if( _availableDynamicSources.empty( ))
     {
       result = new MobilePolylineSource( _mobileSourcesEmissionRate, vec3( 0, 0, 0 ));
-      std::cout << "Creating new source " << result->gid( ) << std::endl;
+//      std::cout << "Creating new source " << result->gid( ) << std::endl;
     }
     else
     {

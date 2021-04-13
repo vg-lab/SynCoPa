@@ -13,20 +13,32 @@
 #include <QGridLayout>
 #include <assert.h>
 
-using tscoopp = scoop::ColorPalette;
-using tpSeq = tscoopp::ColorBrewerSequential;
-using tpCat = tscoopp::ColorBrewerQualitative;
+using tscoop = scoop::ColorPalette;
+using tpSeq = tscoop::ColorBrewerSequential;
+using tpCat = tscoop::ColorBrewerQualitative;
+using tpDiv = tscoop::ColorBrewerDiverging;
+using tpUni = tscoop::MatplotlibPerceptualUniform;
 
 const static std::vector< std::string > paletteNamesSequential =
 {
-   "BuGn", "BuPu", "GnBu", "OrRd", "PuBu", "PuBuGn",
-   "PuRd", "RdPu", "YlGn", "YlGnBu", "YlOrBr", "YlOrRd",
-   "Blues", "Greens", "Greys", "Oranges", "Purples", "Reds"
+  "BuGn", "BuPu", "GnBu", "OrRd", "PuBu", "PuBuGn",
+  "PuRd", "RdPu", "YlGn", "YlGnBu", "YlOrBr", "YlOrRd",
+  "Blues", "Greens", "Greys", "Oranges", "Purples", "Reds"
 };
 
 const static std::vector< std::string > paletteNamesCategoric =
 {
- "Accent", " Dark2", " Paired", " Pastel1", "Pastel2", " Set1", " Set2", " Set3"
+  "Accent", " Dark2", " Paired", " Pastel1", "Pastel2", " Set1", " Set2", " Set3"
+};
+
+const static std::vector< std::string > paletteNamesDiverging =
+{
+  "BrBG", "PiYG", "PRGn", "PurOr", "RdBu", "RdGy", "RdYlBu", "RdYlGn", "Spectral"
+};
+
+const static std::vector< std::string > paletteNamesUniform =
+{
+  "Viridis", "Magma", "Inferno", "Plasma"
 };
 
 PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
@@ -38,7 +50,8 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _frameResult( nullptr )
 , _radioSequential( nullptr )
 , _radioCategorical( nullptr )
-//  QRadioButton* _radioCustom; //TODO
+, _radioDiverging( nullptr )
+, _radioUniform( nullptr )
 , _checkInvertPalette( nullptr )
 , _checkFilterActive( nullptr )
 , _comboPalettes( nullptr )
@@ -53,18 +66,23 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _filtering( false )
 , _currentLowerLimit( 0.0f )
 , _currentUpperLimit( 1.0f )
+, _minRange( 0 )
+, _maxRange( 1 )
+, _currentMinValue( 0 )
+, _currentMaxValue( 0 )
 { }
 
 void PaletteColorWidget::init( bool dialog )
 {
   _frameResult = new GradientWidget( );
-  _frameResult->setMinimumSize( 200, 50 );
-  _frameResult->setMaximumSize( 200, 50 );
+  _frameResult->setMinimumHeight( 50 );
+  _frameResult->setMaximumHeight( 50 );
   _frameResult->setDirection( GradientWidget::HORIZONTAL );
 
   _radioSequential = new QRadioButton( "Sequential" );
   _radioCategorical = new QRadioButton( "Categorical" );
-
+  _radioDiverging = new QRadioButton( "Diverging" );
+  _radioUniform = new QRadioButton( "Uniform" );
   _comboPalettes = new QComboBox( );
 
   _checkInvertPalette = new QCheckBox( "Invert colors" );
@@ -104,6 +122,8 @@ void PaletteColorWidget::init( bool dialog )
   QHBoxLayout* layoutRadio = new QHBoxLayout( );
   layoutRadio->addWidget( _radioSequential );
   layoutRadio->addWidget( _radioCategorical );
+  layoutRadio->addWidget( _radioDiverging );
+  layoutRadio->addWidget( _radioUniform );
 
   groupRadioButtons->setLayout( layoutRadio );
 
@@ -142,8 +162,15 @@ void PaletteColorWidget::init( bool dialog )
   connect( _radioSequential, SIGNAL( toggled( bool )),
            this, SLOT( radioButtonClicked( bool )));
 
-//  connect( _radioCategorical, SIGNAL( toggled( bool )),
-//           this, SLOT( radioButtonClicked( bool )));
+  connect( _radioCategorical, SIGNAL( toggled( bool )),
+           this, SLOT( radioButtonClicked( bool )));
+
+  connect( _radioDiverging, SIGNAL( toggled( bool )),
+           this, SLOT( radioButtonClicked( bool )));
+
+  connect( _radioUniform, SIGNAL( toggled( bool )),
+           this, SLOT( radioButtonClicked( bool )));
+
 
   connect( _comboPalettes, SIGNAL( currentIndexChanged( int )),
            this, SLOT( paletteSelectionChanged( int )));
@@ -180,12 +207,24 @@ const QGradientStops& PaletteColorWidget::getGradientStops( void ) const
   return _frameResult->getGradientStops( );
 }
 
-void PaletteColorWidget::radioButtonClicked( bool checked )
+void PaletteColorWidget::radioButtonClicked( bool )
 {
-  if( checked )
+//  if( checked )
+//    _selectionState = ( int ) PALETTE_SEQUENTIAL;
+//  else
+//    _selectionState = ( int ) PALETTE_CATEGORICAL;
+
+  auto src = sender( );
+
+  if( src == _radioSequential )
     _selectionState = ( int ) PALETTE_SEQUENTIAL;
-  else
-    _selectionState = ( int ) PALETTE_CATEGORICAL;
+  if( src == _radioCategorical )
+      _selectionState = ( int ) PALETTE_CATEGORICAL;
+  if( src == _radioDiverging )
+      _selectionState = ( int ) PALETTE_DIVERGING;
+  if( src == _radioUniform )
+      _selectionState = ( int ) PALETTE_UNIFORM;
+
 
   _currentPalette = 0;
 
@@ -204,6 +243,12 @@ void PaletteColorWidget::_fillPaletteNames( void )
      break;
    case PALETTE_CATEGORICAL:
      paletteNames = &paletteNamesCategoric;
+     break;
+   case PALETTE_DIVERGING:
+     paletteNames = &paletteNamesDiverging;
+     break;
+   case PALETTE_UNIFORM:
+     paletteNames = &paletteNamesUniform;
      break;
    default:
      return;
@@ -224,12 +269,35 @@ void PaletteColorWidget::_fillPaletteNames( void )
 
 void PaletteColorWidget::_fillColors( void )
 {
-  auto colors =
-      _selectionState == ( tColorType ) PALETTE_SEQUENTIAL ?
-          tscoopp::colorBrewerSequential(( tpSeq ) _currentPalette,
-                                         _paletteSize, _invertPaletteColors ) :
-          tscoopp::colorBrewerQualitative(( tpCat ) _currentPalette,
-                                          _paletteSize, _invertPaletteColors );
+  scoop::ColorPalette colors;
+
+  switch( ( tColorType ) _selectionState )
+  {
+    case PALETTE_SEQUENTIAL:
+
+      colors = tscoop::colorBrewerSequential(( tpSeq ) _currentPalette,
+                                       _paletteSize, _invertPaletteColors );
+      break;
+
+    case PALETTE_CATEGORICAL:
+
+      colors = tscoop::colorBrewerQualitative(( tpCat ) _currentPalette,
+                                      _paletteSize, _invertPaletteColors );
+      break;
+
+    case PALETTE_DIVERGING:
+
+      colors = tscoop::colorBrewerDiverging(( tpDiv ) _currentPalette,
+                                      _paletteSize, _invertPaletteColors );
+      break;
+
+    case PALETTE_UNIFORM:
+
+      colors = tscoop::matplotlibPerceptualUniform(( tpUni ) _currentPalette,
+                                          _invertPaletteColors );
+      break;
+
+  }
 
   assert( !colors.colors( ).empty( ));
 

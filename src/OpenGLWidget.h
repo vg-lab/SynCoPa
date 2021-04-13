@@ -61,8 +61,12 @@ public:
 
   nsol::DataSet* dataset( void );
 
+  void alphaMode( bool alphaAccumulative = false );
+
   void mode( TMode mode_ );
   TMode mode( void ) const;
+
+  bool dynamicActive( void ) const;
 
 public slots:
 
@@ -150,6 +154,7 @@ public slots:
   void setSynapseMappingState( bool state );
 
   void startDynamic( void );
+  void toggleDynamicMovement( void );
   void stopDynamic( void );
 
   void updatePathsVisibility( void );
@@ -284,6 +289,9 @@ protected:
   bool _showFullMorphologiesPost;
   bool _showFullMorphologiesContext;
   bool _showFullMorphologiesOther;
+
+  bool _dynamicActive;
+  bool _dynamicMovement;
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 
