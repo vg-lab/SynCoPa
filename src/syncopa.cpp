@@ -31,7 +31,8 @@ int main( int argc, char** argv )
 
   QApplication application( argc, argv );
 
-  bool fullscreen = false, initWindowSize = false, initWindowMaximized = false;
+  bool fullscreen = false, initWindowSize = false, initWindowMaximized = false,
+    updateOnIdle = false, fps = false;
   int initWindowWidth, initWindowHeight;
 
   std::string blueConfig( "" );
@@ -91,6 +92,16 @@ int main( int argc, char** argv )
       initWindowHeight = atoi( argv[ ++i ] );
 
     }
+    if ( strcmp( argv[i], "--frames-per-second" ) == 0 ||
+         strcmp( argv[i],"-fps") == 0 )
+    {
+      fps = true;
+    }
+    if ( strcmp( argv[i], "--update-on-idle" ) == 0 ||
+         strcmp( argv[i],"-uoi") == 0 )
+    {
+      updateOnIdle = true;
+    }
   }
 
   std::cout << "Loading BlueConfig " << blueConfig
@@ -101,7 +112,8 @@ int main( int argc, char** argv )
 
 
   setFormat( );
-  MainWindow mainWindow;
+  // Showing FPS needs update on idle activated
+  MainWindow mainWindow( null, fps || updateOnIdle, fps );
   mainWindow.setWindowTitle("SynCoPa");
 
   if ( initWindowSize )
