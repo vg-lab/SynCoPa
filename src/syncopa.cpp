@@ -113,7 +113,7 @@ int main( int argc, char** argv )
 
   setFormat( );
   // Showing FPS needs update on idle activated
-  MainWindow mainWindow( null, fps || updateOnIdle, fps );
+  MainWindow mainWindow( 0, fps || updateOnIdle, fps );
   mainWindow.setWindowTitle("SynCoPa");
 
   if ( initWindowSize )

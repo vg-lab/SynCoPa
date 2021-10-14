@@ -44,7 +44,7 @@ public:
 
   explicit MainWindow( QWidget* parent = 0,
                        bool updateOnIdle = true,
-                       bool fps );
+                       bool fps = false);
   ~MainWindow( void );
 
   void init( void );
