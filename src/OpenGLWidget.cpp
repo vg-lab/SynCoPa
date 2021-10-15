@@ -984,6 +984,12 @@ void OpenGLWidget::idleUpdate( bool idleUpdate_ )
   _idleUpdate = idleUpdate_;
 }
 
+void OpenGLWidget::showFps( bool showFps_ )
+{
+  _showFps = showFps_;
+}
+
+
 void OpenGLWidget::resizeGL( int w , int h )
 {
   _currentWidth = w;

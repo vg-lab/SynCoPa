@@ -150,11 +150,12 @@ void MainWindow::init( void )
   initInfoDock( );
 
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
+  _openGLWidget->showFps( _ui->actionShowFPSOnIdleUpdate->isChecked( ));
 
   connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),
            _openGLWidget, SLOT( toggleUpdateOnIdle( )));
 
-  _ui->actionUpdateOnIdle->setChecked( false );
+  //_ui->actionUpdateOnIdle->setChecked( false );
 
   connect( _ui->actionBackgroundColor, SIGNAL( triggered( )),
            _openGLWidget, SLOT( changeClearColor( )));

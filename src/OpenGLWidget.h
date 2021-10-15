@@ -58,6 +58,7 @@ public:
   void clearSelection( void );
 
   void idleUpdate( bool idleUpdate_ = true );
+  void showFps( bool showFps_ = true );
 
   nsol::DataSet* dataset( void );
 
