@@ -43,7 +43,8 @@ class MainWindow
 public:
 
   explicit MainWindow( QWidget* parent = 0,
-                       bool updateOnIdle = true );
+                       bool updateOnIdle = true,
+                       bool fps = false);
   ~MainWindow( void );
 
   void init( void );

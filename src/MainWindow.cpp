@@ -42,7 +42,8 @@ QColor colorEigenToQt( const syncopa::vec3& color_ )
 }
 
 MainWindow::MainWindow( QWidget* parent_,
-                        bool updateOnIdle )
+                        bool updateOnIdle,
+                        bool fps)
 : QMainWindow( parent_ )
 , _ui( new Ui::MainWindow )
 , _openGLWidget( nullptr )
@@ -112,7 +113,7 @@ MainWindow::MainWindow( QWidget* parent_,
   _ui->setupUi( this );
 
   _ui->actionUpdateOnIdle->setChecked( updateOnIdle );
-  _ui->actionShowFPSOnIdleUpdate->setChecked( false );
+  _ui->actionShowFPSOnIdleUpdate->setChecked( fps );
 
 
   connect( _ui->actionQuit, SIGNAL( triggered( )),
@@ -149,11 +150,12 @@ void MainWindow::init( void )
   initInfoDock( );
 
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
+  _openGLWidget->showFps( _ui->actionShowFPSOnIdleUpdate->isChecked( ));
 
   connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),
            _openGLWidget, SLOT( toggleUpdateOnIdle( )));
 
-  _ui->actionUpdateOnIdle->setChecked( false );
+  //_ui->actionUpdateOnIdle->setChecked( false );
 
   connect( _ui->actionBackgroundColor, SIGNAL( triggered( )),
            _openGLWidget, SLOT( changeClearColor( )));
