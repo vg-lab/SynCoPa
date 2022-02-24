@@ -22,6 +22,8 @@
 #include <QCheckBox>
 #include <QGroupBox>
 #include <QPolygonF>
+#include <QThread>
+#include <QDialog>
 
 #include "GradientWidget.h"
 
@@ -29,11 +31,90 @@
 #include "PaletteColorWidget.h"
 
 #include "ui_syncopa.h"
+#include <memory>
+
+class QProgressBar;
 
 namespace Ui
 {
 class MainWindow;
 }
+
+class MainWindow;
+
+/** \class LoadingThread
+ * \brief Loads the data into the application using a thread.
+ *
+ */
+class LoadingThread
+: public QThread
+{
+    Q_OBJECT
+  public:
+    /** \brief LoadingThread class constructor.
+     * \param[in] blueconfig Blueconfig file path.
+     * \param[in] target Blueconfig target.
+     * \param[in] mainW Application main window.
+     */
+    explicit LoadingThread(const std::string &blueconfig, const std::string &target, MainWindow *mainW)
+    : m_blueconfig{blueconfig}
+    , m_target{target}
+    , m_parent{mainW}
+    {}
+
+    virtual ~LoadingThread()
+    {}
+
+    std::string errors() const
+    { return m_errors; }
+
+  signals:
+    void progress(const QString &message, const unsigned int value);
+
+  protected:
+    virtual void run();
+
+  private:
+    const std::string &m_blueconfig; /** blueconfig file path.              */
+    const std::string &m_target;     /** blueconfig target.                 */
+    MainWindow        *m_parent;     /** parent application main window.    */
+    std::string        m_errors;     /** error message or empty if success. */
+};
+
+class LoadingDialog
+: public QDialog
+{
+    Q_OBJECT
+  public:
+    /** \brief LoadingDialog class constructor.
+     * \param[in] p Raw pointer of the widget parent of this one.
+     * \param[in] f QDialog flags.
+     *
+     */
+    explicit LoadingDialog(QWidget *p = nullptr);
+
+    /** \brief LoadingDialog class virtual destructor.
+     *
+     */
+    virtual ~LoadingDialog()
+    {};
+
+  public slots:
+    /** \brief Updates the dialog with the message and progress value
+     * \param[in] message Progress message.
+     * \param[in] value Progress value in [0,100].
+     *
+     */
+    void progress(const QString &message, const unsigned int value);
+
+    /** \brief Closes and deletes the dialog.
+     *
+     */
+    void closeDialog();
+
+  private:
+    QProgressBar *m_progress; /** progress bar. */
+};
 
 class MainWindow
   : public QMainWindow
@@ -45,18 +126,16 @@ public:
   explicit MainWindow( QWidget* parent = 0,
                        bool updateOnIdle = true,
                        bool fps = false);
-  ~MainWindow( void );
+  virtual ~MainWindow( void );
 
   void init( void );
 
   void loadData( const std::string& dataset, const std::string& target );
 
-  void showStatusBarMessage ( const QString& message );
-
 protected slots:
 
-  void presynapticNeuronClicked( const QModelIndex& index );
-  void postsynapticNeuronClicked( const QModelIndex& index );
+  void presynapticNeuronClicked( );
+  void postsynapticNeuronClicked( );
 
   void setSynapseMappingState( int state );
   void setSynapseMappingAttribute( int attrib );
@@ -83,6 +162,16 @@ protected slots:
   void dynamicPause( void );
   void dynamicStop( void );
 
+  /** \brief Helper method called after loading data.
+   *
+   */
+  void onDataLoaded();
+
+  /** \brief Shows the about dialog.
+   *
+   */
+  void aboutDialog();
+
 protected:
 
   bool showDialog( QColor& current, const QString& message = "" );
@@ -98,6 +187,11 @@ protected:
   void loadPostsynapticList( unsigned int gid );
 
   void _loadDefaultValues( void );
+
+  /** \brief Helper method to enable/disable the interface.
+   *
+   */
+  void disableInterface(bool value);
 
   Ui::MainWindow* _ui;
   OpenGLWidget* _openGLWidget;
@@ -184,4 +278,8 @@ protected:
   QGroupBox* _groupBoxSynapses;
   QGroupBox* _groupBoxPaths;
   QGroupBox* _groupBoxDynamic;
+
+  std::shared_ptr<LoadingThread> m_thread;
+
+  friend class LoadingThread;
 };

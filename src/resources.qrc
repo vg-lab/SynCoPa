@@ -3,5 +3,9 @@
     <file>icons/colorpicker.png</file>
     <file>icons/neurotessmesh.png</file>
     <file>icons/neurolots.png</file>
+    <file>icons/syncopa.png</file>
+    <file>icons/logoUPM.png</file>
+    <file>icons/logoURJC.png</file>
+    <file>icons/logoVGLab.png</file>
   </qresource>
 </RCC>

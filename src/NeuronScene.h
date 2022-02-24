@@ -20,13 +20,10 @@ namespace syncopa
 {
   struct MeshConfig
   {
-  public:
-
-    nlgeometry::Mesh mesh;
-    mat4 transform;
-
-    vec3 color;
-
+    public:
+      nlgeometry::Mesh mesh;
+      mat4 transform;
+      vec3 color;
   };
 
   enum TRenderEnum
@@ -43,11 +40,11 @@ namespace syncopa
                       std::vector< vec3 >> TRenderMorpho;
 
   class NeuronScene
+  : public QObject
   {
+      Q_OBJECT
 public:
-
     NeuronScene( nsol::DataSet* dataset );
-
     ~NeuronScene( void );
 
     void clear( void );
@@ -56,8 +53,7 @@ public:
 
     void generateMeshes( void );
 
-//    TRenderMorpho getRender( const std::vector< unsigned int >& gidsPre,
-//                             const std::vector< unsigned int >& gidsPost ) const;
+    void uploadMeshes();
 
     TRenderMorpho getRender( const gidUSet& gids ) const;
 
@@ -69,8 +65,10 @@ public:
 
     void color( const vec3& color_, TNeuronConnection type );
 
-protected:
+signals:
+    void progress(const QString &message, const unsigned int value);
 
+protected:
     nsol::DataSet* _dataset;
 
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
@@ -84,11 +82,6 @@ protected:
     vec3 _colorPre;
     vec3 _colorPost;
   };
-
-
 }
-
-
-
 
 #endif /* SRC_NEURONSCENE_H_ */

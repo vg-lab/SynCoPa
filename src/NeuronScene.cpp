@@ -12,11 +12,10 @@
 #include "NeuronScene.h"
 
 #include <unordered_set>
+#include <GL/glew.h>
 
 namespace syncopa
 {
-
-
   NeuronScene::NeuronScene( nsol::DataSet* dataset )
   : _dataset( dataset )
   {
@@ -24,7 +23,6 @@ namespace syncopa
     _attribsFormat[0] = nlgeometry::TAttribType::POSITION;
     _attribsFormat[1] = nlgeometry::TAttribType::CENTER;
     _attribsFormat[2] = nlgeometry::TAttribType::TANGENT;
-
   }
 
   NeuronScene::~NeuronScene( void )
@@ -44,18 +42,15 @@ namespace syncopa
       _dataset->close( );
   }
 
-
   void NeuronScene::generateMeshes( void )
   {
-    std::cout << "Generating " << _dataset->neurons( ).size( ) << std::endl;
-
     std::unordered_set< nsol::NeuronMorphologyPtr > morphologies;
     std::vector< nsol::NeuronMorphologyPtr > vecMorpho;
 
-    for ( auto neuronIt: _dataset->neurons( ))
+    for (const auto &neuronIt: _dataset->neurons( ))
     {
-      auto morphology = neuronIt.second->morphology( );
-      auto morphoIt = morphologies.find( morphology );
+      const auto morphology = neuronIt.second->morphology( );
+      const auto morphoIt = morphologies.find( morphology );
       if( morphoIt == morphologies.end( ))
       {
         morphologies.insert( morphology );
@@ -65,10 +60,24 @@ namespace syncopa
       _neuronMorphologies[ neuronIt.first ] = morphology;
     }
 
-    std::cout << "Generating meshes " << vecMorpho.size( ) << std::endl;
+    auto reportValue = [this](const unsigned int value)
+    {
+      #pragma omp single nowait
+      {
+        static unsigned int oldProgress = 0;
 
-    #pragma omp parallel for
-    for( int i = 0; i < ( int ) vecMorpho.size( ); ++i )
+        if(oldProgress < value)
+        {
+          oldProgress = value;
+
+          emit progress("Generating meshes", oldProgress);
+        }
+      }
+    };
+
+    unsigned int count = 0;
+    #pragma omp parallel for shared(count)
+    for( int i = 0; i < static_cast<int>(vecMorpho.size()); ++i )
     {
       auto morphology = vecMorpho[ i ];
 
@@ -78,14 +87,14 @@ namespace syncopa
 
       auto mesh = nlgenerator::MeshGenerator::generateMesh( morphology );
       _neuronMeshes[ morphology ] = mesh;
+
+      #pragma omp atomic
+      ++count;
+
+      reportValue(count*100/vecMorpho.size());
     }
 
-    for( auto mesh : _neuronMeshes )
-    {
-      mesh.second->uploadGPU( _attribsFormat, nlgeometry::Facet::PATCHES );
-      mesh.second->clearCPUData( );
-    }
-
+    emit progress("Generated meshes", 100);
   }
 
   TRenderMorpho NeuronScene::getRender( const gidUSet& gids_ ) const
@@ -114,14 +123,10 @@ namespace syncopa
       if( morphology != _neuronMorphologies.end( ))
       {
         gids.push_back( gid );
-        auto meshIt = _neuronMeshes.find( morphology->second );
-  //      if( meshIt != _neuronMeshes.end( ))
+        const auto meshIt = _neuronMeshes.find( morphology->second );
+        assert( meshIt != _neuronMeshes.end( ));
         meshes.push_back( meshIt->second );
-  //      auto morphIt = _neuronMorphologies.find( gid );
-//        colors.push_back( _colorPre );
-  //      if( morphIt != _neuronMorphologies.end( ))
-  //      {
-        auto matrix = neuron->second->transform( );
+        const auto matrix = neuron->second->transform( );
         matrices.push_back( matrix );
       }
       else
@@ -131,90 +136,22 @@ namespace syncopa
     return std::make_tuple( gids, meshes, matrices, colors );
   }
 
-//  TRenderMorpho NeuronScene::getRender( const std::vector< unsigned int >& gidsPre,
-//                                        const std::vector< unsigned int >& gidsPost ) const
-//  {
-//    std::vector< nlgeometry::MeshPtr > meshes;
-//    std::vector< mat4 > matrices;
-//    std::vector< vec3 > colors;
-//
-//    unsigned int totalMeshes = gidsPre.size( ) + gidsPost.size( );
-//    meshes.reserve( totalMeshes );
-//    matrices.reserve( totalMeshes);
-//    colors.reserve( totalMeshes );
-//
-////    colors.resize( gidsPre.size( ), Eigen::Vector3f::Ones( ));
-//
-//    std::cout << "Creating render of " << gidsPre.size( ) << std::endl;
-//    nsol::NeuronsMap& neurons = _dataset->neurons();
-//
-//    for( auto gid : gidsPre )
-//    {
-//      auto neuron = neurons.find( gid );
-//      auto morphology = _neuronMorphologies.find( gid );
-//      if( morphology != _neuronMorphologies.end( ))
-//      {
-//        auto meshIt = _neuronMeshes.find( morphology->second );
-//  //      if( meshIt != _neuronMeshes.end( ))
-//        meshes.push_back( meshIt->second );
-//  //      auto morphIt = _neuronMorphologies.find( gid );
-//        colors.push_back( _colorPre );
-//  //      if( morphIt != _neuronMorphologies.end( ))
-//  //      {
-//        auto matrix = neuron->second->transform( );
-//        matrices.push_back( matrix );
-//      }
-//      else
-//        std::cout << "Could not find " << gid << " morphology " << std::endl;
-//    }
-//
-//    for( auto gid : gidsPost )
-//    {
-//      auto neuron = neurons.find( gid );
-//      auto morphology = _neuronMorphologies.find( gid );
-//      if( morphology != _neuronMorphologies.end( ))
-//      {
-//        auto meshIt = _neuronMeshes.find( morphology->second );
-//  //      if( meshIt != _neuronMeshes.end( ))
-//        meshes.push_back( meshIt->second );
-//  //      auto morphIt = _neuronMorphologies.find( gid );
-//        colors.push_back( _colorPost );
-//  //      if( morphIt != _neuronMorphologies.end( ))
-//  //      {
-//        auto matrix = neuron->second->transform( );
-//        matrices.push_back( matrix );
-//      }
-//      else
-//        std::cout << "Could not find " << gid << " morphology " << std::endl;
-//    }
-//
-//    std::cout << "Finished render config." << std::endl;
-//
-//    std::vector< unsigned int > gids;
-//    gids.insert( gids.end( ), gidsPre.begin( ), gidsPre.end( ));
-//    gids.insert( gids.end( ), gidsPost.begin( ), gidsPost.end( ));
-//
-//    return std::make_tuple( gids, meshes, matrices, colors );
-//  }
-
   void NeuronScene::computeBoundingBox( const gidVec& indices_ )
   {
-    Eigen::Array3f minimum =
-        Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
-    Eigen::Array3f maximum =
-        Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
+    Eigen::Array3f minimum = Eigen::Array3f::Constant( std::numeric_limits< float >::max( ));
+    Eigen::Array3f maximum = Eigen::Array3f::Constant( std::numeric_limits< float >::min( ));
 
     for ( const auto id: indices_ )
     {
       auto neuronMapIt = _dataset->neurons( ).find( id );
       if ( neuronMapIt != _dataset->neurons( ).end( ))
       {
-        auto neuron = neuronMapIt->second;
-        auto morphology = neuron->morphology( );
+        const auto neuron = neuronMapIt->second;
+        const auto morphology = neuron->morphology( );
         if ( morphology )
         {
-          auto radius = morphology->soma( )->maxRadius( );
-          auto center = morphology->soma( )->center( );
+          const auto radius = morphology->soma( )->maxRadius( );
+          const auto center = morphology->soma( )->center( );
           Eigen::Vector4f position = neuron->transform( ) *
               nsol::Vec4f( center.x( ) , center.y( ), center.z( ), 1.0f );
           Eigen::Array3f minVec( position.x( ) - radius, position.y( ) - radius,
@@ -232,11 +169,13 @@ namespace syncopa
 
   void NeuronScene::computeBoundingBox( void )
   {
-    std::vector< unsigned int > indices;
-    for ( const auto& neuronIt: _dataset->neurons( ))
+    gidVec indices;
+    auto addIndex = [&indices](const std::pair<unsigned int, nsol::NeuronPtr> &n)
     {
-      indices.push_back( neuronIt.first );
-    }
+      indices.push_back(n.first);
+    };
+    const auto &neurons = _dataset->neurons();
+    std::for_each(neurons.cbegin(), neurons.cend(), addIndex);
 
     computeBoundingBox( indices );
   }
@@ -246,22 +185,45 @@ namespace syncopa
     return _boundingBox;
   }
 
-
   void NeuronScene::color( const vec3& color_, TNeuronConnection type )
   {
-    if( type == PRESYNAPTIC )
-      _colorPre = color_;
-    else if( type == POSTSYNAPTIC )
-      _colorPost = color_;
-    else
+    switch(type)
     {
-      _colorPre = color_;
-      _colorPost = color_;
+      default:
+        /* fall through */
+      case TNeuronConnection::PRESYNAPTIC:
+        _colorPre = color_;
+        if(type == TNeuronConnection::PRESYNAPTIC) return;
+        /* fall through */
+      case TNeuronConnection::POSTSYNAPTIC:
+        _colorPost = color_;
     }
-
   }
 
+  void NeuronScene::uploadMeshes()
+  {
+    const auto total = _neuronMeshes.size();
+    unsigned int count = 0;
 
+    auto emitProgress = [this](const unsigned int p)
+    {
+      static unsigned int oldProgress = 0;
+      if(oldProgress < p)
+      {
+        oldProgress = p;
+        emit progress("Uploading meshes to GPU", oldProgress);
+      }
+    };
+
+    for( auto &mesh : _neuronMeshes )
+    {
+      mesh.second->uploadGPU( _attribsFormat, nlgeometry::Facet::PATCHES );
+      mesh.second->clearCPUData( );
+
+      ++count;
+      emitProgress((count*100)/total);
+    }
+  }
 }
 
 #endif /* SRC_SCENE_CPP_ */

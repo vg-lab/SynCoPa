@@ -33,7 +33,7 @@ int main( int argc, char** argv )
 
   bool fullscreen = false, initWindowSize = false, initWindowMaximized = false,
     updateOnIdle = false, fps = false;
-  int initWindowWidth, initWindowHeight;
+  int initWindowWidth = 0, initWindowHeight = 0;
 
   std::string blueConfig( "" );
   std::string target( "" );
@@ -108,9 +108,6 @@ int main( int argc, char** argv )
             << " target " << target
             << std::endl;
 
-
-
-
   setFormat( );
   // Showing FPS needs update on idle activated
   MainWindow mainWindow( 0, fps || updateOnIdle, fps );
@@ -118,22 +115,19 @@ int main( int argc, char** argv )
 
   if ( initWindowSize )
     mainWindow.resize( initWindowWidth, initWindowHeight );
-
-  if ( initWindowMaximized )
+  else if ( initWindowMaximized )
     mainWindow.showMaximized( );
-
-  if ( fullscreen )
+  else if ( fullscreen )
     mainWindow.showFullScreen( );
+  else
+	  mainWindow.show( );
 
-  mainWindow.show( );
   mainWindow.init( );
 
   if( !blueConfig.empty( ) && !target.empty( ))
     mainWindow.loadData( blueConfig, target );
 
-
   return application.exec();
-
 }
 
 void usageMessage( char* progName )
@@ -156,7 +150,6 @@ void usageMessage( char* progName )
 
 void dumpVersion( void )
 {
-
   std::cerr << std::endl
             << "SynCoPa - SYNapses and COnnectivity PAths visualizer"
             << syncopa::Version::getMajor( ) << "."
@@ -166,10 +159,8 @@ void dumpVersion( void )
             << std::endl << std::endl;
 }
 
-
 void setFormat( void )
 {
-
   int ctxOpenGLMajor = DEFAULT_CONTEXT_OPENGL_MAJOR;
   int ctxOpenGLMinor = DEFAULT_CONTEXT_OPENGL_MINOR;
   int ctxOpenGLVSync = 1;
@@ -186,7 +177,6 @@ void setFormat( void )
 
   if ( std::getenv("CONTEXT_OPENGL_VSYNC"))
     ctxOpenGLVSync = std::stoi( std::getenv("CONTEXT_OPENGL_VSYNC"));
-
 
   std::cerr << "Setting OpenGL context to "
             << ctxOpenGLMajor << "." << ctxOpenGLMinor << std::endl;
@@ -205,5 +195,4 @@ void setFormat( void )
     format.setProfile( QSurfaceFormat::CompatibilityProfile );
   else
     format.setProfile( QSurfaceFormat::CoreProfile );
-
 }

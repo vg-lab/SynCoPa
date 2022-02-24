@@ -77,69 +77,69 @@ Ubuntu-Subproject-master:
  tags:
   - ubuntu
 
-OSX-Optional-Deps-master-tags:
- stage: build
- script:
-  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
-  - module load Qt-5.9.1
-  - export BUILD_OPTIONALS_SUBPROJECTS=1
-  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
-  - export BUILD_OPTIONALS_SUBPROJECTS=1
-  - export BUILD_GENERATOR="Ninja"
-  - export CMAKE_OSX_ARCHITECTURES=x86_64
-  - bash .gitlab-ci.sh
- only:
-  - tags
- except:
-  - branches
- tags:
-  - osx-sierra  
-
-OSX-Optional-Deps-master:
- stage: build
- script:
-  - export APP_VERSION="git-master"
-  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
-  - module load Qt-5.9.1
-  - export BUILD_OPTIONALS_SUBPROJECTS=1
-  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
-  - export BUILD_GENERATOR="Ninja"
-  - export CMAKE_OSX_ARCHITECTURES=x86_64
-  - bash .gitlab-ci.sh
- only:
-  - master
- except:
-  - tags
- tags:
-  - osx-sierra
-
-OSX-Optional-Deps:
- stage: build
- script:
-  - export APP_VERSION="dev"
-  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
-  - module load Qt-5.9.1
-  - export BUILD_OPTIONALS_SUBPROJECTS=1
-  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
-  - export BUILD_GENERATOR="Ninja"
-  - export CMAKE_OSX_ARCHITECTURES=x86_64
-  - bash .gitlab-ci.sh
- except:
-  - tags
-  - master
- tags:
-  - osx-sierra
-
-OSX-Subproject:
- stage: build
- script:
-  - module load Qt-5.9.1
-  - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
-  - export BUILD_GENERATOR="Ninja";
-  - export CMAKE_OSX_ARCHITECTURES=x86_64
-  - bash .gitlab-ci.sh
- tags:
-  - osx-sierra
+#OSX-Optional-Deps-master-tags:
+# stage: build
+# script:
+#  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
+#  - module load Qt-5.9.1
+#  - export BUILD_OPTIONALS_SUBPROJECTS=1
+#  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
+#  - export BUILD_OPTIONALS_SUBPROJECTS=1
+#  - export BUILD_GENERATOR="Ninja"
+#  - export CMAKE_OSX_ARCHITECTURES=x86_64
+#  - bash .gitlab-ci.sh
+# only:
+#  - tags
+# except:
+#  - branches
+# tags:
+#  - osx-sierra
+#
+#OSX-Optional-Deps-master:
+# stage: build
+# script:
+#  - export APP_VERSION="git-master"
+#  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
+#  - module load Qt-5.9.1
+#  - export BUILD_OPTIONALS_SUBPROJECTS=1
+#  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
+#  - export BUILD_GENERATOR="Ninja"
+#  - export CMAKE_OSX_ARCHITECTURES=x86_64
+#  - bash .gitlab-ci.sh
+# only:
+#  - master
+# except:
+#  - tags
+# tags:
+#  - osx-sierra
+#
+#OSX-Optional-Deps:
+# stage: build
+# script:
+#  - export APP_VERSION="dev"
+#  - export DMGAPP_REPO="gitlabci@vg-lab.es:apps.private"
+#  - module load Qt-5.9.1
+#  - export BUILD_OPTIONALS_SUBPROJECTS=1
+#  - export CMAKE_EXTRA_ARGS="-DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DLibJpegTurbo_INCLUDE_DIR=/usr/local/opt/jpeg-turbo/include -DLibJpegTurbo_LIBRARY=/usr/local/opt/jpeg-turbo/lib/libturbojpeg.dylib -DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
+#  - export BUILD_GENERATOR="Ninja"
+#  - export CMAKE_OSX_ARCHITECTURES=x86_64
+#  - bash .gitlab-ci.sh
+# except:
+#  - tags
+#  - master
+# tags:
+#  - osx-sierra
+#
+#OSX-Subproject:
+# stage: build
+# script:
+#  - module load Qt-5.9.1
+#  - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON -DGLUT_glut_LIBRARY=/usr/local/Cellar/freeglut/3.0.0/lib/libglut.dylib"
+#  - export BUILD_GENERATOR="Ninja";
+#  - export CMAKE_OSX_ARCHITECTURES=x86_64
+#  - bash .gitlab-ci.sh
+# tags:
+#  - osx-sierra
 
 # Win7-Subproject-vs14:
 #   stage: build
