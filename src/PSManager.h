@@ -75,7 +75,9 @@ public:
     void stop( void );
 
     void dynamicVelocity( float velocityModule );
-    float dynamicVelocity( void ) const;
+
+    inline float dynamicVelocity( void ) const
+    { return _dynamicVelocityModule; }
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 

@@ -69,7 +69,7 @@ void initContext( int argc, char** argv );
 void initOGL( void );
 
 
-reto::Camera* camera;
+reto::OrbitalCameraController* camera;
 
 bool rotation = false;
 bool translation = false;
@@ -361,9 +361,9 @@ void renderFunc( void )
 
 //  glViewport( 0, 0, screenWidth, screenHeight );
 
-  Eigen::Matrix4f view( camera->viewMatrix( ));
+  Eigen::Matrix4f view( camera->camera()->viewMatrix( ));
   renderer->viewMatrix( ) = view;
-  Eigen::Matrix4f proj( camera->projectionMatrix( ));
+  Eigen::Matrix4f proj( camera->camera()->projectionMatrix( ));
   renderer->projectionMatrix( ) = proj;
   renderer->render( meshes, models, Eigen::Vector3f( 0.3f, 0.3f, 0.8f ));
   glFlush( );
@@ -429,7 +429,7 @@ void resizeFunc( int width, int height )
                 screenWidth, screenHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0 );
 
 
-  camera->ratio((( double ) width ) / height );
+  camera->windowSize(width, height);
   glViewport( 0, 0, width, height );
 }
 
@@ -483,8 +483,8 @@ void mouseMoveFunc( int xCoord, int yCoord )
 {
   if( rotation )
   {
-    camera->localRotation( - ( mxCoord - xCoord ) * 0.01,
-                          - ( myCoord - yCoord ) * 0.01 );
+    camera->rotate( Eigen::Vector3f( - ( mxCoord - xCoord ) * 0.01,
+                          - ( myCoord - yCoord ) * 0.01, 0.0f));
     mxCoord = xCoord;
     myCoord = yCoord;
   }
@@ -517,7 +517,7 @@ int main( int argc, char** argv )
   initContext( argc, argv );
   initOGL( );
 
-  camera = new reto::Camera( );
+  camera = new reto::OrbitalCameraController( );
   renderer = new nlrender::Renderer( );
 
   renderer->lod( ) = 0.3f;
@@ -569,14 +569,14 @@ int main( int argc, char** argv )
       aabb.maximum( ).z( ) = meshAABB.maximum( ).z();
   }
 
-  camera->pivot( aabb.center( ));
-  camera->radius( aabb.radius( ) / sin( camera->fov( )));
+  camera->position( aabb.center( ));
+  camera->radius( aabb.radius( ) / sin( camera->camera()->fieldOfView()));
   // camera->pivot( Eigen::Vector3f::Zero( ));
   // camera->radius( 1000.0f );
 
-  Eigen::Matrix4f projection( camera->projectionMatrix( ));
+  Eigen::Matrix4f projection( camera->camera()->projectionMatrix( ));
   renderer->projectionMatrix( ) = projection;
-  Eigen::Matrix4f view( camera->viewMatrix( ));
+  Eigen::Matrix4f view( camera->camera()->viewMatrix( ));
   renderer->viewMatrix( ) = view;
 
 

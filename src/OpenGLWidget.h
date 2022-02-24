@@ -53,7 +53,12 @@ public:
   void loadBlueConfig( const std::string& blueConfigFilePath,
                        const std::string& target );
 
-  void home( void );
+  /** \brief Performs data processing after a successful data loading.
+   *
+   */
+  void loadPostprocess();
+
+  void home( bool animate = true );
   void defaultScene( void );
   void clearSelection( void );
 
@@ -69,9 +74,10 @@ public:
 
   bool dynamicActive( void ) const;
 
-public slots:
+signals:
+  void progress(const QString &, const unsigned int);
 
-  void timerUpdate( void );
+public slots:
 
   void changeClearColor( void );
   void toggleUpdateOnIdle( void );
@@ -198,7 +204,8 @@ protected:
   QLabel _fpsLabel;
   bool _showFps;
 
-  reto::Camera* _camera;
+  reto::OrbitalCameraController* _camera;
+  reto::CameraAnimation *_animation;
   glm::vec3 _lastCameraPosition;
 
   unsigned int _frameCount;
@@ -229,8 +236,6 @@ protected:
   syncopa::TMode _mode;
 
   float _particleSizeThreshold;
-
-//  QTimer* _cameraTimer;
 
   syncopa::TRenderMorpho _neuronsSelectedPre;
   syncopa::TRenderMorpho _neuronsSelectedPost;

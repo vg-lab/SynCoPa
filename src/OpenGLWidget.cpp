@@ -26,46 +26,43 @@
 
 using namespace syncopa;
 
-std::string vertexShaderCode = "\
-#version 400\n\
-\
-in vec2 inPosition;\
-out vec2 uv;\
-\
-void main( void )\n\
-{\n\
-  uv = (inPosition + vec2( 1.0, 1.0 )) * 0.5;\
-  gl_Position = vec4( inPosition,  0.1, 1.0 );\
-}\n";
+constexpr float CAMERA_ANIMATION_DURATION = 1.f; /** camera animation duration in seconds. */
 
-std::string screenFragment = "\
-#version 400\n\
-out vec3 FragColor;\
-\
-in vec2 uv;\
-\
-uniform sampler2D screenTexture;\
-uniform sampler2D depthTexture;\
-\
-uniform float zNear;\
-uniform float zFar;\
-\
-float LinearizeDepth(float depth)\
-{\
-  float z = depth * 2.0 - 1.0;\
-  return (2.0 * zNear * zFar) / (zFar + zNear - z * (zFar - zNear));\
-}\
-\
-void main( void )\
-{\
-  //float depthValue = LinearizeDepth( texture( screenTexture, uv ).r ) / zFar;\n\
-  //FragColor = vec3( depthValue, depthValue, depthValue );\n\
-  FragColor = texture(screenTexture, uv).rgb;\n\
-  gl_FragDepth = texture( depthTexture, uv ).r;\
-  //FragColor = vec3(vec3(1.0), 1.0);\n\
-}";
+const static std::string vertexShaderCode = R"(#version 400
+in vec2 inPosition;
+out vec2 uv;
 
+void main( void )
+{
+  uv = (inPosition + vec2( 1.0, 1.0 )) * 0.5;
+  gl_Position = vec4( inPosition,  0.1, 1.0 );
+})";
 
+const static std::string screenFragment = R"(#version 400
+out vec3 FragColor;
+
+in vec2 uv;
+
+uniform sampler2D screenTexture;
+uniform sampler2D depthTexture;
+
+uniform float zNear;
+uniform float zFar;
+
+float LinearizeDepth(float depth)
+{
+  float z = depth * 2.0 - 1.0;
+  return (2.0 * zNear * zFar) / (zFar + zNear - z * (zFar - zNear));
+}
+
+void main( void )
+{
+  //float depthValue = LinearizeDepth( texture( screenTexture, uv ).r ) / zFar;
+  //FragColor = vec3( depthValue, depthValue, depthValue );
+  FragColor = texture(screenTexture, uv).rgb;
+  gl_FragDepth = texture( depthTexture, uv ).r;
+  //FragColor = vec3(vec3(1.0), 1.0);
+})";
 
 OpenGLWidget::OpenGLWidget( QWidget* parent_,
                             Qt::WindowFlags windowsFlags_ )
@@ -95,14 +92,14 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _alphaBlendingAccumulative( false )
 , _lastSelectedPre( nullptr )
 , _lastSelectedPost( nullptr )
-, _colorSelectedPre( 0.5, 0.5, 1 )
-, _colorSelectedPost( 1, 0.5, 0 )
+, _colorSelectedPre( 0, 1, 0 )
+, _colorSelectedPost(  0.94, 0, 0.5 )
 , _colorRelated( 0.7, 0.5, 0 )
 , _colorContext( 0.3, 0.3, 0.3 )
-, _colorSynapsesPre( 1, 0, 0 )
-, _colorSynapsesPost( 1, 0, 1 )
+, _colorSynapsesPre( 0, 1, 0 )
+, _colorSynapsesPost( 0.94, 0, 0.5 )
 , _colorPathsPre( 0, 1, 0 )
-, _colorPathsPost( 0, 0, 1 )
+, _colorPathsPost( 0.94, 0, 0.5 )
 , _colorSynMapPre( 0.5, 0, 0.5   )
 , _colorSynMapPost( 1, 0, 0 )
 , _alphaSynapsesPre( 0.55f )
@@ -120,7 +117,6 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _showPathsPost( true )
 , _showSynapses( false )
 , _showPaths( false )
-//, _showMorphologies( false )
 , _showFullMorphologiesPre( true )
 , _showFullMorphologiesPost( true )
 , _showFullMorphologiesContext( false )
@@ -142,12 +138,10 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
 , _mapSynapseValues( false )
 , _currentSynapseAttrib(( TBrainSynapseAttribs ) 0 )
 {
-  _camera = new reto::Camera( );
-  _camera->farPlane( 5000 );
-//
-//  _cameraTimer = new QTimer( );
-//  _cameraTimer->start(( 1.0f / 60.f ) * 100 );
-//  connect( _cameraTimer, SIGNAL( timeout( )), this, SLOT( timerUpdate( )));
+  _camera = new reto::OrbitalCameraController( );
+  _camera->camera()->farPlane( 5000 );
+
+  _animation = new reto::CameraAnimation();
 
   _pathFinder = new syncopa::PathFinder( );
   _dynPathManager = new syncopa::DynamicPathManager( );
@@ -162,7 +156,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
     "margin: 10px;"
     " border-radius: 10px;}" );
 
-  // This is needed to get key evends
+  // This is needed to get key events
   this->setFocusPolicy( Qt::WheelFocus );
 
   _maxFPS = 60.0f;
@@ -172,9 +166,7 @@ OpenGLWidget::OpenGLWidget( QWidget* parent_,
   _renderSpeed = 1.f;
 
   new QShortcut( QKeySequence( Qt::Key_Tab ), this, SLOT(toggleDynamicMovement()));
-
 }
-
 
 OpenGLWidget::~OpenGLWidget( void )
 {
@@ -190,29 +182,26 @@ OpenGLWidget::~OpenGLWidget( void )
     delete _pathFinder;
 }
 
-
 void OpenGLWidget::initializeGL( void )
 {
   initializeOpenGLFunctions( );
 
   glEnable( GL_DEPTH_TEST );
-  glClearColor( float( _currentClearColor.red( )) / 255.0f,
-                float( _currentClearColor.green( )) / 255.0f,
-                float( _currentClearColor.blue( )) / 255.0f,
-                float( _currentClearColor.alpha( )) / 255.0f );
+  glClearColor( static_cast<float>( _currentClearColor.red( )) / 255.0f,
+                static_cast<float>( _currentClearColor.green( )) / 255.0f,
+                static_cast<float>( _currentClearColor.blue( )) / 255.0f,
+                static_cast<float>( _currentClearColor.alpha( )) / 255.0f );
   glPolygonMode( GL_FRONT_AND_BACK , GL_FILL );
   glEnable( GL_CULL_FACE );
 
   glLineWidth( 1.5 );
 
-  _then = std::chrono::system_clock::now( );
-  _lastFrame = std::chrono::system_clock::now( );
-
+  _then = _lastFrame = std::chrono::system_clock::now( );
 
   QOpenGLWidget::initializeGL( );
   nlrender::Config::init( );
   _nlrenderer = new nlrender::Renderer( );
-  _nlrenderer->tessCriteria( ) = nlrender::Renderer::LINEAR;
+  _nlrenderer->tessCriteria(nlrender::Renderer::LINEAR);
   _nlrenderer->lod( ) = 4;
   _nlrenderer->maximumDistance( ) = 10;
 
@@ -221,7 +210,6 @@ void OpenGLWidget::initializeGL( void )
 
   initRenderToTexture( );
 }
-
 
 void ExpandBoundingBox( glm::vec3& minBounds,
                         glm::vec3& maxBounds,
@@ -234,54 +222,42 @@ void ExpandBoundingBox( glm::vec3& minBounds,
   }
 }
 
-
 void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath,
                                    const std::string& target )
 {
-
   if( _dataset )
     delete _dataset;
 
   _dataset = new nsol::DataSet( );
 
-  std::cout << "Loading data hierarchy..." << std::endl;
+  emit progress(tr("Loading data hierarchy"), 0);
   _dataset->loadBlueConfigHierarchy( blueConfigFilePath, target );
 
-  std::cout << "Loading morphologies..." << std::endl;
+  emit progress(tr("Loading morphologies"), 33);
   _dataset->loadAllMorphologies( );
 
-  std::cout << "Loading connectivity..." << std::endl;
+  emit progress(tr("Loading connectivity"), 66);
   _dataset->loadBlueConfigConnectivityWithMorphologies( );
 
   _domainManager->dataset( _dataset );
 
+  emit progress(tr("Configuring path finder"), 100);
   _pathFinder->dataset( _dataset, &_domainManager->synapsesInfo( ));
 
   _neuronScene = new syncopa::NeuronScene( _dataset );
-  std::cout << "Generating meshes..." << std::endl;
+
+  connect(_neuronScene, SIGNAL(progress(const QString &, const unsigned int)),
+          this, SIGNAL(progress(const QString &, const unsigned int)));
+
   _neuronScene->generateMeshes( );
 
-  _neuronScene->color( vec3( 1, 1, 1 ), PRESYNAPTIC );
-  _neuronScene->color( vec3( 0, 1, 1 ), POSTSYNAPTIC );
-
-
-  gidUSet gids;
-  for( auto neuron : _dataset->neurons( ))
-  {
-    gids.insert( neuron.first );
-  }
-
-  _gidsAll = gids;
-
-  createParticleSystem( );
-
-  defaultScene( );
+  emit progress(QString(), 100);
 }
 
 void OpenGLWidget::createParticleSystem( void )
 {
-  makeCurrent( );
-  prefr::Config::init( );
+  makeCurrent();
+  prefr::Config::init();
 
   _particlesShader = new reto::ShaderProgram( );
   _particlesShader->loadVertexShaderFromText( prefr::prefrVertexShader );
@@ -318,10 +294,8 @@ void OpenGLWidget::createParticleSystem( void )
   _dynPathManager->init( _pathFinder, _psManager );
 }
 
-
 void OpenGLWidget::setupSynapses( const gidUSet& gids )
 {
-
   _domainManager->loadSynapses( gids );
   _domainManager->updateSynapseMapping( );
 
@@ -330,7 +304,6 @@ void OpenGLWidget::setupSynapses( const gidUSet& gids )
 
 void OpenGLWidget::setupSynapses( void )
 {
-
   if( !_mapSynapseValues )
     _psManager->configureSynapses( _domainManager->getSynapses( ) );
   else
@@ -342,21 +315,20 @@ void OpenGLWidget::setupSynapses( void )
 
 void OpenGLWidget::setupPaths( void )
 {
-
   if( _mode != PATHS )
     return;
 
-  if( _lastSelectedPre->empty( ))
+  if( !_lastSelectedPre || _lastSelectedPre->empty( ))
     return;
 
   auto& synapses = _domainManager->getFilteredSynapses( );
 
-  std::cout << "Generating paths for " << synapses.size( ) << " synpses." << std::endl;
+  std::cout << "Generating paths for " << synapses.size( ) << " synapses." << std::endl;
 
-  float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
+  const float pointSize = _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
 
   // TODO FIX MULTIPLE PRESYNAPTIC SELECTION
-  unsigned int gidPre = *_lastSelectedPre->begin( );
+  const unsigned int gidPre = *_lastSelectedPre->begin( );
 
   auto points = _pathFinder->getAllPathsPoints( gidPre, *_lastSelectedPost,
                                                 synapses, pointSize, PRESYNAPTIC );
@@ -370,23 +342,48 @@ void OpenGLWidget::setupPaths( void )
   _psManager->setupPath( points, POSTSYNAPTIC );
 }
 
-void OpenGLWidget::home( void )
+void OpenGLWidget::home( bool animate )
 {
-//  _neuronScene->computeBoundingBox( );
-//  _camera->targetPivot( _neuronScene->boundingBox( ).center( ));
-//  _camera->targetRadius( _neuronScene->boundingBox( ).radius( ) /
-//                         sin( _camera->fov( )));
-  _camera->targetPivot( _psManager->boundingBox( ).center( ));
-  _camera->targetRadius( _psManager->boundingBox( ).radius( ) /
-                         sin( _camera->fov( )));
+  const float FOV = sin( _camera->camera()->fieldOfView() );
+  const auto position =  _psManager->boundingBox( ).center( );
+  const auto rotation = Eigen::Vector3f{0.0f,0.0f,0.0f};
+  const auto radius   =  _psManager->boundingBox( ).radius( ) / FOV;
 
+  if(!animate)
+  {
+    _camera->position(position);
+    _camera->rotation(rotation);
+    _camera->radius(radius);
+  }
+  else
+  {
+    if(_camera->isAniming()) _camera->stopAnim();
+
+    if(_animation) delete _animation;
+
+
+    _animation = new reto::CameraAnimation(reto::CameraAnimation::LINEAR,
+                                           reto::CameraAnimation::NONE,
+                                           reto::CameraAnimation::LINEAR);
+
+    auto startCam = new reto::KeyCamera(0.f, _camera->position(),
+                                             _camera->rotation(),
+                                             _camera->radius());
+    _animation->addKeyCamera(startCam);
+
+    auto targetCam = new reto::KeyCamera(CAMERA_ANIMATION_DURATION,
+                                         position, rotation, radius);
+    _animation->addKeyCamera(targetCam);
+
+    _camera->startAnim(_animation);
+  }
 }
 
 void OpenGLWidget::defaultScene( void )
 {
   setupSynapses( _gidsAll );
 
-  home( );
+  home( false );
 }
 
 void OpenGLWidget::clearSelection( void )
@@ -418,7 +415,6 @@ void setColor( syncopa::TRenderMorpho& renderConfig, const vec3& color )
 
 void OpenGLWidget::setupNeuronMorphologies( void )
 {
-
   // Selected
   _neuronsSelectedPre = _neuronScene->getRender( _gidsSelectedPre );
   setColor( _neuronsSelectedPre, _colorSelectedPre );
@@ -436,7 +432,6 @@ void OpenGLWidget::setupNeuronMorphologies( void )
   // Context
   _neuronsOther = _neuronScene->getRender( _gidsOther );
   setColor(   _neuronsOther, _colorContext );
-
 }
 
 void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
@@ -488,7 +483,6 @@ void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
 
 void OpenGLWidget::selectPresynapticNeuron( const std::vector< unsigned int >& gidsv )
 {
-
   _gidsSelectedPre = gidUSet( gidsv.begin( ), gidsv.end( ));
 
   _gidsSelectedPost.clear( );
@@ -530,8 +524,8 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
 
 
   std::cout << "Related neurons: ";
-  for( auto gid : _gidsRelated )
-    std::cout << " " << gid;
+  auto printIds = [](const unsigned int i){ std::cout << i << " "; };
+  std::for_each(_gidsRelated.cbegin(), _gidsRelated.cend(), printIds);
   std::cout << std::endl;
 
   _gidsOther.clear( );
@@ -551,7 +545,6 @@ void OpenGLWidget::selectPostsynapticNeuron( const std::vector< unsigned int >& 
   updatePathsVisibility( );
 
   home( );
-
 }
 
 void OpenGLWidget::initRenderToTexture( void )
@@ -657,7 +650,6 @@ void OpenGLWidget::initRenderToTexture( void )
   glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, vbo[1] );
   glBufferData( GL_ELEMENT_ARRAY_BUFFER, sizeof( quadIndices ), quadIndices,
                 GL_STATIC_DRAW );
-
 }
 
 void OpenGLWidget::generateDepthTexture( int width_, int height_ )
@@ -683,27 +675,17 @@ void OpenGLWidget::generateDepthTexture( int width_, int height_ )
   glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0 );
 }
 
-
-
 void OpenGLWidget::paintMorphologies( void )
 {
-//  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
   glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-
   glEnable( GL_DEPTH_TEST );
-
-
   glBindFramebuffer(GL_FRAMEBUFFER, _msaaFrameBuffer );
   glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
-
-//  std::cout << "Size " << size( ).width( ) << ""
   glViewport( 0, 0, size( ).width( ), size( ).height( ));
 
-  Eigen::Matrix4f projection( _camera->projectionMatrix( ));
+  const Eigen::Matrix4f projection( _camera->camera()->projectionMatrix( ));
   _nlrenderer->projectionMatrix( ) = projection;
-  Eigen::Matrix4f view( _camera->viewMatrix( ));
+  const Eigen::Matrix4f view( _camera->camera()->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
 //  if( _showMorphologies )
@@ -713,25 +695,25 @@ void OpenGLWidget::paintMorphologies( void )
       _nlrenderer->render( std::get< syncopa::MESH >( _neuronsSelectedPre ),
                            std::get< syncopa::MATRIX >( _neuronsSelectedPre ),
                            std::get< syncopa::COLOR >( _neuronsSelectedPre ),
-                           true, _showFullMorphologiesPre );
+                           true, true, _showFullMorphologiesPre );
 
     if( _showSelectedPost )
       _nlrenderer->render( std::get< syncopa::MESH >( _neuronsSelectedPost ),
                            std::get< syncopa::MATRIX >( _neuronsSelectedPost ),
                            std::get< syncopa::COLOR >( _neuronsSelectedPost ),
-                           true, _showFullMorphologiesPost);
+                           true, true, _showFullMorphologiesPost);
 
     if( _showRelated )
       _nlrenderer->render( std::get< syncopa::MESH >( _neuronsContext ),
                            std::get< syncopa::MATRIX >( _neuronsContext ),
                            std::get< syncopa::COLOR >( _neuronsContext ),
-                           true, _showFullMorphologiesContext );
+                           true, true, _showFullMorphologiesContext );
 
     if( _showContext )
       _nlrenderer->render( std::get< syncopa::MESH >( _neuronsOther ),
                            std::get< syncopa::MATRIX >( _neuronsOther ),
                            std::get< syncopa::COLOR >( _neuronsOther ),
-                           true, _showFullMorphologiesOther );
+                           true, true, _showFullMorphologiesOther );
   }
 
   glFlush( );
@@ -762,10 +744,10 @@ void OpenGLWidget::paintMorphologies( void )
   glUniform1i( depthID, 1);
 
   GLuint nearID = glGetUniformLocation( _screenPlaneShader->program( ), "zNear" );
-  glUniform1f( nearID, _camera->nearPlane( ));
+  glUniform1f( nearID, _camera->camera()->nearPlane( ));
 
   GLuint farID = glGetUniformLocation( _screenPlaneShader->program( ), "zFar" );
-  glUniform1f( farID, _camera->farPlane( ));
+  glUniform1f( farID, _camera->camera()->farPlane( ));
 //  _screenPlaneShader->sendUniformi( "screenTexture", 0 );
 
   _oglFunctions->glBindVertexArray( _screenPlaneVao );
@@ -783,12 +765,10 @@ void OpenGLWidget::performMSAA( void )
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _depthFrameBuffer);
   _oglFunctions->glBlitFramebuffer(0, 0, width( ), height( ), 0, 0, width( ), height( ),
                     GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-
 }
 
 void OpenGLWidget::paintParticles( void )
 {
-
   glDepthMask(GL_FALSE);
   glEnable(GL_BLEND);
 
@@ -800,8 +780,9 @@ void OpenGLWidget::paintParticles( void )
   else
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-
   glFrontFace(GL_CCW);
+
+  if(!_particlesShader) return;
 
   _particlesShader->use( );
       // unsigned int shader;
@@ -818,7 +799,7 @@ void OpenGLWidget::paintParticles( void )
 //  _particlesShader->sendUniform4m( "modelViewProjM" )
   uModelViewProjM = glGetUniformLocation( shader, "modelViewProjM" );
   glUniformMatrix4fv( uModelViewProjM, 1, GL_FALSE,
-                     _camera->viewProjectionMatrix( ));
+                     _camera->camera()->projectionViewMatrix());
 
   cameraUp = glGetUniformLocation( shader, "cameraUp" );
   cameraRight = glGetUniformLocation( shader, "cameraRight" );
@@ -827,7 +808,7 @@ void OpenGLWidget::paintParticles( void )
 
   invResolution = glGetUniformLocation( shader, "invResolution" );
 
-  float* viewM = _camera->viewMatrix( );
+  float* viewM = _camera->camera()->viewMatrix( );
 
   glUniform3f( cameraUp, viewM[ 1 ], viewM[ 5 ], viewM[ 9 ] );
   glUniform3f( cameraRight, viewM[ 0 ], viewM[ 4 ], viewM[ 8 ] );
@@ -851,10 +832,10 @@ void OpenGLWidget::paintParticles( void )
   _psManager->particleSystem( )->updateRender( );
 
   GLuint nearID = glGetUniformLocation( _particlesShader->program( ), "zNear" );
-  glUniform1f( nearID, _camera->nearPlane( ));
+  glUniform1f( nearID, _camera->camera()->nearPlane( ));
 
   GLuint farID = glGetUniformLocation( _particlesShader->program( ), "zFar" );
-  glUniform1f( farID, _camera->farPlane( ));
+  glUniform1f( farID, _camera->camera()->farPlane( ));
 
   glActiveTexture( GL_TEXTURE1 );
   glBindTexture( GL_TEXTURE_2D, _textureDepth );
@@ -869,12 +850,10 @@ void OpenGLWidget::paintParticles( void )
   _psManager->particleSystem( )->render( );
 
   _particlesShader->unuse( );
-
 }
 
 void OpenGLWidget::paintGL( void )
 {
-//  makeCurrent( );
   std::chrono::time_point< std::chrono::system_clock > now =
            std::chrono::system_clock::now( );
 
@@ -895,16 +874,13 @@ void OpenGLWidget::paintGL( void )
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_CULL_FACE);
 
-//  std::cout << "***** Processing finished paths" << std::endl;
   _dynPathManager->processFinishedPaths( );
-//  std::cout << "***** Processing bifurcations" << std::endl;
   _dynPathManager->processPendingSections( );
-//  std::cout << "***** Processing synapses" << std::endl;
   _dynPathManager->processPendingSynapses( );
 
   if ( _paint )
   {
-    _camera->anim( );
+    _camera->anim(_deltaTime );
 
 //    if( _psManager && _psManager->particleSystem( ))
     {
@@ -933,8 +909,7 @@ void OpenGLWidget::paintGL( void )
   #define FRAMES_PAINTED_TO_MEASURE_FPS 30
   if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS )
   {
-
-    auto duration =
+    const auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>( now - _then );
     _then = now;
 
@@ -944,9 +919,9 @@ void OpenGLWidget::paintGL( void )
 
       if ( _showFps )
       {
-        unsigned int ellapsedMiliseconds = duration.count( );
+        const unsigned int ellapsedMiliseconds = duration.count( );
 
-        unsigned int fps = roundf( 1000.0f *
+        const unsigned int fps = roundf( 1000.0f *
                                  float( FRAMES_PAINTED_TO_MEASURE_FPS ) /
                                  float( ellapsedMiliseconds ));
 
@@ -969,15 +944,7 @@ void OpenGLWidget::paintGL( void )
   {
     _fpsLabel.setVisible( false );
   }
-
 }
-
-void OpenGLWidget::timerUpdate( void )
-{
-  if( _camera->anim( ))
-    this->update( );
-}
-
 
 void OpenGLWidget::idleUpdate( bool idleUpdate_ )
 {
@@ -989,7 +956,6 @@ void OpenGLWidget::showFps( bool showFps_ )
   _showFps = showFps_;
 }
 
-
 void OpenGLWidget::resizeGL( int w , int h )
 {
   _currentWidth = w;
@@ -998,18 +964,14 @@ void OpenGLWidget::resizeGL( int w , int h )
   _inverseResolution =
       Eigen::Vector2f(  1.0 / _currentWidth, 1.0 / _currentHeight );
 
-  _camera->ratio((( double ) w ) / h );
+  _camera->windowSize(w, h);
   glViewport( 0, 0, w, h );
 
   generateDepthTexture( w, h );
 }
 
-
-
-
 void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
 {
-
   if ( event_->button( ) == Qt::LeftButton )
   {
     _rotation = true;
@@ -1025,7 +987,6 @@ void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
   }
 
   update( );
-
 }
 
 void OpenGLWidget::mouseReleaseEvent( QMouseEvent* event_ )
@@ -1041,32 +1002,45 @@ void OpenGLWidget::mouseReleaseEvent( QMouseEvent* event_ )
   }
 
   update( );
-
 }
 
 void OpenGLWidget::mouseMoveEvent( QMouseEvent* event_ )
 {
-  if( _rotation )
+  constexpr float TRANSLATION_FACTOR = 0.001f;
+  constexpr float ROTATION_FACTOR = 0.01f;
+
+  const auto diffX = static_cast<float>(event_->x( ) - _mouseX);
+  const auto diffY = static_cast<float>(event_->y( ) - _mouseY);
+
+  auto updateLastEventCoords = [ this ]( const QMouseEvent *e )
   {
-    _camera->localRotation( -( _mouseX - event_->x( )) * 0.01,
-                          ( _mouseY - event_->y( )) * 0.01 );
-    _mouseX = event_->x( );
-    _mouseY = event_->y( );
+    _mouseX = e->x( );
+    _mouseY = e->y( );
+  };
+
+  if ( _rotation )
+  {
+    _camera->rotate(
+      Eigen::Vector3f(
+        diffX * ROTATION_FACTOR ,
+        diffY * ROTATION_FACTOR ,
+        0.0f
+      )
+    );
+
+    updateLastEventCoords( event_ );
   }
 
-  if( _translation )
+  if ( _translation )
   {
-   float xDis = ( event_->x() - _mouseX ) * 0.001f * _camera->radius( );
-   float yDis = ( event_->y() - _mouseY ) * 0.001f * _camera->radius( );
+    const float xDis = diffX * TRANSLATION_FACTOR * _camera->radius( );
+    const float yDis = diffY * TRANSLATION_FACTOR * _camera->radius( );
 
-   _camera->localTranslation( Eigen::Vector3f( -xDis, yDis, 0.0f ));
-   _mouseX = event_->x( );
-   _mouseY = event_->y( );
+    _camera->localTranslate( Eigen::Vector3f( -xDis , yDis , 0.0f ));
+    updateLastEventCoords( event_ );
   }
 
-
-
-  this->update( );
+  update( );
 }
 
 
@@ -1081,10 +1055,7 @@ void OpenGLWidget::wheelEvent( QWheelEvent* event_ )
     _camera->radius( _camera->radius( ) * 1.1f );
 
   update( );
-
 }
-
-
 
 void OpenGLWidget::keyPressEvent( QKeyEvent* event_ )
 {
@@ -1093,14 +1064,13 @@ void OpenGLWidget::keyPressEvent( QKeyEvent* event_ )
   switch ( event_->key( ))
   {
   case Qt::Key_C:
-    _camera->pivot( Eigen::Vector3f( 0.0f, 0.0f, 0.0f ));
+    _camera->position( Eigen::Vector3f( 0.0f, 0.0f, 0.0f ));
     _camera->radius( 1000.0f );
-    _camera->rotation( 0.0f, 0.0f );
+    _camera->rotate( Eigen::Vector3f( 0.0f, 0.0f, 0.0f ) );
     update( );
     break;
   }
 }
-
 
 void OpenGLWidget::changeClearColor( void )
 {
@@ -1252,7 +1222,6 @@ const syncopa::vec3& OpenGLWidget::colorSynapseMapPre( void ) const
   return _colorSynMapPre;
 }
 
-
 void OpenGLWidget::colorSynapseMap( const tQColorVec& qcolors )
 {
   _colorSynMap = qcolors;
@@ -1346,7 +1315,6 @@ float OpenGLWidget::alphaSynapsesMap( void ) const
 {
   return _alphaSynapsesMap;
 }
-
 
 //bool OpenGLWidget::showDialog( QColor& current, const std::string& message )
 //{
@@ -1643,4 +1611,22 @@ float OpenGLWidget::sizeSynapseMap( void ) const
 float OpenGLWidget::sizeDynamic( void ) const
 {
   return _psManager->sizeDynamic( );
+}
+
+void OpenGLWidget::loadPostprocess()
+{
+  makeCurrent();
+
+  _neuronScene->uploadMeshes();
+  _neuronScene->color( vec3( 1, 1, 1 ), PRESYNAPTIC );
+  _neuronScene->color( vec3( 0, 1, 1 ), POSTSYNAPTIC );
+
+  _gidsAll.clear();
+  for( const auto &neuron : _dataset->neurons( ))
+  {
+    _gidsAll.insert( neuron.first );
+  }
+
+  createParticleSystem( );
+  defaultScene( );
 }

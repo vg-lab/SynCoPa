@@ -293,25 +293,23 @@ void PaletteColorWidget::_fillColors( void )
 
     case PALETTE_UNIFORM:
 
-      colors = tscoop::matplotlibPerceptualUniform(( tpUni ) _currentPalette,
-                                          _invertPaletteColors );
+      colors = tscoop::matplotlibPerceptualUniform(( tpUni ) _currentPalette ,
+                                                   _invertPaletteColors );
       break;
 
   }
 
   assert( !colors.colors( ).empty( ));
-
-  float step = 1.0 / ( colors.colors( ).size( ) - 1 );
+  float step = 1.0f / ( static_cast<float>(colors.colors( ).size( ) - 1 ));
   float acc = 0.0f;
 
   QGradientStops stops;
 
-  for( auto color : colors.colors( ))
+  _currentColors.clear( );
+  for ( const auto& color: colors.colors( ))
   {
-    _currentColors.emplace_back( std::make_pair( acc, color ));
-
-    stops << qMakePair( acc, color );
-
+    _currentColors.emplace_back( std::make_pair( acc , color ));
+    stops << qMakePair( acc , color );
     acc += step;
   }
 

@@ -10,7 +10,6 @@
 
 namespace syncopa
 {
-
   DomainManager::DomainManager( )
   : _dataset( nullptr )
   , _presynapticGID( 0 )
@@ -35,20 +34,20 @@ namespace syncopa
   {
     if( _dataset )
     {
-      auto blueConfig = _dataset->blueConfig( );
+      const auto blueConfig = _dataset->blueConfig( );
 
-      brain::Circuit brainCircuit( *blueConfig );
-      brion::GIDSet gidSetBrain = brainCircuit.getGIDs( _dataset->blueConfigTarget( ));
+      const brain::Circuit brainCircuit( *blueConfig );
+      const brion::GIDSet gidSetBrain = brainCircuit.getGIDs( _dataset->blueConfigTarget( ));
 
       const brain::Synapses& brainSynapses =
          brainCircuit.getAfferentSynapses( gidSetBrain,
                                            brain::SynapsePrefetch::attributes );
 
-      auto synapses = _dataset->circuit( ).synapses( );
+      const auto synapses = _dataset->circuit( ).synapses( );
       for( unsigned int i = 0; i < synapses.size( ); ++i )
       {
-        auto synapse = dynamic_cast< nsolMSynapse_ptr >( synapses[ i ]);
-        auto brainSynapse = brainSynapses[ synapse->gid( ) - 1 ];
+        const auto synapse = dynamic_cast< nsolMSynapse_ptr >( synapses[ i ]);
+        const auto brainSynapse = brainSynapses[ synapse->gid( ) - 1 ];
 
         tBrainSynapse infoPre =
            std::make_tuple( brainSynapse.getPresynapticSectionID( ),
@@ -75,13 +74,7 @@ namespace syncopa
     }
 
      std::cout << "Loaded BRAIN synapse info of " << _synapseFixInfo.size( ) << std::endl;
-     //      calculateFixedSynapseSections( );
    }
-  }
-
-  const std::vector< nsolMSynapse_ptr >& DomainManager::getSynapses( void ) const
-  {
-    return _synapses;
   }
 
   void DomainManager::loadSynapses( unsigned int presynapticGID,
@@ -99,76 +92,73 @@ namespace syncopa
     _filteredSynapses = _synapses;
 
     std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
-
   }
 
-  tsynapseVec DomainManager::_loadSynapses( const gidUSet& gids, bool log ) const
+  tsynapseVec DomainManager::_loadSynapses( const gidUSet& gids, const bool log ) const
   {
     tsynapseVec result;
 
     std::set< unsigned int > gidset( gids.begin( ), gids.end( ));
 
-     auto& circuit = _dataset->circuit( );
-     auto synapseSet = circuit.synapses( gidset,
+    auto& circuit = _dataset->circuit( );
+    auto synapseSet = circuit.synapses( gidset,
                                          nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
-     result.reserve( synapseSet.size( ));
+    result.reserve( synapseSet.size( ));
 
-     for( auto syn : synapseSet )
-     {
+    for( auto &syn : synapseSet )
+    {
+      auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
+      if(!msyn)
+      {
+        if( log )
+          std::cout << "EMPTY SYNAPSE " << std::endl;
+        continue;
+      }
 
-       auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
-       if( !msyn)
-       {
-         if( log )
-           std::cout << "EMPTY SYNAPSE " << std::endl;
-         continue;
-       }
+      const auto sectionPre = msyn->preSynapticSection( );
+      const auto sectionPost = msyn->postSynapticSection( );
 
-       auto sectionPre = msyn->preSynapticSection( );
-       auto sectionPost = msyn->postSynapticSection( );
+      // axo-somatic
+      if( !sectionPre || ( !sectionPost &&
+          msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
+        continue;
 
-       // axo-somatic
-       if( !sectionPre || ( !sectionPost &&
-           msyn->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC ))
-         continue;
+      const auto synInfo = _synapseFixInfo.find( msyn );
+      if( synInfo == _synapseFixInfo.end( ))
+        continue;
 
+      const auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
+      const auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
-       auto synInfo = _synapseFixInfo.find( msyn );
-       if( synInfo == _synapseFixInfo.end( ))
-         continue;
+      if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
+          sectionPre->nodes( ).size( ) - 1 )
+      {
+        if( log )
+        std::cout << "Discarding synapse with pre segment "
+                  << std::get< TBS_SEGMENT_INDEX >( infoPre )
+                  << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
+                  << std::endl;
+        continue;
+      }
 
-       auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
-       auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
+      if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
+          sectionPost->nodes( ).size( ) - 1 )
+      {
+        if( log )
+        std::cout << "Discarding synapse with post segment "
+                  << std::get< TBS_SEGMENT_INDEX >( infoPost )
+                  << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
+                  << std::endl;
+        continue;
+      }
 
-       if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
-           sectionPre->nodes( ).size( ) - 1 )
-       {
-         if( log )
-         std::cout << "Discarding synapse with pre segment "
-                   << std::get< TBS_SEGMENT_INDEX >( infoPre )
-                   << " segments " << ( sectionPre->nodes( ).size( ) - 1 )
-                   << std::endl;
-         continue;
-       }
+      result.push_back( msyn );
+    }
 
-       if( sectionPost && std::get< TBS_SEGMENT_INDEX >( infoPost ) >=
-           sectionPost->nodes( ).size( ) - 1 )
-       {
-         if( log )
-         std::cout << "Discarding synapse with post segment "
-                   << std::get< TBS_SEGMENT_INDEX >( infoPost )
-                   << " segments " << ( sectionPost->nodes( ).size( ) - 1 )
-                   << std::endl;
-         continue;
-       }
+    result.shrink_to_fit( );
 
-       result.push_back( msyn );
-     }
-
-     result.shrink_to_fit( );
-
-     return result;
+    return result;
   }
 
   void DomainManager::_loadSynapses( unsigned int presynapticGID,
@@ -181,19 +171,17 @@ namespace syncopa
 
     std::set< unsigned int > gidsPre = { presynapticGID };
 
-    auto& circuit = _dataset->circuit( );
-    auto synapseSet = circuit.synapses( gidsPre,
-                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
-
+    const auto& circuit = _dataset->circuit( );
+    const auto synapseSet = circuit.synapses( gidsPre,
+                                              nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
     result.reserve( synapseSet.size( ));
 
-    for( auto syn : synapseSet )
+    for( const auto &syn : synapseSet )
     {
       if( !postsynapticGIDs.empty( ) &&
           postsynapticGIDs.find( syn->postSynapticNeuron( )) == postsynapticGIDs.end( ))
         continue;
-
 
       auto msyn = dynamic_cast< nsolMSynapse_ptr >( syn );
       if( !msyn)
@@ -202,8 +190,8 @@ namespace syncopa
         continue;
       }
 
-      auto sectionPre = msyn->preSynapticSection( );
-      auto sectionPost = msyn->postSynapticSection( );
+      const auto sectionPre = msyn->preSynapticSection( );
+      const auto sectionPost = msyn->postSynapticSection( );
 
       // axo-somatic
       if( !sectionPre || ( !sectionPost &&
@@ -211,12 +199,12 @@ namespace syncopa
         continue;
 
 
-      auto synInfo = _synapseFixInfo.find( msyn );
+      const auto synInfo = _synapseFixInfo.find( msyn );
       if( synInfo == _synapseFixInfo.end( ))
         continue;
 
-      auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
-      auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
+      const auto infoPre = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
+      const auto infoPost = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
       if( std::get< TBS_SEGMENT_INDEX >( infoPre ) >=
           sectionPre->nodes( ).size( ) - 1 )
@@ -247,7 +235,6 @@ namespace syncopa
     _filteredSynapses = _synapses;
 
     std::cout << "Loaded " << _synapses.size( ) << " synapses." << std::endl;
-
   }
 
   void DomainManager::synapseMappingAttrib( TBrainSynapseAttribs attrib )
@@ -292,12 +279,12 @@ namespace syncopa
     _filteredSynapses.clear( );
     _filteredSynapses.reserve( _synapses.size( ));
 
-    for( auto synapse : _synapses )
+    for( const auto &synapse : _synapses )
     {
-      auto idx = _synapseIDToValues.find( synapse->gid( ));
+      const auto idx = _synapseIDToValues.find( synapse->gid( ));
       assert( idx != _synapseIDToValues.end( ));
 
-      float value = _currentAttribValues[ idx->second ];
+      const float value = _currentAttribValues[ idx->second ];
 
       if( value < _minValue || value > _maxValue )
         std::cout << "Synapse attrib " << ( unsigned int )_currentAttrib
@@ -312,7 +299,6 @@ namespace syncopa
           _filteredSynapses.push_back( synapse );
         else
           _removedSynapses.insert( synapse->gid( ));
-
       }
       else
       {
@@ -328,7 +314,6 @@ namespace syncopa
     std::cout << "Filtered synapses " << _filteredSynapses.size( )
               << " out of " << _synapses.size( )
               << std::endl;
-
   }
 
   const tsynapseVec& DomainManager::getFilteredSynapses(  ) const
@@ -364,12 +349,6 @@ namespace syncopa
     return result;
   }
 
-
-  const TSynapseInfo& DomainManager::synapsesInfo( void ) const
-  {
-    return _synapseFixInfo;
-  }
-
   void DomainManager::_calculateSynapsesAttribValues( const tsynapseVec& synapses )
   {
     auto& synapseInfoMap = _synapseFixInfo;
@@ -384,18 +363,10 @@ namespace syncopa
 
     unsigned int counter = 0;
     for( auto synapse : synapses )
- //    for( unsigned int i = 0; i < synapses.size( ); ++i )
-    {
- //      auto synapse = synapses[ i ];
 
+    {
       auto synapseInfo = synapseInfoMap.find( synapse );
       assert( synapseInfo != synapseInfoMap.end( ));
-//      if( synapseInfo == synapseInfoMap.end( ))
-//      {
-//        std::cout << "ERROR: " << i << " synapse info " << synapse->gid( ) << " not found." << std::endl;
-//        continue;
-//      }
-
 
       float value = 0.0f;
       auto synapseAttribs = std::get< TBSI_ATTRIBUTES >( synapseInfo->second );
@@ -426,12 +397,9 @@ namespace syncopa
     {
       float normalizedValue = ( values[ i ] - minValue ) * invRange;
       normalizedValue = std::min( std::max( 0.0f, normalizedValue ), 1.0f );
-//      _gidToParticleId.insert( std::make_pair( synapses[ i ]->gid( ),
-//                                               particle.id( )));
       _currentAttribNormValues[ i ] = normalizedValue;
     }
   }
-
 
   void DomainManager::_generateHistogram( const std::vector< float >& values,
                                       float minValue, float maxValue )
@@ -446,45 +414,43 @@ namespace syncopa
 
     _histoFunction.clear( );
 
-    float invNormValues = 1.0f / ( maxValue - minValue );
+    const float invNormValues = 1.0f / ( maxValue - minValue );
 
     unsigned int maxBin = 0;
     unsigned int minBin = std::numeric_limits< unsigned int >::max( );
 
-    for( auto value : values )
+    for( const auto &value : values )
     {
-      unsigned int pos = (( value - minValue ) * invNormValues ) * ( _binsNumber - 1 );
+      const unsigned int pos = (( value - minValue ) * invNormValues ) * ( _binsNumber - 1 );
 
       unsigned int& bin = _synapseAttribHistogram[ pos ];
       bin += 1;
     }
 
-    std::cout << "Bins: ";
+    std::cout << "Bins:";
     for( auto bin : _synapseAttribHistogram )
     {
-      std::cout << " " << bin;
-
       if( bin > maxBin )
         maxBin = bin;
 
       if( bin < minBin )
         minBin = bin;
 
+      std::cout << " " << bin;
     }
     std::cout << std::endl;
 
     std::cout << "Max bin " << maxBin << " min bin " << minBin << std::endl;
 
-    float step = 1.0f / ( _binsNumber - 1 );
+    const float step = 1.0f / ( _binsNumber - 1 );
+    const double invNormHistogram = 1.0 / ( maxBin - minBin );
     float acc = 0.0f;
-
-    double invNormHistogram = 1.0 / ( maxBin - minBin );
 
     std::cout << "Histogram: ";
     for( auto bin : _synapseAttribHistogram )
     {
-      double normalizedY = ( bin - minBin ) * invNormHistogram;
-      double normalizedX = acc;
+      const double normalizedY = ( bin - minBin ) * invNormHistogram;
+      const double normalizedX = acc;
 
       _histoFunction.append( QPointF( normalizedX, normalizedY ));
 
@@ -496,19 +462,13 @@ namespace syncopa
 
   }
 
-  const QPolygonF& DomainManager::getSynapseMappingPlot( void ) const
-  {
-    return _histoFunction;
-  }
-
-
   gidUSet DomainManager::connectedTo( unsigned int gid ) const
   {
     gidUSet result = { gid };
 
-    auto synapses = _loadSynapses( result );
+    const auto synapses = _loadSynapses( result );
 
-    for( auto syn : synapses )
+    for( const auto &syn : synapses )
     {
       if( syn->preSynapticNeuron( ) != gid )
         continue;
@@ -523,7 +483,4 @@ namespace syncopa
   {
     return std::make_pair( _minValue, _maxValue );
   }
-
-
 }
-

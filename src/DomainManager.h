@@ -41,18 +41,22 @@ namespace syncopa
     void synapseMappingAttrib( TBrainSynapseAttribs attrib );
     void updateSynapseMapping( void );
 
-    const TSynapseInfo& synapsesInfo( void ) const;
+    inline const TSynapseInfo& synapsesInfo( void ) const
+    { return _synapseFixInfo; }
 
     void setSynapseFilteringState( bool state );
     void setSynapseFilter( float maxValue, float minValue, bool invertFilter );
 
-    const tsynapseVec& getSynapses( void ) const;
+    inline const tsynapseVec& getSynapses( void ) const
+    { return _synapses; }
+
     const tsynapseVec& getFilteredSynapses( void ) const;
 
     const tFloatVec& getNormValues( void ) const;
     tFloatVec getFilteredNormValues( void ) const;
 
-    const QPolygonF& getSynapseMappingPlot( void ) const;
+    inline const QPolygonF& getSynapseMappingPlot( void ) const
+    { return _histoFunction; }
 
     gidUSet connectedTo( unsigned int gid ) const;
 
@@ -64,7 +68,7 @@ namespace syncopa
 
     void _loadSynapseInfo( void );
 
-    tsynapseVec _loadSynapses( const gidUSet& gids, bool log = false ) const;
+    tsynapseVec _loadSynapses( const gidUSet& gids, const bool log = false ) const;
 
     void _loadSynapses( unsigned int presynapticGID,
                         const gidUSet& postsynapticGIDs );

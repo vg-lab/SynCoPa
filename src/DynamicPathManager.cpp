@@ -50,11 +50,11 @@ namespace syncopa
 //    source->initialNode( origin );
     source->restart( );
 
-    source->finishedPath.connect( boost::bind( &DynamicPathManager::finished, this, _1 ));
+    source->finishedPath.connect( boost::bind ( &DynamicPathManager::finished, this, _1) );
 
-    source->finishedSection.connect( boost::bind( &DynamicPathManager::finishedSection, this, _1 ));
+    source->finishedSection.connect( boost::bind ( &DynamicPathManager::finishedSection, this, _1));
 
-    source->reachedSynapse.connect( boost::bind( &DynamicPathManager::synapse, this, _1 ));
+    source->reachedSynapse.connect( boost::bind( &DynamicPathManager::synapse, this, _1));
   }
 
   void DynamicPathManager::clear( void )
@@ -210,7 +210,7 @@ namespace syncopa
         source->path( path );
         source->restart( );
 
-        source->finishedPath.connect( boost::bind( &DynamicPathManager::finished, this, _1 ));
+        source->finishedPath.connect( boost::bind(&DynamicPathManager::finished, this, _1));
 
         _sources.insert( std::make_pair( source->gid( ), source ));
         _synapseSources.insert( std::make_pair( synapse, source ));
@@ -227,7 +227,7 @@ namespace syncopa
           source->path( path );
           source->restart( );
 
-          source->finishedPath.connect( boost::bind( &DynamicPathManager::finished, this, _1 ));
+          source->finishedPath.connect( boost::bind(&DynamicPathManager::finished, this, _1));
 
           _sources.insert( std::make_pair( source->gid( ), source ));
           _synapseSources.erase( synapse );
