@@ -20,6 +20,7 @@
 #include "prefr/UpdaterStaticPosition.h"
 #include "prefr/MobilePolylineSource.h"
 #include "prefr/UpdaterMappedValue.h"
+#include "prefr/core/ICamera.h"
 
 namespace syncopa
 {
@@ -32,7 +33,9 @@ public:
     ~PSManager( void );
 
     void init( PathFinder* pathFinder,
-               unsigned int maxParticles = 500000 );
+               unsigned int maxParticles = 500000,
+               prefr::ICamera* camera = nullptr,
+               prefr::IGLRenderProgram* program = nullptr);
 
     prefr::ParticleSystem* particleSystem( void );
 

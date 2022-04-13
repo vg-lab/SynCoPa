@@ -39,13 +39,17 @@ set(SYNCOPA_SOURCES
   PathFinder.cpp
   ConnectivityTree.cpp
   DynamicPathManager.cpp
-  
+
+  prefr/Camera.cpp
+  prefr/ShaderProgram.cpp
   prefr/SourceMultiPosition.cpp
   prefr/UpdaterStaticPosition.cpp
   prefr/UpdaterMappedValue.cpp
   prefr/MobilePolylineSource.cpp
   
   ext/ctkrangeslider.cpp
+
+        WebSocketThread.cpp
   
   CMakeSetup.rc
   syncopa.ui
@@ -59,19 +63,24 @@ set(SYNCOPA_HEADERS
   PaletteColorWidget.h
   GradientWidget.h
   DomainManager.h
-  
+
   NeuronScene.h
   PSManager.h
   PathFinder.h
   ConnectivityTree.h
   DynamicPathManager.h
-  
+  Events.h
+
+  prefr/Camera.h
+  prefr/ShaderProgram.h
   prefr/SourceMultiPosition.h
   prefr/UpdaterStaticPosition.h
   prefr/UpdaterMappedValue.h
   prefr/MobilePolylineSource.h
   
   ext/ctkrangeslider.h
+
+        WebSocketThread.h
   
   prefr/PrefrShaders.h
 )
@@ -83,6 +92,7 @@ set(SYNCOPA_LINK_LIBRARIES
   Qt5::Core
   Qt5::Widgets
   Qt5::OpenGL
+  Qt5::WebSockets
   ReTo
   prefr
   nsol

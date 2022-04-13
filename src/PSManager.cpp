@@ -42,7 +42,7 @@ namespace syncopa
 
   PSManager::~PSManager( void )
   {
-    if( _particleSystem )
+    if ( _particleSystem )
       delete _particleSystem;
   }
 
@@ -51,27 +51,31 @@ namespace syncopa
     return _particleSystem;
   }
 
-  void PSManager::init( PathFinder* pathFinder, unsigned int maxParticles )
+  void PSManager::init( PathFinder* pathFinder ,
+                        unsigned int maxParticles ,
+                        prefr::ICamera* camera ,
+                        prefr::IGLRenderProgram* program
+                      )
   {
     _pathFinder = pathFinder;
 
-    _particleSystem = new prefr::ParticleSystem( maxParticles );
-    _particleSystem->parallel( false );
+    _particleSystem = new prefr::ParticleSystem( maxParticles , camera );
+    _particleSystem->parallel( true );
 
-    prefr::Model model = prefr::Model( 1.0f, 1.0f );
-    model.velocity.Insert( 0.0f, 0.0f );
-    model.size.Insert( 0.0f, 5.0f );
-    model.color.Insert( 0.0f, glm::vec4( 1, 1, 1, 1 ));
+    prefr::Model model = prefr::Model( 1.0f , 1.0f );
+    model.velocity.Insert( 0.0f , 0.0f );
+    model.size.Insert( 0.0f , 5.0f );
+    model.color.Insert( 0.0f , glm::vec4( 1 , 1 , 1 , 1 ));
 
     _modelSynPre = new prefr::Model( model );
     _modelSynPost = new prefr::Model( model );
     _modelPathPre = new prefr::Model( model );
-    _modelPathPost= new prefr::Model( model );
+    _modelPathPost = new prefr::Model( model );
 
     _modelSynMap = new prefr::Model( );
-    _modelSynMap->velocity.Insert( 0.0f, 0.0f );
+    _modelSynMap->velocity.Insert( 0.0f , 0.0f );
 
-    _modelSynMap->size.Insert( 0.0f, 8.0f );
+    _modelSynMap->size.Insert( 0.0f , 8.0f );
     _modelSynMap->color.Insert( 0.0f, glm::vec4( 1, 0, 0, 0.8 ));
     _modelSynMap->color.Insert( 1.0f, glm::vec4( 1, 1, 0, 0.8 ));
 
@@ -134,7 +138,7 @@ namespace syncopa
     _particleSystem->addCluster( _clusterDyn );
 
     prefr::Sorter* sorter = new prefr::Sorter( );
-    prefr::GLRenderer* renderer = new prefr::GLRenderer( );
+    prefr::OIGLRenderer* renderer = new prefr::OIGLRenderer( program );
 
     _particleSystem->sorter( sorter );
     _particleSystem->renderer( renderer );

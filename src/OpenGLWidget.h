@@ -34,6 +34,9 @@
 #include "DynamicPathManager.h"
 #include "DomainManager.h"
 
+class Camera;
+class ShaderProgram;
+
 class OpenGLWidget
   : public QOpenGLWidget
   , public QOpenGLFunctions
@@ -43,8 +46,9 @@ class OpenGLWidget
 
 public:
 
-  OpenGLWidget( QWidget* parent = 0,
-                Qt::WindowFlags windowFlags = 0 );
+  OpenGLWidget( QWidget *parent = 0 ,
+                Qt::WindowFlags windowFlags = 0
+              );
 
   ~OpenGLWidget( void );
 
@@ -204,7 +208,7 @@ protected:
   QLabel _fpsLabel;
   bool _showFps;
 
-  reto::OrbitalCameraController* _camera;
+  Camera* _camera;
   reto::CameraAnimation *_animation;
   glm::vec3 _lastCameraPosition;
 
@@ -222,7 +226,7 @@ protected:
   std::chrono::time_point< std::chrono::system_clock > _then;
   std::chrono::time_point< std::chrono::system_clock > _lastFrame;
 
-  reto::ShaderProgram* _particlesShader;
+  ShaderProgram* _particlesShader;
 //  prefr::ParticleSystem* _particleSystem;
   nlrender::Renderer* _nlrenderer;
 

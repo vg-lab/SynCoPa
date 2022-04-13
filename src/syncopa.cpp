@@ -13,9 +13,7 @@
 #include "MainWindow.h"
 #include <QDebug>
 
-
 #include <syncopa/version.h>
-
 
 void setFormat( void );
 void usageMessage(  char* progName );
@@ -35,8 +33,7 @@ int main( int argc, char** argv )
     updateOnIdle = false, fps = false;
   int initWindowWidth = 0, initWindowHeight = 0;
 
-  std::string blueConfig( "" );
-  std::string target( "" );
+  std::string blueConfig, target;
 
   for( int i = 1; i < argc; i++ )
   {
@@ -52,7 +49,7 @@ int main( int argc, char** argv )
       return 0;
     }
 
-    if( strcmp( argv[ i ], "-bc") == 0 )
+    if( std::strcmp( argv[ i ], "-bc") == 0 )
     {
       if( i + 1 <= argc )
       {
@@ -110,7 +107,7 @@ int main( int argc, char** argv )
 
   setFormat( );
   // Showing FPS needs update on idle activated
-  MainWindow mainWindow( 0, fps || updateOnIdle, fps );
+  MainWindow mainWindow( nullptr , fps || updateOnIdle , fps );
   mainWindow.setWindowTitle("SynCoPa");
 
   if ( initWindowSize )
@@ -141,10 +138,15 @@ void usageMessage( char* progName )
             << std::endl
             << "\t[ -mw | --maximize-window ]"
             << std::endl
+            << "\t[ -zeq <session*> ]"
+            << std::endl
             << "\t[ --version ]"
             << std::endl
             << "\t[ --help | -h ]"
-            << std::endl << std::endl;
+            << std::endl << std::endl
+            << "\t* session: ZeroEQ session identifier. For example hbp://"
+            << std::endl;
+
   exit(-1);
 }
 

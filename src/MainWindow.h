@@ -31,6 +31,7 @@
 #include "PaletteColorWidget.h"
 
 #include "ui_syncopa.h"
+#include "WebSocketThread.h"
 #include <memory>
 
 class QProgressBar;
@@ -75,8 +76,8 @@ class LoadingThread
     virtual void run();
 
   private:
-    const std::string &m_blueconfig; /** blueconfig file path.              */
-    const std::string &m_target;     /** blueconfig target.                 */
+    const std::string m_blueconfig; /** blueconfig file path.              */
+    const std::string m_target;     /** blueconfig target.                 */
     MainWindow        *m_parent;     /** parent application main window.    */
     std::string        m_errors;     /** error message or empty if success. */
 };
@@ -123,25 +124,48 @@ class MainWindow
 
 public:
 
-  explicit MainWindow( QWidget* parent = 0,
+  /** \brief MainWindow class constructor.
+   * \param[in] parent Raw pointer of the widget parent of this one.
+   * \param[in] updateOnIdle True to refresh Gl widget on idle and false
+   *                         otherwise.
+   * \param[in] fps True to show fps and false otherwise.
+   *
+   */
+  explicit MainWindow(
+                       QWidget* parent = 0,
                        bool updateOnIdle = true,
                        bool fps = false);
+
   virtual ~MainWindow( void );
 
-  void init( void );
+  void init( );
 
-  void loadData( const std::string& dataset, const std::string& target );
+  void loadData( const std::string& dataset , const std::string& target );
 
 protected slots:
 
+  void openBlueConfigThroughDialog( void );
+
+  void exportDataDialog( void );
+
+  void exportMatrixCSV( const QString& filename ) const;
+
+  void exportCompactCSV( const QString& filename ) const;
+
+  void exportXML( const QString& filename ) const;
+
   void presynapticNeuronClicked( );
+
   void postsynapticNeuronClicked( );
 
   void setSynapseMappingState( int state );
+
   void setSynapseMappingAttribute( int attrib );
 
   void colorSelectionClicked( void );
+
   void colorSynapseMapAccepted( void );
+
   void colorSynapseMapCancelled( void );
 
   void transparencySliderMoved( int );
@@ -172,18 +196,36 @@ protected slots:
    */
   void aboutDialog();
 
+  /** \brief Starts/Stops the network connection.
+   * \param[in] value True if button is checked and false otherwise.
+   *
+   */
+  void onConnectionButtonTriggered(bool value);
+
+  void onConnectionStateChanged();
+
+  void onMessageReceived();
+
+  void onConnectionError();
+
+  void onConnectionThreadTerminated();
+
 protected:
 
   bool showDialog( QColor& current, const QString& message = "" );
 
   void initListDock( void );
+
   void initColorDock( void );
+
   void initInfoDock( void );
 
   void updateInfoDock( void );
+
   void clearInfoDock( void );
 
   void loadPresynapticList( void );
+
   void loadPostsynapticList( unsigned int gid );
 
   void _loadDefaultValues( void );
@@ -191,9 +233,18 @@ protected:
   /** \brief Helper method to enable/disable the interface.
    *
    */
-  void disableInterface(bool value);
+  void disableInterface( bool value );
+
+  // JSON
+
+  void parseSelectionJSON( std::shared_ptr< SynapsesModeSelection > selection );
+
+  void parseSelectionJSON( std::shared_ptr< PathsModeSelection > selection );
 
   Ui::MainWindow* _ui;
+
+  QString _lastOpenedFileNamePath;
+
   OpenGLWidget* _openGLWidget;
 
   QDockWidget* _dockList;
@@ -279,7 +330,8 @@ protected:
   QGroupBox* _groupBoxPaths;
   QGroupBox* _groupBoxDynamic;
 
-  std::shared_ptr<LoadingThread> m_thread;
+  std::shared_ptr< LoadingThread > m_thread;
+  WebSocketThread* m_socket;
 
   friend class LoadingThread;
 };

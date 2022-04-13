@@ -13,13 +13,17 @@ project( syncopa VERSION 0.2.0 )
 set( syncopa_VERSION_ABI 1 )
 set( SYNCOPA_LICENSE "GPL")
 
+# to make configuration messages cleaner, use -Wno-dev
+cmake_policy(SET CMP0054 OLD)
+cmake_policy(SET CMP0048 OLD)
+
 # Disable in source building
 if( "${PROJECT_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}" )
   message( FATAL "no in source building allowed.")
 endif()
 
 list( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
-  ${CMAKE_SOURCE_DIR}/CMake/common )
+        ${CMAKE_SOURCE_DIR}/CMake/common )
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/CMake/common/Common.cmake)
   message(FATAL_ERROR "CMake/common missing, run: git submodule update --init")
@@ -45,27 +49,26 @@ common_find_package( Qt5Core 5.4 REQUIRED )
 common_find_package( Qt5Gui 5.4 REQUIRED )
 common_find_package( Qt5Widgets 5.4 REQUIRED )
 common_find_package( Qt5OpenGL REQUIRED )
+common_find_package( Qt5WebSockets REQUIRED )
 common_find_package( GLEW REQUIRED SYSTEM )
 common_find_package( OpenGL REQUIRED )
 common_find_package( Eigen3 REQUIRED SYSTEM)
-common_find_package( ReTo REQUIRED )
-common_find_package( prefr REQUIRED )
 common_find_package( neurolots REQUIRED )
+common_find_package( ReTo REQUIRED )
 common_find_package( nsol REQUIRED )
+common_find_package( prefr REQUIRED )
 common_find_package( Brion REQUIRED )
 common_find_package( OpenMP )
-common_find_package( gmrvlex )
 common_find_package( scoop REQUIRED )
 
-
 list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
+  prefr
+  ReTo
+  neurolots
+  nsol
   OpenGL
   GLEW
   Eigen3
-  ReTo
-  prefr
-  neurolots
-  nsol
   Brion
 )
 

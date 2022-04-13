@@ -228,7 +228,7 @@ void idleFunc( void )
 
 }
 prefr::GLRenderer* renderer;
-prefr::GLRenderer::BlendFunc alphaBlendFunc;
+unsigned int alphaBlendFunc;
 void mouseFunc( int button, int state, int xCoord, int yCoord )
 {
   if( button == GLUT_LEFT_BUTTON && state == GLUT_DOWN )
@@ -254,18 +254,18 @@ void mouseFunc( int button, int state, int xCoord, int yCoord )
   {
     translation = false;
 
-    if( alphaBlendFunc == prefr::GLRenderer::ONE_MINUS_CONSTANT_ALPHA )
+    if( alphaBlendFunc == GL_ONE_MINUS_CONSTANT_ALPHA )
     {
-      alphaBlendFunc = prefr::GLRenderer::ONE_MINUS_SRC_ALPHA;
+      alphaBlendFunc = GL_ONE_MINUS_SRC_ALPHA;
       glClearColor( 1.0f, 1.f, 1.f, 0.0f );
     }
     else
     {
-      alphaBlendFunc = prefr::GLRenderer::ONE_MINUS_CONSTANT_ALPHA;
+      alphaBlendFunc = GL_ONE_MINUS_CONSTANT_ALPHA;
       glClearColor( 0.0f, 0.f, 0.f, 0.0f );
     }
 
-    renderer->alphaBlendingFunc( alphaBlendFunc );
+    renderer->enableAccumulativeMode( alphaBlendFunc != GL_ONE_MINUS_SRC_ALPHA );
   }
 
   if( button == 3 && state == GLUT_DOWN )
@@ -413,8 +413,7 @@ void InitParticleSystem( unsigned int maxParticles, unsigned int /*maxClusters*/
   Sorter* sorter = new Sorter( );
   particleSystem->sorter( sorter );
 
-  renderer = new GLRenderer( );
-  renderer->glRenderProgram( &program );
+  renderer = new GLRenderer( &program );
   particleSystem->renderer( renderer );
 
 #ifdef PREFR_USE_OPENMP
