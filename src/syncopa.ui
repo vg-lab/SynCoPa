@@ -31,6 +31,9 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionOpenBlueConfig"/>
+    <addaction name="separator"/>
+    <addaction name="actionExport"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -47,6 +50,7 @@
     <addaction name="actionUpdateOnIdle"/>
     <addaction name="actionShowFPSOnIdleUpdate"/>
     <addaction name="actionBackgroundColor"/>
+    <addaction name="actionNetworkConnection"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuOptions"/>
@@ -63,8 +67,11 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionOpenBlueConfig"/>
    <addaction name="separator"/>
    <addaction name="actionBackgroundColor"/>
+   <addaction name="separator"/>
+   <addaction name="actionNetworkConnection"/>
   </widget>
   <action name="actionQuit">
    <property name="text">
@@ -117,6 +124,41 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionOpenBlueConfig">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/folder-bc.svg</normaloff>:/icons/folder-bc.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Open BlueConfig...</string>
+   </property>
+   <property name="toolTip">
+    <string>Open BlueConfig</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+B</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export scene and synapses</string>
+   </property>
+   <property name="toolTip">
+    <string>Export scene and synapses</string>
+   </property>
+  </action>
+  <action name="actionNetworkConnection">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/connect.svg</normaloff>:/icons/connect.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Network Connection</string>
    </property>
   </action>
  </widget>

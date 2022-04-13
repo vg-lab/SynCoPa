@@ -9,7 +9,6 @@
 
 #include "MainWindow.h"
 
-#include <QDebug>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QGridLayout>
@@ -19,23 +18,28 @@
 #include <QProgressBar>
 #include <QDateTime>
 #include <QSurface>
+#include <QUrl>
 
 #include <syncopa/version.h>
 
-#ifdef VISIMPL_USE_GMRVLEX
-  #include <gmrvlex/gmrvlex.h>
+#ifdef SYNCOPA_USE_GMRVLEX
+#include <gmrvlex/gmrvlex.h>
 #endif
 
 #include <thread>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonArray>
 
 using namespace syncopa;
 
 syncopa::vec3 colorQtToEigen( const QColor& color_ )
 {
   constexpr float invRGB = 1.0 / 255;
-  return syncopa::vec3( std::min( 1.0f, std::max( 0.0f, color_.red( ) * invRGB )),
-                       std::min( 1.0f, std::max( 0.0f, color_.green( ) * invRGB )),
-                       std::min( 1.0f, std::max( 0.0f, color_.blue( ) * invRGB )));
+  return syncopa::vec3(
+    std::min( 1.0f , std::max( 0.0f , color_.red( ) * invRGB )) ,
+    std::min( 1.0f , std::max( 0.0f , color_.green( ) * invRGB )) ,
+    std::min( 1.0f , std::max( 0.0f , color_.blue( ) * invRGB )));
 }
 
 QColor colorEigenToQt( const syncopa::vec3& color_ )
@@ -45,7 +49,8 @@ QColor colorEigenToQt( const syncopa::vec3& color_ )
                  std::min( 255, std::max( 0, int( color_.z( ) * 255 ))));
 }
 
-MainWindow::MainWindow( QWidget* parent_,
+MainWindow::MainWindow(
+                        QWidget* parent_,
                         bool updateOnIdle,
                         bool fps)
 : QMainWindow( parent_ )
@@ -85,7 +90,6 @@ MainWindow::MainWindow( QWidget* parent_,
 , _checkSynapsesPost( nullptr )
 , _checkPathsPre( nullptr )
 , _checkPathsPost( nullptr )
-//, _frameColorSynapseMapGradient( nullptr )
 , _colorMapWidget( nullptr )
 , _sliderAlphaSynapsesPre( nullptr )
 , _sliderAlphaSynapsesPost( nullptr )
@@ -113,22 +117,32 @@ MainWindow::MainWindow( QWidget* parent_,
 , _groupBoxSynapses( nullptr )
 , _groupBoxPaths( nullptr )
 , _groupBoxDynamic( nullptr )
-, m_thread{nullptr}
+, m_thread{ nullptr }
+, m_socket(nullptr)
 {
   _ui->setupUi( this );
 
   _ui->actionUpdateOnIdle->setChecked( updateOnIdle );
   _ui->actionShowFPSOnIdleUpdate->setChecked( fps );
 
-  connect( _ui->actionQuit, SIGNAL( triggered( )),
-           QApplication::instance(), SLOT( quit( )));
+  connect( _ui->actionQuit , SIGNAL( triggered( )) ,
+           QApplication::instance( ) , SLOT( quit( )) );
+
+  connect( _ui->actionOpenBlueConfig , SIGNAL( triggered( void )) ,
+           this , SLOT( openBlueConfigThroughDialog( void )) );
+
+  connect( _ui->actionExport , SIGNAL( triggered( void )) ,
+           this , SLOT( exportDataDialog( void )) );
+
+  connect(_ui->actionNetworkConnection, SIGNAL(triggered(bool)),
+          this, SLOT(onConnectionButtonTriggered(bool)));
 
   _invRangeSliders = 1.0 / ( _sliderMax - _sliderMin );
 
-  _openGLWidget = new OpenGLWidget( 0, 0 );
+  _openGLWidget = new OpenGLWidget( nullptr, Qt::WindowFlags() );
   setCentralWidget( _openGLWidget );
 
-  if( _openGLWidget->format( ).version( ).first < 4 )
+  if ( _openGLWidget->format( ).version( ).first < 4 )
   {
     std::cerr << "This application requires at least OpenGL 4.0" << std::endl;
     exit( -1 );
@@ -137,10 +151,10 @@ MainWindow::MainWindow( QWidget* parent_,
 
 MainWindow::~MainWindow( void )
 {
-    delete _ui;
+  delete _ui;
 }
 
-void MainWindow::init( void )
+void MainWindow::init()
 {
   _openGLWidget->createParticleSystem( );
 
@@ -148,19 +162,23 @@ void MainWindow::init( void )
   initColorDock( );
   initInfoDock( );
 
+  tabifyDockWidget(_dockList, _dockColor);
+  tabifyDockWidget(_dockColor, _dockInfo);
+
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
   _openGLWidget->showFps( _ui->actionShowFPSOnIdleUpdate->isChecked( ));
 
-  connect( _ui->actionUpdateOnIdle, SIGNAL( triggered( )),
-           _openGLWidget, SLOT( toggleUpdateOnIdle( )));
+  connect( _ui->actionUpdateOnIdle , SIGNAL( triggered( )) ,
+           _openGLWidget , SLOT( toggleUpdateOnIdle( )) );
 
-  connect( _ui->actionBackgroundColor, SIGNAL( triggered( )),
-           _openGLWidget, SLOT( changeClearColor( )));
+  connect( _ui->actionBackgroundColor , SIGNAL( triggered( )) ,
+           _openGLWidget , SLOT( changeClearColor( )) );
 
-  connect( _ui->actionShowFPSOnIdleUpdate, SIGNAL( triggered( )),
-           _openGLWidget, SLOT( toggleShowFPS( )));
+  connect( _ui->actionShowFPSOnIdleUpdate , SIGNAL( triggered( )) ,
+           _openGLWidget , SLOT( toggleShowFPS( )) );
 
-  connect (_ui->actionAbout, SIGNAL(triggered()), this, SLOT(aboutDialog()));
+  connect( _ui->actionAbout , SIGNAL( triggered( )),
+           this, SLOT( aboutDialog( )) );
 
   _radioModeSynapses->setChecked( true );
 
@@ -190,7 +208,7 @@ void MainWindow::initListDock( void )
   _listPostsynaptic->setEditTriggers( QAbstractItemView::NoEditTriggers );
 
   _dockList = new QDockWidget( tr( "Selection" ));
-  _dockList->setMaximumHeight( 250 );
+  _dockList->setMaximumHeight( 500 );
 
   auto dockLayout = new QGridLayout( );
   dockLayout->setAlignment( Qt::AlignTop );
@@ -202,25 +220,11 @@ void MainWindow::initListDock( void )
   connect( clearButton, SIGNAL( clicked( void )),
            this, SLOT( clear( void )));
 
-  unsigned int row = 0;
-  unsigned int col = 0;
-
-  dockLayout->addWidget( groupSelection, row, col, 1, 4 );
-  ++row;
-  col = 0;
-
-  dockLayout->addWidget( new QLabel( "Presynaptic:" ), row, col++, 1, 2 );
-  ++col;
-
-  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), row, col, 1, 2 );
-
-  ++row;
-  col = 0;
-
-  dockLayout->addWidget( _listPresynaptic, row, col++, 1, 2 );
-  ++col;
-  dockLayout->addWidget( _listPostsynaptic, row, col, 1, 2 );
-
+  dockLayout->addWidget( groupSelection, 0, 0, 1, 4 );
+  dockLayout->addWidget( new QLabel( "Presynaptic:" ), 1, 0, 1, 2 );
+  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), 1, 2, 1, 2 );
+  dockLayout->addWidget( _listPresynaptic, 2, 0, 6, 2 );
+  dockLayout->addWidget( _listPostsynaptic, 2, 2, 6, 2 );
   dockLayout->addWidget( clearButton );
 
   _dockList->setWidget( container );
@@ -325,57 +329,49 @@ void MainWindow::initColorDock( void )
   QColor color;
 
   _frameColorMorphoPre = new QPushButton( );
-  _frameColorMorphoPre->setMinimumSize( 20, 20 );
-  _frameColorMorphoPre->setMaximumSize( 20, 20 );
+  _frameColorMorphoPre->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
   _frameColorMorphoPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoPost = new QPushButton( );
-  _frameColorMorphoPost->setMinimumSize( 20, 20 );
-  _frameColorMorphoPost->setMaximumSize( 20, 20 );
+  _frameColorMorphoPost->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
   _frameColorMorphoPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoContext = new QPushButton( );
-  _frameColorMorphoContext->setMinimumSize( 20, 20 );
-  _frameColorMorphoContext->setMaximumSize( 20, 20 );
+  _frameColorMorphoContext->setFixedSize( 20, 20 );
 
   color = colorEigenToQt(_openGLWidget->colorRelated( ));
   _frameColorMorphoContext->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorMorphoOther = new QPushButton( );
-  _frameColorMorphoOther->setMinimumSize( 20, 20 );
-  _frameColorMorphoOther->setMaximumSize( 20, 20 );
+  _frameColorMorphoOther->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorContext( ));
   _frameColorMorphoOther->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPre = new QPushButton( );
-  _frameColorSynapsesPre->setMinimumSize( 20, 20 );
-  _frameColorSynapsesPre->setMaximumSize( 20, 20 );
+  _frameColorSynapsesPre->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
   _frameColorSynapsesPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPost = new QPushButton( );
-  _frameColorSynapsesPost->setMinimumSize( 20, 20 );
-  _frameColorSynapsesPost->setMaximumSize( 20, 20 );
+  _frameColorSynapsesPost->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
   _frameColorSynapsesPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPre = new QPushButton( );
-  _frameColorPathsPre->setMinimumSize( 20, 20 );
-  _frameColorPathsPre->setMaximumSize( 20, 20 );
+  _frameColorPathsPre->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
   _frameColorPathsPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPost = new QPushButton( );
-  _frameColorPathsPost->setMinimumSize( 20, 20 );
-  _frameColorPathsPost->setMaximumSize( 20, 20 );
+  _frameColorPathsPost->setFixedSize( 20, 20 );
 
   color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
@@ -385,19 +381,19 @@ void MainWindow::initColorDock( void )
   neuronIcon.addFile(QStringLiteral(":/icons/neurolots.png"), QSize(), QIcon::Normal, QIcon::Off);
 
   _buttonShowFullMorphoPre = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoPre->setMaximumSize( 20, 20 );
+  _buttonShowFullMorphoPre->setFixedSize( 20, 20 );
   _buttonShowFullMorphoPre->setCheckable( true );
 
   _buttonShowFullMorphoPost = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoPost->setMaximumSize( 20, 20 );
+  _buttonShowFullMorphoPost->setFixedSize( 20, 20 );
   _buttonShowFullMorphoPost->setCheckable( true );
 
   _buttonShowFullMorphoContext = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoContext->setMaximumSize( 20, 20 );
+  _buttonShowFullMorphoContext->setFixedSize( 20, 20 );
   _buttonShowFullMorphoContext->setCheckable( true );
 
   _buttonShowFullMorphoOther = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoOther->setMaximumSize( 20, 20 );
+  _buttonShowFullMorphoOther->setFixedSize( 20, 20 );
   _buttonShowFullMorphoOther->setCheckable( true );
 
   // General controls
@@ -432,7 +428,6 @@ void MainWindow::initColorDock( void )
   morphoLayout->addWidget( _buttonShowFullMorphoOther, row, col++, 1, 1 );
   morphoLayout->addWidget( _checkShowMorphoOther, row, col++, 1, 2 );
 
-//TODO
   // Synapses
   _colorMapWidget = new PaletteColorWidget( );
   _colorMapWidget->init( false );
@@ -447,25 +442,19 @@ void MainWindow::initColorDock( void )
              this, SLOT( filteringBoundsChanged( void )));
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesPre->setMinimum( _sliderMin );
-  _sliderAlphaSynapsesPre->setMaximum( _sliderMax );
+  _sliderAlphaSynapsesPre->setRange(_sliderMin , _sliderMax);
 
   _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesPost->setMinimum( _sliderMin );
-  _sliderAlphaSynapsesPost->setMaximum( _sliderMax );
+  _sliderAlphaSynapsesPost->setRange(_sliderMin , _sliderMax);
 
   _sliderAlphaPathsPre = new QSlider( Qt::Horizontal );
-  _sliderAlphaPathsPre->setMinimum( _sliderMin );
-  _sliderAlphaPathsPre->setMaximum( _sliderMax );
+  _sliderAlphaPathsPre->setRange(_sliderMin , _sliderMax);
 
   _sliderAlphaPathsPost = new QSlider( Qt::Horizontal );
-  _sliderAlphaPathsPost->setMinimum( _sliderMin );
-  _sliderAlphaPathsPost->setMaximum( _sliderMax );
+  _sliderAlphaPathsPost->setRange(_sliderMin , _sliderMax);
 
   _sliderAlphaSynapsesMap = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesMap->setMinimum( _sliderMin );
-  _sliderAlphaSynapsesMap->setMaximum( _sliderMax );
-
+  _sliderAlphaSynapsesMap->setRange(_sliderMin , _sliderMax);
 
   _labelTransSynPre = new QLabel( );
   _labelTransSynPost = new QLabel( );
@@ -572,12 +561,11 @@ void MainWindow::initColorDock( void )
   pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
 
   _buttonDynamicStart = new QPushButton( "Start" );
-
   _buttonDynamicStop = new QPushButton( "Stop" );
   layoutDynamic->addWidget( _buttonDynamicStart, 0, 0, 1, 1 );
   layoutDynamic->addWidget( _buttonDynamicStop, 0, 1, 1, 1 );
 
-  QTabWidget* tabsWidget = new QTabWidget( );
+  auto tabsWidget = new QTabWidget( );
   tabsWidget->setTabPosition( QTabWidget::West );
   tabsWidget->addTab( containerGeneral, "General" );
   tabsWidget->addTab( containerMorpho, "Morphologies" );
@@ -689,7 +677,7 @@ void MainWindow::initColorDock( void )
 void MainWindow::initInfoDock( void )
 {
   _dockInfo = new QDockWidget( tr( "Information" ));
-  _dockInfo->setMinimumHeight( 100 );
+  _dockInfo->setMinimumHeight(100);
 
   auto container = new QWidget( );
 
@@ -717,6 +705,7 @@ void MainWindow::onDataLoaded()
     if(!errors.empty())
     {
       QApplication::restoreOverrideCursor();
+      _ui->toolBar->setEnabled(true);
 
       m_thread = nullptr;
 
@@ -730,11 +719,11 @@ void MainWindow::onDataLoaded()
     }
   }
 
-  _openGLWidget->loadPostprocess();
+  _openGLWidget->loadPostprocess( );
 
   loadPresynapticList( );
 
-  disableInterface(false);
+  disableInterface( false );
 
   m_thread = nullptr;
 }
@@ -829,12 +818,10 @@ void MainWindow::updateInfoDock( void )
   std::sort( vecSynPre.begin( ), vecSynPre.end( ), sortAscending );
   std::sort( vecSynPost.begin( ), vecSynPost.end( ), sortAscending );
 
-  const unsigned int endLoop = ( _openGLWidget->mode( ) == syncopa::PATHS ) ? 2 : 1;
-
-  for( unsigned int i = 0; i < endLoop; ++i )
+  for( unsigned int i = 0; i < 2; ++i )
   {
     QWidget *widget = nullptr;
-    std::vector< std::pair< unsigned int, unsigned int >>* presentSynapses;
+    std::vector< std::pair< unsigned int, unsigned int >>* presentSynapses = nullptr;
 
     if( i == 0 )
     {
@@ -876,30 +863,31 @@ void MainWindow::updateInfoDock( void )
 
     currentColumn = 0;
 
-    for( const auto &syn : *presentSynapses )
+    if(presentSynapses != nullptr)
     {
-      currentColumn = 0;
+      for( const auto &syn : *presentSynapses )
+      {
+        currentColumn = 0;
 
-      const auto gidString = QString::number( syn.first );
+        const auto gidLabel = new QLabel(QString::number( syn.first ));
 
-      layoutWidget->addWidget(
-          new QLabel( gidString ), currentRow, currentColumn++, 1, 1 );
+        layoutWidget->addWidget(gidLabel, currentRow, currentColumn++, 1, 1 );
 
-      auto vline = new QFrame( );
-      vline->setFrameShape( QFrame::VLine );
-      vline->setFrameShadow( QFrame::Sunken );
+        auto vline = new QFrame( );
+        vline->setFrameShape( QFrame::VLine );
+        vline->setFrameShadow( QFrame::Sunken );
 
-      layoutWidget->addWidget(
-          vline, currentRow, currentColumn++, 1, 1);
+        layoutWidget->addWidget(vline, currentRow, currentColumn++, 1, 1);
 
-      const auto usedSynapsesString = QString::number( syn.second );
-      layoutWidget->addWidget(
-          new QLabel( usedSynapsesString ), currentRow, currentColumn, 1, 1 );
+        const auto usedLabel = new QLabel(QString::number( syn.second ));
 
-      ++currentRow;
+        layoutWidget->addWidget(usedLabel, currentRow, currentColumn, 1, 1 );
+
+        ++currentRow;
+      }
     }
 
-    _layoutInfo->addWidget( widget );
+    _layoutInfo->addWidget( widget, widget == _widgetInfoPre ? 0:1);
   }
 
   update( );
@@ -907,19 +895,27 @@ void MainWindow::updateInfoDock( void )
 
 void MainWindow::clearInfoDock( void )
 {
-  if( _widgetInfoPre )
+  std::function<void(QLayout*)> clearLayout = [&clearLayout](QLayout *layout)
   {
-    _layoutInfo->removeWidget( _widgetInfoPre );
-    delete _widgetInfoPre;
-    _widgetInfoPre = nullptr;
-  }
+    while(layout->count() > 0)
+    {
+      auto child = layout->takeAt(0);
+      if(child->layout() != 0)
+      {
+        clearLayout(child->layout());
+      }
+      else if(child->widget() != 0)
+      {
+        delete child->widget();
+      }
 
-  if( _widgetInfoPost )
-  {
-    _layoutInfo->removeWidget( _widgetInfoPost );
-    delete _widgetInfoPost;
-    _widgetInfoPost = nullptr;
-  }
+      delete child;
+    }
+  };
+
+  clearLayout(_layoutInfo);
+  _widgetInfoPre = nullptr;
+  _widgetInfoPost = nullptr;
 }
 
 void MainWindow::loadData( const std::string& dataset,
@@ -1003,18 +999,200 @@ void MainWindow::loadPostsynapticList( unsigned int gid )
   }
 
   _modelListPost->appendColumn( items );
-  _modelListPost->sort( 0, Qt::SortOrder::AscendingOrder );
+  _modelListPost->sort( 0 , Qt::SortOrder::AscendingOrder );
 
   update( );
 }
 
-void MainWindow::presynapticNeuronClicked()
+
+void MainWindow::openBlueConfigThroughDialog( void )
+{
+  const QString filename = QFileDialog::getOpenFileName(
+    this , tr( "Open BlueConfig" ) , _lastOpenedFileNamePath ,
+    tr( "BlueConfig ( BlueConfig CircuitConfig);; All files (*)" ) ,
+    nullptr , QFileDialog::DontUseNativeDialog );
+
+  if ( !filename.isEmpty( ))
+  {
+
+    bool ok;
+    QString target = QInputDialog::getText(
+      this , tr( "Select the target" ) ,
+      tr( "Target:" ) , QLineEdit::Normal , QString( ) , &ok );
+
+    if ( !ok ) return;
+
+    _lastOpenedFileNamePath = QFileInfo( filename ).path( );
+    loadData( filename.toStdString( ) , target.toStdString( ));
+  }
+}
+
+void MainWindow::exportDataDialog( void )
+{
+
+  const QString xml = QFileDialog::getSaveFileName(
+    this , tr( "Save scene..." ) , tr( "scene.xml" ) ,
+    tr( "Extensible Markup Language (*.xml)" ) ,
+    nullptr , QFileDialog::DontUseNativeDialog );
+
+  const QString csv = QFileDialog::getSaveFileName(
+    this , tr( "Save synapses..." ) , tr( "synapses.csv" ) ,
+    tr( "Comma Separated Values (*.csv)" ) ,
+    nullptr , QFileDialog::DontUseNativeDialog );
+
+  QStringList list{ "Compact" , "Matrix" };
+
+  const QString option =
+    csv.isEmpty( ) ?
+    "" :
+    QInputDialog::getItem( this , tr( "Select CSV type" ) ,
+                           "CSV type:" , list , 0 , false );
+
+  QApplication::setOverrideCursor( Qt::WaitCursor );
+  if ( !xml.isEmpty( ))
+  {
+    exportXML( xml );
+  }
+
+  if ( !csv.isEmpty( ))
+  {
+    if ( !option.isEmpty( ))
+    {
+      if ( option == "Matrix" )
+      {
+        exportMatrixCSV( csv );
+      }
+      else
+      {
+        exportCompactCSV( csv );
+      }
+    }
+  }
+  QApplication::restoreOverrideCursor( );
+}
+
+void MainWindow::exportMatrixCSV( const QString& filename ) const
+{
+  const auto* nsolData = _openGLWidget->dataset( );
+  const auto& neurons = nsolData->neurons( );
+
+  const auto minmax = std::minmax_element(
+    neurons.begin( ) , neurons.end( ) ,
+    [ ]( std::pair< const unsigned int , nsol::Neuron* > a ,
+         std::pair< const unsigned int , nsol::Neuron* > b )
+    {
+      return a.first < b.first;
+    } );
+
+  const auto min = minmax.first;
+  const auto max = minmax.second;
+
+  QFile file( filename );
+  file.open( QFile::WriteOnly );
+
+  file.write( "Pre gid \\ Post gid" );
+
+  for ( unsigned int i = min->first; i <= max->first; i++ )
+  {
+    file.write( tr( ";%1" ).arg( i ).toUtf8( ));
+  }
+
+  std::map< unsigned int , unsigned int > synapsesMap;
+  for ( const auto& pre: nsolData->neurons( ))
+  {
+    const auto synapses = nsolData->circuit( ).synapses(
+      pre.first , nsol::Circuit::PRESYNAPTICCONNECTIONS
+    );
+
+    for ( const auto& syn: synapses )
+    {
+      const unsigned int post = syn->postSynapticNeuron( );
+      synapsesMap[ post ] = synapsesMap[ post ] + 1;
+    }
+
+    file.write( tr( "\n%1" ).arg( pre.first ).toUtf8( ));
+    for ( unsigned int i = min->first; i <= max->first; i++ )
+    {
+      file.write( tr( ";%1" ).arg( synapsesMap[ i ] ).toUtf8( ));
+    }
+    synapsesMap.clear( );
+  }
+  file.close( );
+}
+
+void MainWindow::exportCompactCSV( const QString& filename ) const
+{
+  const auto* nsolData = _openGLWidget->dataset( );
+
+  QFile file( filename );
+  file.open( QFile::WriteOnly );
+
+  const brain::Circuit brainCircuit( *_openGLWidget->dataset( )->blueConfig( ));
+  const brion::GIDSet gidSetBrain = brainCircuit.getGIDs(
+    _openGLWidget->dataset( )->blueConfigTarget( ));
+
+  const brain::Synapses& brainSynapses =
+    brainCircuit.getAfferentSynapses( gidSetBrain ,
+                                      brain::SynapsePrefetch::attributes );
+
+  file.write( "SynId;PreNeuronId;PostNeuronId;Delay;Conductance;"
+              "Utilization;Depression;Facilitation;Efficacy" );
+
+  for ( const auto& pre: nsolData->neurons( ))
+  {
+    const auto synapses = nsolData->circuit( ).synapses(
+      pre.first , nsol::Circuit::PRESYNAPTICCONNECTIONS
+    );
+    for ( const auto& syn: synapses )
+    {
+      auto morphSyn = dynamic_cast<nsol::MorphologySynapse*>(syn);
+      if ( morphSyn )
+      {
+        auto brainSyn = brainSynapses[ morphSyn->gid( ) ];
+        file.write( tr( "\n%1;%2;%3;%4;%5;%6;%7;%8;%9" )
+                      .arg( morphSyn->gid( ))
+                      .arg( morphSyn->preSynapticNeuron( ))
+                      .arg( morphSyn->postSynapticNeuron( ))
+                      .arg( brainSyn.getDelay( ))
+                      .arg( brainSyn.getConductance( ))
+                      .arg( brainSyn.getUtilization( ))
+                      .arg( brainSyn.getDepression( ))
+                      .arg( brainSyn.getFacilitation( ))
+                      .arg( brainSyn.getEfficacy( ))
+                      .toUtf8( ));
+      }
+    }
+  }
+  file.close( );
+}
+
+void MainWindow::exportXML( const QString& filename ) const
+{
+  const auto* nsolData = _openGLWidget->dataset( );
+
+  QFile file( filename );
+  file.open( QFile::WriteOnly );
+
+  nsol::XmlSceneWriter::writeToXml(
+    filename.toStdString( ) ,
+    nsolData->columns( ) ,
+    std::map< std::string , nsol::NeuronMorphologyPtr >( ) ,
+    false
+  );
+
+
+  file.close( );
+}
+
+void MainWindow::presynapticNeuronClicked( )
 {
   const auto indexes = _listPresynaptic->selectionModel( )->selectedIndexes( );
+  if ( indexes.empty( )) return;
   std::vector< unsigned int > selection;
-  for (const auto &item : _listPresynaptic->selectionModel()->selectedIndexes())
+  for ( const auto& item: _listPresynaptic->selectionModel( )->selectedIndexes( ))
   {
-    selection.push_back(_modelListPre->itemFromIndex(item)->data(Qt::DisplayRole).value<unsigned int>());
+    selection.push_back( _modelListPre->itemFromIndex( item )->data(
+      Qt::DisplayRole ).value< unsigned int >( ));
   }
 
   if( _openGLWidget->mode( ) == syncopa::PATHS )
@@ -1040,6 +1218,21 @@ void MainWindow::presynapticNeuronClicked()
   dynamicStop( );
 
   updateInfoDock( );
+
+  if ( m_socket )
+  {
+    if ( _openGLWidget->mode( ) == syncopa::SYNAPSES || selection.empty( ))
+    {
+      m_socket->sendMessage( SynapsesModeSelection( selection ).toJSON( ));
+    }
+    else
+    {
+      throw std::runtime_error( "PATATA" );
+      m_socket->sendMessage( PathsModeSelection(
+        selection.at( 0 ) , std::vector< unsigned int >( ))
+                               .toJSON( ));
+    }
+  }
 }
 
 void MainWindow::postsynapticNeuronClicked()
@@ -1047,7 +1240,8 @@ void MainWindow::postsynapticNeuronClicked()
   std::vector< unsigned int > selection;
   for( auto item : _listPostsynaptic->selectionModel( )->selectedIndexes( ))
   {
-    selection.push_back( _modelListPost->itemFromIndex( item )->data( Qt::DisplayRole ).value< unsigned int >( ));
+    selection.push_back( _modelListPost->itemFromIndex( item )->data(
+      Qt::DisplayRole ).value< unsigned int >( ));
   }
 
   _openGLWidget->selectPostsynapticNeuron( selection );
@@ -1055,11 +1249,21 @@ void MainWindow::postsynapticNeuronClicked()
   _groupBoxDynamic->setEnabled( true );
   dynamicStop( );
 
-  std::cout << "Selected post: ";
-  std::for_each(selection.cbegin(), selection.cend(), [](unsigned int gid) { std::cout << gid << " "; });
-  std::cout << std::endl;
+//  std::cout << "Selected post: ";
+//  std::for_each( selection.cbegin( ) , selection.cend( ) ,
+//                 [ ]( unsigned int gid )
+//                 { std::cout << gid << " "; } );
+//  std::cout << std::endl;
 
   updateInfoDock( );
+
+  if ( m_socket )
+  {
+    auto pre = _listPresynaptic->selectionModel( )->selection( )
+      .first( ).indexes( ).first( ).data( ).value< unsigned int >( );
+    auto message = PathsModeSelection( pre , selection );
+    m_socket->sendMessage( message.toJSON( ));
+  }
 }
 
 void MainWindow::setSynapseMappingState( int state )
@@ -1345,6 +1549,7 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
     _frameColorMorphoPost->setEnabled( true );
     _frameColorMorphoContext->setEnabled( true );
     _frameColorMorphoOther->setEnabled( true );
+    _frameColorMorphoOther->setEnabled( true );
 
     _buttonShowFullMorphoPre->setEnabled( true );
     _buttonShowFullMorphoPost->setEnabled( true );
@@ -1369,6 +1574,7 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
                                       QAbstractItemView::SingleSelection );
 
   _openGLWidget->mode( mode );
+  updateInfoDock();
 }
 
 void MainWindow::alphaModeChanged( bool state )
@@ -1390,6 +1596,12 @@ void MainWindow::aboutDialog()
         "</li><li>ReTo " + RETO_REV_STRING +
   #else
         "</li><li>ReTo " + tr( "support not built." ) +
+  #endif
+
+  #ifdef SYNCOPA_USE_GMRVLEX
+  "</li><li>GmrvLex " + GMRVLEX_REV_STRING +
+  #else
+  "</li><li>GmrvLex " + tr( "support not built." ) +
   #endif
 
   #ifdef SYNCOPA_USE_PREFR
@@ -1433,6 +1645,99 @@ void MainWindow::aboutDialog()
         "<a href='https://www.upm.es'><img src=':/icons/logoUPM.png' /></a>";
 
   QMessageBox::about( this, tr( "About Syncopa" ), message );
+}
+
+void MainWindow::onConnectionButtonTriggered(bool value)
+{
+  auto action = qobject_cast<QAction *>(sender());
+  if(action)
+  {
+    action->setEnabled(false);
+  }
+  else
+  {
+    return;
+  }
+
+  if(value)
+  {
+    if(m_socket) return;
+
+    bool ok = false;
+    const auto title = tr("Network connection");
+    const auto label = tr("hostname:port");
+    auto addr = QInputDialog::getText(this, title, label, QLineEdit::Normal, "", &ok);
+    if(!ok || addr.isEmpty()) return;
+
+    if(!addr.startsWith("ws://", Qt::CaseInsensitive))
+      addr = QString("ws://%1").arg(addr);
+
+    const auto url = QUrl(addr);
+    if(!url.isValid())
+    {
+      QMessageBox::critical(this, title, tr("Invalid url: %1").arg(addr), QMessageBox::Ok);
+      return;
+    }
+
+    action->setIcon(QIcon(":/icons/disconnect.svg"));
+
+    m_socket = new WebSocketThread( QUrl( addr ) , this );
+
+    connect(m_socket, SIGNAL(connected()),       this, SLOT(onConnectionStateChanged()));
+    connect(m_socket, SIGNAL(disconnected()),    this, SLOT(onConnectionStateChanged()));
+    connect(m_socket, SIGNAL(messageReceived()), this, SLOT(onMessageReceived()));
+    connect(m_socket, SIGNAL(error()),           this, SLOT(onConnectionError()));
+    connect(m_socket, SIGNAL(finished()),        this, SLOT(onConnectionThreadTerminated()));
+    
+    connect(this, &QObject::destroyed, m_socket, [this]() {
+        m_socket->stop( );
+        m_socket->wait( );
+    });
+
+    m_socket->start();
+  }
+  else
+  {
+    if(!m_socket) return;
+    m_socket->stop();
+  }
+}
+
+void MainWindow::onMessageReceived()
+{
+  if(m_socket)
+  {
+    auto message = m_socket->getMessage( );
+    switch ( message.id )
+    {
+      // SELECT
+      case 0:
+      {
+        auto selectionData = std::dynamic_pointer_cast< SynapsesModeSelection >(
+          message.data );
+        parseSelectionJSON( selectionData );
+      }
+        break;
+      case 1:
+      {
+        auto selectionData = std::dynamic_pointer_cast< PathsModeSelection >(
+          message.data );
+        parseSelectionJSON( selectionData );
+      }
+        break;
+    }
+  }
+}
+
+void MainWindow::onConnectionThreadTerminated()
+{
+  m_socket->deleteLater();
+  m_socket = nullptr;
+  _ui->actionNetworkConnection->blockSignals(true);
+  _ui->actionNetworkConnection->setChecked(false);
+  _ui->actionNetworkConnection->setEnabled(true);
+  _ui->actionNetworkConnection->setIcon(QIcon(":/icons/connect.svg"));
+  _ui->actionNetworkConnection->blockSignals(false);
 }
 
 void MainWindow::disableInterface(bool value)
@@ -1521,4 +1826,128 @@ void LoadingDialog::closeDialog()
 {
   close();
   deleteLater();
+}
+
+void MainWindow::onConnectionStateChanged()
+{
+  _ui->actionNetworkConnection->setEnabled(true);
+}
+
+void MainWindow::onConnectionError()
+{
+  if ( m_socket )
+  {
+    const auto errorMessage = m_socket->errorMessage( );
+    const auto title = tr( "Network error" );
+    QMessageBox::critical( this , title , errorMessage , QMessageBox::Ok );
+
+    m_socket->stop( );
+  }
+}
+
+void MainWindow::parseSelectionJSON(
+  std::shared_ptr< SynapsesModeSelection > selection )
+{
+  if ( _openGLWidget->dataset( ) == nullptr ) return;
+  if ( _openGLWidget->mode( ) != syncopa::SYNAPSES )
+  {
+    _radioModeSynapses->setChecked( true );
+  }
+
+  std::vector< unsigned int > finalSelection;
+  const int rows = _modelListPre->rowCount( );
+  QItemSelection selectionSet;
+
+  auto start = selection->selection.cbegin( );
+  auto end = selection->selection.cend( );
+
+  for ( int i = 0; i < rows; i++ )
+  {
+    const QModelIndex index = _modelListPre->index( i , 0 );
+    const auto value = index.data( ).value< unsigned int >( );
+
+    auto it = std::find( start , end , value );
+    if ( it != end )
+    {
+      selectionSet.append( QItemSelectionRange( index ));
+      finalSelection.push_back( value );
+    }
+  }
+
+  _listPresynaptic->blockSignals( true );
+  _listPresynaptic->selectionModel( )->select(
+    selectionSet ,
+    QItemSelectionModel::ClearAndSelect
+  );
+  _listPresynaptic->blockSignals( false );
+
+  _openGLWidget->selectPresynapticNeuron( finalSelection );
+  _groupBoxDynamic->setEnabled( false );
+  dynamicStop( );
+  updateInfoDock( );
+}
+
+void MainWindow::parseSelectionJSON(
+  std::shared_ptr< PathsModeSelection > selection )
+{
+  if ( _openGLWidget->dataset( ) == nullptr ) return;
+  if ( _openGLWidget->mode( ) != syncopa::PATHS )
+  {
+    _radioModePaths->setChecked( true );
+  }
+
+  auto preSelection = static_cast<unsigned int>(selection->preSelection);
+  std::vector< unsigned int > finalSelection;
+  const int rows = _modelListPre->rowCount( );
+  QItemSelection pre;
+  auto start = selection->postSelection.cbegin( );
+  auto end = selection->postSelection.cend( );
+
+  for ( int i = 0; i < rows; i++ )
+  {
+    const QModelIndex index = _modelListPre->index( i , 0 );
+    const auto value = index.data( ).value< unsigned int >( );
+    if ( value == preSelection )
+    {
+      pre.append( QItemSelectionRange( index ));
+    }
+  }
+
+  _listPresynaptic->selectionModel()->blockSignals( true );
+  _listPostsynaptic->selectionModel()->blockSignals( true );
+  _listPresynaptic->selectionModel( )->select(
+    pre ,
+    QItemSelectionModel::ClearAndSelect
+  );
+
+  _openGLWidget->selectPresynapticNeuron( preSelection );
+  loadPostsynapticList( preSelection );
+
+  QItemSelection post;
+  for ( int i = 0; i < rows; i++ )
+  {
+    const QModelIndex index = _modelListPost->index( i , 0 );
+    const auto value = index.data( ).value< unsigned int >( );
+
+    auto it = std::find( start , end , value );
+    if ( it != end )
+    {
+      post.append( QItemSelectionRange( index ));
+      finalSelection.push_back( value );
+    }
+  }
+
+  _listPostsynaptic->selectionModel( )->select(
+    post ,
+    QItemSelectionModel::ClearAndSelect
+  );
+
+  _listPresynaptic->selectionModel()->blockSignals( false );
+  _listPostsynaptic->selectionModel()->blockSignals( false );
+
+  _openGLWidget->selectPostsynapticNeuron( finalSelection );
+  _groupBoxDynamic->setEnabled( false );
+
+  dynamicStop( );
+  updateInfoDock( );
 }

@@ -7,5 +7,8 @@
     <file>icons/logoUPM.png</file>
     <file>icons/logoURJC.png</file>
     <file>icons/logoVGLab.png</file>
+    <file>icons/folder-bc.svg</file>
+    <file>icons/connect.svg</file>
+    <file>icons/disconnect.svg</file>        
   </qresource>
 </RCC>
