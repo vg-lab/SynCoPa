@@ -27,14 +27,15 @@ out vec2 uvCoord;
 out float size;
 void main()
 {
+  float pSize = max(particleSize, 0);
   gl_Position = modelViewProjM
         * vec4(
-        (vertexPosition.x * particleSize * cameraRight)
-        + (vertexPosition.y * particleSize * cameraUp)
-        + particlePosition, 1.0);
+        (vertexPosition.x * pSize * cameraRight)
+        + (vertexPosition.y * pSize * cameraUp)
+        + particlePosition, 1.0) - vec4(0.0, 0.0, 0.1, 0.0);
   color = particleColor;
   uvCoord = vertexPosition.rg + vec2(0.5, 0.5);
-  size = particleSize;
+  size = pSize;
 })";
 
 const static std::string prefrFragmentShader = R"(#version 330

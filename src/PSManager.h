@@ -27,54 +27,72 @@ namespace syncopa
 
   class PSManager
   {
-public:
+  public:
 
     PSManager( void );
+
     ~PSManager( void );
 
-    void init( PathFinder* pathFinder,
-               unsigned int maxParticles = 500000,
-               prefr::ICamera* camera = nullptr,
-               prefr::IGLRenderProgram* program = nullptr);
+    void init( PathFinder* pathFinder ,
+               unsigned int maxParticles = 500000 ,
+               prefr::ICamera* camera = nullptr ,
+               prefr::IGLRenderProgram* program = nullptr );
 
     prefr::ParticleSystem* particleSystem( void );
 
     void clear( void );
 
-    void clearSynapses( TNeuronConnection type = ALL_CONNECTIONS );
+    void clearSynapses( );
 
     void clearPaths( TNeuronConnection type = ALL_CONNECTIONS );
 
-    void setupSynapses( const std::vector< vec3 > positions,
+    void setupSynapses( const std::vector< vec3 > positions ,
                         TNeuronConnection type = PRESYNAPTIC );
 
-    void setupPath( const std::vector< vec3 > nodePositions,
-                    TNeuronConnection type = PRESYNAPTIC );
+    void setupPath( const std::vector< vec3 > nodePositions ,
+                    TNeuronConnection type = PRESYNAPTIC, bool clear = true );
 
     vec4 colorSynapses( TNeuronConnection type = PRESYNAPTIC ) const;
-    void colorSynapses( const vec4& color, TNeuronConnection type = PRESYNAPTIC );
+
+    void
+    colorSynapses( const vec4& color , TNeuronConnection type = PRESYNAPTIC );
 
     float sizeSynapses( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizeSynapses( float size, TNeuronConnection type );
+
+    void sizeSynapses( float size , TNeuronConnection type );
 
     vec4 colorPaths( TNeuronConnection type = PRESYNAPTIC ) const;
-    void colorPaths( const vec4& color, TNeuronConnection type );
+
+    void colorPaths( const vec4& color , TNeuronConnection type );
 
     float sizePaths( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizePaths( float size, TNeuronConnection type );
+
+    void sizePaths( float size , TNeuronConnection type );
 
     void colorSynapseMap( const tColorVec& colors );
 
     float sizeSynapseMap( TNeuronConnection type = PRESYNAPTIC ) const;
-    void sizeSynapsesMap( float size, TNeuronConnection type );
+
+    void sizeSynapsesMap( float size , TNeuronConnection type );
 
     float sizeDynamic( void ) const;
+
     void sizeDynamic( float newSize );
 
-    void showSynapses( bool state, TNeuronConnection type = PRESYNAPTIC );
-    void showPaths( bool state, TNeuronConnection type = PRESYNAPTIC );
+    QColor getPreDynamicColor( );
+
+    QColor getPostDynamicColor( );
+
+    void setPreDynamicColor( const QColor& color );
+
+    void setPostDynamicColor( const QColor& color );
+
+    void showSynapses( bool state , TNeuronConnection type = PRESYNAPTIC );
+
+    void showPaths( bool state , TNeuronConnection type = PRESYNAPTIC );
 
     void run( void );
+
     void stop( void );
 
     void dynamicVelocity( float velocityModule );
@@ -84,24 +102,26 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
-    MobilePolylineSource* getSpareMobileSouce( TNeuronConnection type = PRESYNAPTIC );
+    MobilePolylineSource*
+    getSpareMobileSouce( TNeuronConnection type = PRESYNAPTIC );
+
     void releaseMobileSource( MobilePolylineSource* source_ );
 
-    void configureSynapses( const tsynapseVec& synapses,
+    void configureSynapses( const tsynapseVec& synapses ,
                             TNeuronConnection type = ALL_CONNECTIONS );
 
-    void configureMappedSynapses( const tsynapseVec& synapses,
-                                  const tFloatVec& lifeValues,
+    void configureMappedSynapses( const tsynapseVec& synapses ,
+                                  const tFloatVec& lifeValues ,
                                   TNeuronConnection type = ALL_CONNECTIONS );
 
-protected:
+  protected:
 
-    void _mapSynapses( const tPosVec& positions,
-                      const tFloatVec& lifeValues,
-                      TNeuronConnection type );
+    void _mapSynapses( const tPosVec& positions ,
+                       const tFloatVec& lifeValues ,
+                       TNeuronConnection type );
 
 
-    void _updateBoundingBox( const std::vector< vec3 > positions,
+    void _updateBoundingBox( const std::vector< vec3 > positions ,
                              bool clear = true );
 
     prefr::ParticleSystem* _particleSystem;
@@ -167,13 +187,8 @@ protected:
 
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
 
-    std::unordered_map< unsigned int, unsigned int > _gidToParticleId;
-
+    std::unordered_map< unsigned int , unsigned int > _gidToParticleId;
   };
-
-
 }
-
-
 
 #endif /* SRC_PSMANAGER_H_ */

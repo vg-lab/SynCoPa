@@ -18,8 +18,8 @@ namespace syncopa
 {
   enum TMode
   {
-    SYNAPSES = 0,
-    PATHS,
+    SYNAPSES = 0 ,
+    PATHS ,
     UNDEFINED
   };
 
@@ -29,23 +29,29 @@ namespace syncopa
   public:
 
     DomainManager( );
+
     ~DomainManager( );
 
     void dataset( nsol::DataSet* dataset_ );
 
-    void loadSynapses( unsigned int presynapticGID,
+    void loadSynapses( unsigned int presynapticGID ,
                        const gidUSet& postsynapticGIDs );
 
-    void loadSynapses( const gidUSet& gids );
+    void loadSynapses( const gidUSet& gids, bool append = false );
+
+    void loadConnectedSynapses( const gidUSet& gids, bool append = false );
 
     void synapseMappingAttrib( TBrainSynapseAttribs attrib );
+
     void updateSynapseMapping( void );
 
     inline const TSynapseInfo& synapsesInfo( void ) const
     { return _synapseFixInfo; }
 
     void setSynapseFilteringState( bool state );
-    void setSynapseFilter( float maxValue, float minValue, bool invertFilter );
+
+    void
+    setSynapseFilter( float maxValue , float minValue , bool invertFilter );
 
     inline const tsynapseVec& getSynapses( void ) const
     { return _synapses; }
@@ -53,6 +59,7 @@ namespace syncopa
     const tsynapseVec& getFilteredSynapses( void ) const;
 
     const tFloatVec& getNormValues( void ) const;
+
     tFloatVec getFilteredNormValues( void ) const;
 
     inline const QPolygonF& getSynapseMappingPlot( void ) const
@@ -60,7 +67,7 @@ namespace syncopa
 
     gidUSet connectedTo( unsigned int gid ) const;
 
-    std::pair< float, float > rangeBounds( void ) const;
+    std::pair< float , float > rangeBounds( void ) const;
 
   protected:
 
@@ -68,15 +75,19 @@ namespace syncopa
 
     void _loadSynapseInfo( void );
 
-    tsynapseVec _loadSynapses( const gidUSet& gids, const bool log = false ) const;
+    tsynapseVec _loadSynapses(
+      const gidUSet& gids ,
+      const std::function< bool( nsolMSynapse_ptr ) >& filter = [ ]( nsolMSynapse_ptr )
+      { return true; } ,
+      bool log = false ) const;
 
-    void _loadSynapses( unsigned int presynapticGID,
+    void _loadSynapses( unsigned int presynapticGID ,
                         const gidUSet& postsynapticGIDs );
 
     void _calculateSynapsesAttribValues( const tsynapseVec& synapses );
 
-    void _generateHistogram( const std::vector< float >& values,
-                             float minValue, float maxValue );
+    void _generateHistogram( const std::vector< float >& values ,
+                             float minValue , float maxValue );
 
     nsol::DataSet* _dataset;
 
@@ -89,7 +100,7 @@ namespace syncopa
     TBrainSynapseAttribs _currentAttrib;
 
     // Histogram attributes
-    std::unordered_map< unsigned int, unsigned int > _synapseIDToValues;
+    std::unordered_map< unsigned int , unsigned int > _synapseIDToValues;
     std::vector< float > _currentAttribValues;
     std::vector< float > _currentAttribNormValues;
     float _maxValue;
@@ -112,7 +123,6 @@ namespace syncopa
 
 
 }
-
 
 
 #endif /* SRC_DOMAINMANAGER_H_ */

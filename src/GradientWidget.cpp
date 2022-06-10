@@ -104,8 +104,18 @@ void GradientWidget::paintEvent(QPaintEvent* /*e*/)
 {
     QPainter painter(this);
     QLinearGradient gradient(0, 0, _direction == HORIZONTAL ? width() : 0,
-                             _direction == VERTICAL ? height() : 0);
-    gradient.setStops(_stops);
+                                   _direction == VERTICAL ? height() : 0);
+    QGradientStops stops = _stops;
+    if(!isEnabled())
+    {
+      auto toGrayscale = [](QGradientStop &g)
+      {
+        const int gray = g.second.red() * 0.2989 + g.second.green() * 0.5870 + g.second.blue() * 0.1140;
+        g.second = QColor(gray, gray, gray, 255);
+      };
+      std::for_each(stops.begin(), stops.end(), toGrayscale);
+    }
+    gradient.setStops(stops);
     QBrush brush(gradient); 
     painter.fillRect(rect(), brush);
 

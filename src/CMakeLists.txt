@@ -39,6 +39,17 @@ set(SYNCOPA_SOURCES
   PathFinder.cpp
   ConnectivityTree.cpp
   DynamicPathManager.cpp
+  SynCoPaWebAPI.cpp
+
+  NeuronCluster.cpp
+  NeuronClusterManager.cpp
+  NeuronClusterView.cpp
+  NeuronMetadata.cpp
+  NeuronClusterViewTitle.cpp
+  NeuronSelectionView.cpp
+  TripleStateButton.cpp
+
+  DataExport.cpp
 
   prefr/Camera.cpp
   prefr/ShaderProgram.cpp
@@ -49,8 +60,6 @@ set(SYNCOPA_SOURCES
   
   ext/ctkrangeslider.cpp
 
-        WebSocketThread.cpp
-  
   CMakeSetup.rc
   syncopa.ui
   resources.qrc
@@ -69,7 +78,17 @@ set(SYNCOPA_HEADERS
   PathFinder.h
   ConnectivityTree.h
   DynamicPathManager.h
-  Events.h
+  SynCoPaWebAPI.h
+
+  NeuronCluster.h
+  NeuronClusterManager.h
+  NeuronMetadata.h
+  NeuronClusterView.h
+  NeuronClusterViewTitle.h
+  NeuronSelectionView.h
+  TripleStateButton.h
+
+  DataExport.h
 
   prefr/Camera.h
   prefr/ShaderProgram.h
@@ -80,8 +99,6 @@ set(SYNCOPA_HEADERS
   
   ext/ctkrangeslider.h
 
-        WebSocketThread.h
-  
   prefr/PrefrShaders.h
 )
 
@@ -93,6 +110,7 @@ set(SYNCOPA_LINK_LIBRARIES
   Qt5::Widgets
   Qt5::OpenGL
   Qt5::WebSockets
+  Qt5::WebChannel
   ReTo
   prefr
   nsol
@@ -102,6 +120,7 @@ set(SYNCOPA_LINK_LIBRARIES
   nlrender
   nlgenerator
   scoop
+  wcw
 )
 
 if ( GMRVLEX_FOUND )

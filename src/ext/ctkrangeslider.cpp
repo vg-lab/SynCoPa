@@ -46,7 +46,7 @@ public:
   };
   Q_DECLARE_FLAGS(Handles, Handle);
 
-  ctkRangeSliderPrivate(ctkRangeSlider& object);
+  explicit ctkRangeSliderPrivate(ctkRangeSlider& object);
   void init();
 
   /// Return the handle at the given pos, or none if no handle is at the pos.
@@ -111,7 +111,7 @@ ctkRangeSliderPrivate::ctkRangeSliderPrivate(ctkRangeSlider& object)
   this->m_SubclassClickOffset = 0;
   this->m_SubclassPosition = 0;
   this->m_SubclassWidth = 0;
-  this->m_SelectedHandles = 0;
+  this->m_SelectedHandles = ctkRangeSliderPrivate::Handles();
   this->m_SymmetricMoves = false;
 }
 
@@ -160,8 +160,8 @@ ctkRangeSliderPrivate::Handle ctkRangeSliderPrivate::handleAtPos(const QPoint& p
   if (minimumControl == QStyle::SC_SliderHandle &&
       maximumControl == QStyle::SC_SliderHandle)
     {
-    int minDist = 0;
-    int maxDist = 0;
+    int minDist;
+    int maxDist;
     if (q->orientation() == Qt::Horizontal)
       {
       minDist = pos.x() - minimumHandleRect.left();
@@ -503,7 +503,7 @@ void ctkRangeSlider::setPositions(int min, int max)
       {
       emit maximumPositionChanged(d->m_MaximumPosition);
       }
-    if (emitMinPosChanged || emitMaxPosChanged)
+    if (emitMinPosChanged)
       {
       emit positionsChanged(d->m_MinimumPosition, d->m_MaximumPosition);
       }
@@ -596,7 +596,8 @@ void ctkRangeSlider::paintEvent( QPaintEvent* )
 
   // Create default colors based on the transfer function.
   //
-  QColor highlight = this->palette().color(QPalette::Normal, QPalette::Highlight);
+  const auto pal = this->isEnabled() ? QPalette::Normal : QPalette::Disabled;
+  QColor highlight = this->palette().color(pal, QPalette::Highlight);
   QLinearGradient gradient;
   if (option.orientation == Qt::Horizontal)
     {
@@ -769,7 +770,7 @@ void ctkRangeSlider::mouseReleaseEvent(QMouseEvent* mouseEvent)
   this->QSlider::mouseReleaseEvent(mouseEvent);
 
   setSliderDown(false);
-  d->m_SelectedHandles = 0;
+  d->m_SelectedHandles = ctkRangeSliderPrivate::Handles();;
 
   this->update();
 }

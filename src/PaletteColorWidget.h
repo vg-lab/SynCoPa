@@ -56,19 +56,20 @@ signals:
 
   void filterStateChanged( );
   void filterBoundsChanged( );
+  void filterPaletteChanged();
 
 protected slots:
 
   void buttonAcceptClicked( void );
   void buttonCancelClicked( void );
 
-  void radioButtonClicked( bool checked );
+  void paletteTypeChanged( int index );
   void paletteSelectionChanged( int pallete );
 
   void checkInvertColorsToggled( int checked );
 
   void setFilterActive( bool active );
-  void filterSliderChanged( int min, int max );
+  void filterSliderChanged( );
 
 protected:
 
@@ -84,12 +85,6 @@ protected:
 
   GradientWidget* _frameResult;
 
-  QRadioButton* _radioSequential;
-  QRadioButton* _radioCategorical;
-  QRadioButton* _radioDiverging;
-  QRadioButton* _radioUniform;
-//  QRadioButton* _radioCustom; //TODO
-
   QCheckBox* _checkInvertPalette;
   QCheckBox* _checkFilterActive;
 
@@ -102,9 +97,6 @@ protected:
   QLabel* _labelActualRange;
 
   ctkRangeSlider* _rangeFilterSlider;
-  int _minPosSlider;
-  int _maxPosSlider;
-  float _invPosSlider;
 
   bool _filtering;
   float _currentLowerLimit;

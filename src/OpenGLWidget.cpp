@@ -12,8 +12,8 @@
 #include <QMouseEvent>
 #include <QColorDialog>
 #include <QShortcut>
+#include <QDebug>
 
-#include <sstream>
 #include <string>
 #include <iostream>
 #include <glm/glm.hpp>
@@ -31,7 +31,7 @@
 
 using namespace syncopa;
 
-constexpr float CAMERA_ANIMATION_DURATION = 1.f; /** camera animation duration in seconds. */
+constexpr float CAMERA_ANIMATION_DURATION = 0.75; /** camera animation duration in seconds. */
 
 constexpr int SUPER_SAMPLING_SCALE = 2;
 
@@ -71,16 +71,6 @@ void main( void )
   //FragColor = vec3(vec3(1.0), 1.0);
 })";
 
-void multiplyColor(syncopa::vec3 &color, const float value)
-{
-  for(auto &idx: {0,1,2})
-  {
-    if(color[idx] == 0) color[idx] = 0.15;
-    color[idx] *= value;
-    if(color[idx] > 1) color[idx] = 1;
-  }
-}
-
 OpenGLWidget::OpenGLWidget(
   QWidget* parent ,
   Qt::WindowFlags windowFlags
@@ -109,12 +99,6 @@ OpenGLWidget::OpenGLWidget(
   , _particleSizeThreshold( 0.45 )
   , _elapsedTimeRenderAcc( 0.0f )
   , _alphaBlendingAccumulative( false )
-  , _lastSelectedPre( nullptr )
-  , _lastSelectedPost( nullptr )
-  , _colorSelectedPre( 0.4 , 0.4 , 0.4 )
-  , _colorSelectedPost( 0.6 , 0.51 , 0.48 )
-  , _colorRelated( 0.7 , 0.5 , 0 )
-  , _colorContext( 0.3 , 0.3 , 0.3 )
   , _colorSynapsesPre( 0 , 1 , 0 )
   , _colorSynapsesPost( 0.94 , 0 , 0.5 )
   , _colorPathsPre( 0.75 , 0.35 , 0.09 )
@@ -125,21 +109,11 @@ OpenGLWidget::OpenGLWidget(
   , _alphaSynapsesPost( 0.55f )
   , _alphaPathsPre( 0.8f )
   , _alphaPathsPost( 0.8f )
-  , _alphaSynapsesMap( 0.20f )
-  , _showSelectedPre( true )
-  , _showSelectedPost( true )
-  , _showRelated( true )
-  , _showContext( true )
+  , _alphaSynapsesMap( 0.55f )
   , _showSynapsesPre( true )
   , _showSynapsesPost( true )
   , _showPathsPre( true )
   , _showPathsPost( true )
-  , _showSynapses( false )
-  , _showPaths( false )
-  , _showFullMorphologiesPre( true )
-  , _showFullMorphologiesPost( true )
-  , _showFullMorphologiesContext( false )
-  , _showFullMorphologiesOther( false )
   , _dynamicActive( false )
   , _dynamicMovement( true )
   , _oglFunctions( nullptr )
@@ -155,20 +129,8 @@ OpenGLWidget::OpenGLWidget(
   , _currentWidth( 0 )
   , _currentHeight( 0 )
   , _mapSynapseValues( false )
-  , _currentSynapseAttrib(( TBrainSynapseAttribs ) 0 )
+  , _currentSynapseAttrib( TBSA_SYNAPSE_DELAY )
 {
-  constexpr float value = 1.3;
-  multiplyColor(_colorSelectedPre, value);
-  multiplyColor(_colorSelectedPost, value);
-  multiplyColor(_colorRelated, value);
-  multiplyColor(_colorContext, value);
-  multiplyColor(_colorSynapsesPre, value);
-  multiplyColor(_colorSynapsesPost, value);
-  multiplyColor(_colorPathsPre, value);
-  multiplyColor(_colorPathsPost, value);
-  multiplyColor(_colorSynMapPre, value);
-  multiplyColor(_colorSynMapPost, value);
-
   _camera = new Camera( );
   _camera->camera( )->farPlane( 5000 );
   _animation = new reto::CameraAnimation( );
@@ -196,21 +158,15 @@ OpenGLWidget::OpenGLWidget(
   _renderSpeed = 1.f;
 
   new QShortcut( QKeySequence( Qt::Key_Tab ) , this ,
-                 SLOT( toggleDynamicMovement( )) );
+                 SLOT( toggleDynamicMovement( )));
 }
 
 OpenGLWidget::~OpenGLWidget( void )
 {
   delete _camera;
-
-  if ( _particlesShader )
-    delete _particlesShader;
-
-  if ( _psManager )
-    delete _psManager;
-
-  if ( _pathFinder )
-    delete _pathFinder;
+  delete _particlesShader;
+  delete _psManager;
+  delete _pathFinder;
 }
 
 void OpenGLWidget::initializeGL( void )
@@ -262,13 +218,37 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath ,
   _dataset = new nsol::DataSet( );
 
   emit progress( tr( "Loading data hierarchy" ) , 0 );
-  _dataset->loadBlueConfigHierarchy( blueConfigFilePath , target );
+  _dataset->loadBlueConfigHierarchy<
+    nsol::NodeCached ,
+    nsol::NeuronMorphologySectionCachedStats ,
+    nsol::DendriteCachedStats ,
+    nsol::AxonCachedStats ,
+    nsol::SomaStats ,
+    nsol::NeuronMorphologyCachedStats ,
+    nsol::Neuron
+  >( blueConfigFilePath , target );
 
   emit progress( tr( "Loading morphologies" ) , 33 );
-  _dataset->loadAllMorphologies( );
+  _dataset->loadAllMorphologies<
+    nsol::NodeCached ,
+    nsol::NeuronMorphologySectionCachedStats ,
+    nsol::DendriteCachedStats ,
+    nsol::AxonCachedStats ,
+    nsol::SomaStats ,
+    nsol::NeuronMorphologyCachedStats ,
+    nsol::Neuron
+  >( );
 
   emit progress( tr( "Loading connectivity" ) , 66 );
-  _dataset->loadBlueConfigConnectivityWithMorphologies( );
+  _dataset->loadBlueConfigConnectivityWithMorphologies<
+    nsol::NodeCached ,
+    nsol::NeuronMorphologySectionCachedStats ,
+    nsol::DendriteCachedStats ,
+    nsol::AxonCachedStats ,
+    nsol::SomaStats ,
+    nsol::NeuronMorphologyCachedStats ,
+    nsol::Neuron
+  >( );
 
   _domainManager->dataset( _dataset );
 
@@ -278,8 +258,11 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath ,
   _neuronScene = new syncopa::NeuronScene( _dataset );
 
   connect( _neuronScene ,
-           SIGNAL( progress(const QString & , const unsigned int)) ,
-           this , SIGNAL( progress(const QString & , const unsigned int)) );
+           SIGNAL( progress(
+  const QString & , const unsigned int)) ,
+  this , SIGNAL( progress(
+  const QString & , const unsigned int))
+  );
 
   _neuronScene->generateMeshes( );
 
@@ -328,14 +311,6 @@ void OpenGLWidget::createParticleSystem( void )
   _dynPathManager->init( _pathFinder , _psManager );
 }
 
-void OpenGLWidget::setupSynapses( const gidUSet& gids )
-{
-  _domainManager->loadSynapses( gids );
-  _domainManager->updateSynapseMapping( );
-
-  setupSynapses( );
-}
-
 void OpenGLWidget::setupSynapses( void )
 {
   if ( !_mapSynapseValues )
@@ -350,46 +325,17 @@ void OpenGLWidget::setupSynapses( void )
 
 void OpenGLWidget::setupPaths( void )
 {
-  if ( _mode != PATHS )
-  {
+  if(_mode == SYNAPSES)
     _psManager->clearPaths( );
-    return;
-  }
-
-  if ( !_lastSelectedPre || _lastSelectedPre->empty( ))
-    return;
-
-  auto& synapses = _domainManager->getFilteredSynapses( );
-
-  std::cout << "Generating paths for " << synapses.size( ) << " synapses."
-            << std::endl;
-
-  const float pointSize =
-    _psManager->sizePaths( ) * _particleSizeThreshold * 0.5;
-
-  // TODO FIX MULTIPLE PRESYNAPTIC SELECTION
-  const unsigned int gidPre = *_lastSelectedPre->begin( );
-
-  auto points = _pathFinder->getAllPathsPoints( gidPre , *_lastSelectedPost ,
-                                                synapses , pointSize ,
-                                                PRESYNAPTIC );
-
-  _psManager->setupPath( points , PRESYNAPTIC );
-
-  std::cout << "GENERATING POSTSYNAPTIC PATHS" << std::endl;
-  points = _pathFinder->getAllPathsPoints( gidPre , *_lastSelectedPost ,
-                                           synapses ,
-                                           pointSize , POSTSYNAPTIC );
-
-  _psManager->setupPath( points , POSTSYNAPTIC );
 }
 
 void OpenGLWidget::home( bool animate )
 {
   const float FOV = sin( _camera->camera( )->fieldOfView( ));
-  const auto position = _psManager->boundingBox( ).center( );
   const auto rotation = Eigen::Vector3f{ 0.0f , 0.0f , 0.0f };
-  const auto radius = _psManager->boundingBox( ).radius( ) / ( FOV * 2 );
+  const auto bb = _psManager->boundingBox( );
+  const auto position = bb.center( );
+  const auto radius = bb.radius( ) / FOV;
 
   if ( !animate )
   {
@@ -400,8 +346,7 @@ void OpenGLWidget::home( bool animate )
   else
   {
     if ( _camera->isAniming( )) _camera->stopAnim( );
-
-    if ( _animation ) delete _animation;
+    delete _animation;
 
 
     _animation = new reto::CameraAnimation( reto::CameraAnimation::LINEAR ,
@@ -421,176 +366,233 @@ void OpenGLWidget::home( bool animate )
   }
 }
 
-void OpenGLWidget::defaultScene( void )
-{
-  setupSynapses( _gidsAll );
-
-  home( false );
-}
-
-void OpenGLWidget::clearSelection( void )
-{
-  _neuronsSelectedPre = syncopa::TRenderMorpho( );
-  _neuronsSelectedPost = syncopa::TRenderMorpho( );
-  _neuronsContext = syncopa::TRenderMorpho( );
-  _neuronsOther = syncopa::TRenderMorpho( );
-
-  _lastSelectedPre = nullptr;
-  _lastSelectedPost = nullptr;
-
-  _gidsSelectedPre.clear( );
-  _gidsSelectedPost.clear( );
-  _gidsRelated.clear( );
-  _gidsOther.clear( );
-
-  _dynPathManager->clear( );
-  _psManager->clear( );
-
-  defaultScene( );
-}
-
 void setColor( syncopa::TRenderMorpho& renderConfig , const vec3& color )
 {
   for ( auto& c: std::get< syncopa::COLOR >( renderConfig ))
     c = color;
 }
 
-void OpenGLWidget::setupNeuronMorphologies( void )
+void OpenGLWidget::updateMorphologyModel(
+  std::shared_ptr <syncopa::NeuronClusterManager> manager )
 {
-  // Selected
-  _neuronsSelectedPre = _neuronScene->getRender( _gidsSelectedPre );
-  setColor( _neuronsSelectedPre , _colorSelectedPre );
+  _neuronModel.clear( );
+  std::unordered_set< unsigned int > usedSomaNeurons;
+  std::unordered_set< unsigned int > usedMorphologyNeurons;
 
-  if ( _mode != PATHS )
-    return;
+  QString focused = manager->getFocused( );
+  for ( const auto& cluster: manager->getClusters( ))
+  {
+    auto& metadata = manager->getMetadata( cluster.getName( ));
+    if ( !metadata.enabled ||
+         ( !focused.isEmpty( ) && cluster.getName( ) != focused ))
+      continue;
 
-  _neuronsSelectedPost = _neuronScene->getRender( _gidsSelectedPost );
-  setColor( _neuronsSelectedPost , _colorSelectedPost );
+    QString focusedSel = metadata.focusedSelection;
+    for ( const auto& selection: cluster.getSelections( ))
+    {
+      auto& selectionMetadata = metadata.selection[ selection.first ];
+      if ( !selectionMetadata.enabled ||
+           ( !focusedSel.isEmpty( ) && focusedSel != selection.first ))
+        continue;
 
-  // Related
-  _neuronsContext = _neuronScene->getRender( _gidsRelated );
-  setColor( _neuronsContext , _colorRelated );
+      if ( selectionMetadata.partsToShow == syncopa::NeuronMetadataShowPart::ALL
+           || selectionMetadata.partsToShow ==
+              syncopa::NeuronMetadataShowPart::SOMA_ONLY )
+      {
 
-  // Context
-  _neuronsOther = _neuronScene->getRender( _gidsOther );
-  setColor( _neuronsOther , _colorContext );
+        // SOMA MODELS
+        auto ids = selection.second;
+        for ( const auto& item: usedSomaNeurons )
+          ids.erase( item );
+
+        auto model = _neuronScene->getRender( ids );
+
+        setColor( model ,
+                  glmToEigen( glm::vec3( qtToGLM( selectionMetadata.color ))));
+
+        std::get< syncopa::SHOW_SOMA >( model ) = true;
+        std::get< syncopa::SHOW_MORPHOLOGIES >( model ) = false;
+
+        _neuronModel.push_back( model );
+
+        usedSomaNeurons.insert( ids.cbegin( ) , ids.cend( ));
+      }
+
+      if ( selectionMetadata.partsToShow == syncopa::NeuronMetadataShowPart::ALL
+           || selectionMetadata.partsToShow ==
+              syncopa::NeuronMetadataShowPart::MORPHOLOGY_ONLY )
+      {
+
+        // MORPHOLOGY MODELS
+        auto ids = selection.second;
+        for ( const auto& item: usedMorphologyNeurons )
+          ids.erase( item );
+
+
+        auto model = _neuronScene->getRender( ids );
+
+        setColor( model ,
+                  glmToEigen( glm::vec3( qtToGLM( selectionMetadata.color ))));
+
+        std::get< syncopa::SHOW_SOMA >( model ) = false;
+        std::get< syncopa::SHOW_MORPHOLOGIES >( model ) = true;
+
+        _neuronModel.push_back( model );
+
+        usedMorphologyNeurons.insert( ids.cbegin( ) , ids.cend( ));
+      }
+    }
+  }
 }
 
-void OpenGLWidget::selectPresynapticNeuron( unsigned int gid )
+void OpenGLWidget::updateSynapsesModel(
+  std::shared_ptr <syncopa::NeuronClusterManager> manager )
 {
-  _gidsSelectedPre = { gid };
-  _gidsSelectedPost.clear( );
-  _dynPathManager->clear( );
+  std::unordered_set< unsigned int > neuronsWithAllSynapses;
+  std::unordered_set< unsigned int > neuronsWithConnectedSynapses;
 
-  _domainManager->loadSynapses( gid , _gidsSelectedPost );
+  QString focused = manager->getFocused( );
+  for ( const auto& cluster: manager->getClusters( ))
+  {
+    auto& metadata = manager->getMetadata( cluster.getName( ));
+    if ( !metadata.enabled ||
+         ( !focused.isEmpty( ) && cluster.getName( ) != focused ))
+      continue;
+    QString focusedSel = metadata.focusedSelection;
+    for ( const auto& selection: cluster.getSelections( ))
+    {
+      auto& selectionMetadata = metadata.selection[ selection.first ];
+      if ( !selectionMetadata.enabled
+           || selectionMetadata.synapsesVisibility ==
+              syncopa::SynapsesVisibility::HIDDEN
+           || ( !focusedSel.isEmpty( ) && focusedSel != selection.first ))
+        continue;
+
+      for ( const auto id: selection.second )
+      {
+        neuronsWithConnectedSynapses.insert( id );
+      }
+      if ( selectionMetadata.synapsesVisibility ==
+           syncopa::SynapsesVisibility::ALL )
+      {
+        for ( const auto id: selection.second )
+        {
+          neuronsWithAllSynapses.insert( id );
+        }
+      }
+    }
+  }
+
+  _domainManager->loadConnectedSynapses( neuronsWithConnectedSynapses );
+  _domainManager->loadSynapses( neuronsWithAllSynapses , true );
   _domainManager->updateSynapseMapping( );
 
-  _gidsRelated = _domainManager->connectedTo( gid );
-
-  _gidsOther = _gidsAll;
-
-  for ( auto gidToDelete: _gidsSelectedPre )
-    _gidsOther.erase( gidToDelete );
-
-  for ( auto gidToDelete: _gidsSelectedPost )
-    _gidsOther.erase( gidToDelete );
-
-  for ( auto gidToDelete: _gidsRelated )
-    _gidsOther.erase( gidToDelete );
-
-  _lastSelectedPre = &_gidsSelectedPre;
-  _lastSelectedPost = &_gidsRelated;
-
-  _showPaths = true;
-
-  _pathFinder->configure( gid , _gidsRelated , _domainManager->getSynapses( ));
-
-//  _gidsOther.erase( _gidsSelectedPre.begin( ), _gidsSelectedPre.end( ));
-//  _gidsOther.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
-//  _gidsOther.erase( _gidsRelated.begin( ), _gidsRelated.end( ));
-
-  setupNeuronMorphologies( );
-//  std::vector< unsigned int > gidsvPre = { gid };
-//  std::vector< unsigned int > gidsvPost( gidsPost.begin( ), gidsPost.end( ));
-
   setupSynapses( );
-  setupPaths( );
-
   updateSynapsesVisibility( );
-  updatePathsVisibility( );
-//  setupDynamicPath( gid );
-
-  home( );
 }
 
-void OpenGLWidget::selectPresynapticNeuron(
-  const std::vector< unsigned int >& gidsv )
+void OpenGLWidget::updatePathsModel(
+  std::shared_ptr <syncopa::NeuronClusterManager> manager )
 {
-  _gidsSelectedPre = gidUSet( gidsv.begin( ) , gidsv.end( ));
+  std::unordered_set< unsigned int > preNeuronsWithAllPaths;
+  std::unordered_set< unsigned int > preNeuronsWithConnectedPaths;
 
-  _gidsSelectedPost.clear( );
-  _gidsRelated.clear( );
-  _gidsOther.clear( );
+  std::unordered_set< unsigned int > postNeuronsWithAllPaths;
+  std::unordered_set< unsigned int > postNeuronsWithConnectedPaths;
 
-  _dynPathManager->clear( );
+  QString focused = manager->getFocused( );
+  for ( const auto& cluster: manager->getClusters( ))
+  {
+    auto& metadata = manager->getMetadata( cluster.getName( ));
+    if ( !metadata.enabled ||
+         ( !focused.isEmpty( ) && cluster.getName( ) != focused ))
+      continue;
+    QString focusedSel = metadata.focusedSelection;
+    for ( const auto& selection: cluster.getSelections( ))
+    {
+      auto& selectionMetadata = metadata.selection[ selection.first ];
+      if ( !selectionMetadata.enabled
+           || selectionMetadata.pathsVisibility ==
+              syncopa::PathsVisibility::HIDDEN
+           || ( !focusedSel.isEmpty( ) && focusedSel != selection.first ))
+        continue;
 
-  _domainManager->loadSynapses( _gidsSelectedPre );
-  _domainManager->updateSynapseMapping( );
+      for ( const auto id: selection.second )
+      {
+        switch ( selectionMetadata.pathTypes )
+        {
+          case PathTypes::PRE_ONLY:
+            preNeuronsWithConnectedPaths.insert( id );
+            break;
+          case PathTypes::POST_ONLY:
+            postNeuronsWithConnectedPaths.insert( id );
+            break;
+          case PathTypes::ALL:
+            preNeuronsWithConnectedPaths.insert( id );
+            postNeuronsWithConnectedPaths.insert( id );
+            break;
+        }
+      }
+      if ( selectionMetadata.pathsVisibility ==
+           syncopa::PathsVisibility::ALL )
+      {
+        for ( const auto id: selection.second )
+        {
+          switch ( selectionMetadata.pathTypes )
+          {
+            case PathTypes::PRE_ONLY:
+              preNeuronsWithAllPaths.insert( id );
+              break;
+            case PathTypes::POST_ONLY:
+              postNeuronsWithAllPaths.insert( id );
+              break;
+            case PathTypes::ALL:
+              preNeuronsWithAllPaths.insert( id );
+              postNeuronsWithAllPaths.insert( id );
+              break;
+          }
+        }
+      }
+    }
+  }
 
-  _lastSelectedPre = &_gidsSelectedPre;
-  _lastSelectedPost = &_gidsSelectedPost;
+  const bool empty = preNeuronsWithAllPaths.empty( ) &&
+                     preNeuronsWithConnectedPaths.empty( ) &&
+                     postNeuronsWithAllPaths.empty( ) &&
+                     postNeuronsWithConnectedPaths.empty( );
 
-  setupNeuronMorphologies( );
+  if ( empty )
+  {
+    _psManager->clearPaths( );
+  }
+  else
+  {
+    const float pointSize =
+      _psManager->sizePaths( ) * _particleSizeThreshold * 0.5f;
+    auto& synapses = _dataset->circuit( ).synapses( );
 
-  setupSynapses( );
+    tsynapseVec outUsedSynapses;
+    tsynapseVec outUsedPreSynapses;
+    tsynapseVec outUsedPostSynapses;
+    std::vector <vec3> preOut;
+    std::vector <vec3> postOut;
 
-  updateSynapsesVisibility( );
+    _pathFinder->configure(
+      synapses ,
+      preNeuronsWithAllPaths ,
+      postNeuronsWithAllPaths ,
+      preNeuronsWithConnectedPaths ,
+      postNeuronsWithConnectedPaths ,
+      pointSize ,
+      preOut ,
+      postOut
+    );
+
+    _psManager->setupPath( preOut , PRESYNAPTIC);
+    _psManager->setupPath( postOut , POSTSYNAPTIC , false );
+  }
+
   updatePathsVisibility( );
-
-  home( );
-}
-
-void OpenGLWidget::selectPostsynapticNeuron(
-  const std::vector< unsigned int >& gidsv )
-{
-  unsigned int gidPre = *_gidsSelectedPre.begin( );
-
-  _gidsSelectedPost = gidUSet( gidsv.begin( ) , gidsv.end( ));
-
-  _domainManager->loadSynapses( gidPre , _gidsSelectedPost );
-  _domainManager->updateSynapseMapping( );
-
-  _gidsRelated = _domainManager->connectedTo( gidPre );
-
-  for ( auto gid: _gidsSelectedPost )
-    _gidsRelated.erase( gid );
-//  _gidsRelated.erase( _gidsSelectedPost.begin( ), _gidsSelectedPost.end( ));
-
-
-  std::cout << "Related neurons: ";
-  auto printIds = [ ]( const unsigned int i )
-  { std::cout << i << " "; };
-  std::for_each( _gidsRelated.cbegin( ) , _gidsRelated.cend( ) , printIds );
-  std::cout << std::endl;
-
-  _gidsOther.clear( );
-
-  _lastSelectedPre = &_gidsSelectedPre;
-  _lastSelectedPost = &_gidsSelectedPost;
-
-  _dynPathManager->clear( );
-  _pathFinder->configure( gidPre , _gidsSelectedPost ,
-                          _domainManager->getSynapses( ));
-
-  setupNeuronMorphologies( );
-
-  setupSynapses( );
-  setupPaths( );
-
-  updateSynapsesVisibility( );
-  updatePathsVisibility( );
-
-  home( );
 }
 
 void OpenGLWidget::initRenderToTexture( void )
@@ -606,7 +608,6 @@ void OpenGLWidget::initRenderToTexture( void )
   _screenPlaneShader->create( );
   _screenPlaneShader->link( );
   _screenPlaneShader->autocatching( true );
-
 
   // Create MSAA framebuffer and textures
   glGenFramebuffers( 1 , &_msaaFrameBuffer );
@@ -636,7 +637,9 @@ void OpenGLWidget::initRenderToTexture( void )
                           GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureDepth , 0 );
 
   if ( glCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
-    std::cout << "Error: creating MSAA FrameBuffer" << std::endl;
+  {
+    std::cerr << "Error: creating MSAA FrameBuffer" << std::endl;
+  }
 
   glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
 
@@ -675,7 +678,7 @@ void OpenGLWidget::initRenderToTexture( void )
 
   if ( glCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
   {
-    std::cout << "Error: creating intermediate FrameBuffer" << std::endl;
+    std::cerr << "Error: creating intermediate FrameBuffer" << std::endl;
   }
 
   glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
@@ -742,6 +745,7 @@ void OpenGLWidget::generateDepthTexture( int width_ , int height_ )
 
 void OpenGLWidget::paintMorphologies( void )
 {
+  if ( _mode != syncopa::PATHS ) return;
   glDisable( GL_CULL_FACE );
   glFrontFace( GL_CCW );
   glPolygonMode( GL_FRONT_AND_BACK , GL_FILL );
@@ -752,32 +756,14 @@ void OpenGLWidget::paintMorphologies( void )
   const Eigen::Matrix4f view( _camera->camera( )->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
-//  if( _showMorphologies )
+  for ( const auto& model: _neuronModel )
   {
-    // Render selected neurons with full morphology
-    if ( _showSelectedPre )
-      _nlrenderer->render( std::get< syncopa::MESH >( _neuronsSelectedPre ) ,
-                           std::get< syncopa::MATRIX >( _neuronsSelectedPre ) ,
-                           std::get< syncopa::COLOR >( _neuronsSelectedPre ) ,
-                           true , true , _showFullMorphologiesPre );
-
-    if ( _showSelectedPost )
-      _nlrenderer->render( std::get< syncopa::MESH >( _neuronsSelectedPost ) ,
-                           std::get< syncopa::MATRIX >( _neuronsSelectedPost ) ,
-                           std::get< syncopa::COLOR >( _neuronsSelectedPost ) ,
-                           true , true , _showFullMorphologiesPost );
-
-    if ( _showRelated )
-      _nlrenderer->render( std::get< syncopa::MESH >( _neuronsContext ) ,
-                           std::get< syncopa::MATRIX >( _neuronsContext ) ,
-                           std::get< syncopa::COLOR >( _neuronsContext ) ,
-                           true , true , _showFullMorphologiesContext );
-
-    if ( _showContext )
-      _nlrenderer->render( std::get< syncopa::MESH >( _neuronsOther ) ,
-                           std::get< syncopa::MATRIX >( _neuronsOther ) ,
-                           std::get< syncopa::COLOR >( _neuronsOther ) ,
-                           true , true , _showFullMorphologiesOther );
+    _nlrenderer->render( std::get< syncopa::MESH >( model ) ,
+                         std::get< syncopa::MATRIX >( model ) ,
+                         std::get< syncopa::COLOR >( model ) ,
+                         std::get< syncopa::SHOW_SOMA >( model ) ,
+                         std::get< syncopa::SHOW_SOMA >( model ) ,
+                         std::get< syncopa::SHOW_MORPHOLOGIES >( model ));
   }
 }
 
@@ -807,15 +793,11 @@ void OpenGLWidget::paintParticles( void )
   GLint threshold = glGetUniformLocation( shader , "threshold" );
   glUniform1f( threshold , _particleSizeThreshold );
 
-  glm::vec3 cameraPosition(
-    _camera->position( )[ 0 ] ,
-    _camera->position( )[ 1 ] ,
-    _camera->position( )[ 2 ]
-  );
+  const auto pos = _camera->position( );
+  glm::vec3 cameraPosition( pos[ 0 ] , pos[ 1 ] , pos[ 2 ] );
 
   _lastCameraPosition = cameraPosition;
   _psManager->particleSystem( )->updateRender( );
-
   _psManager->particleSystem( )->render( );
 
   _particlesShader->unuse( );
@@ -823,7 +805,7 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
-  std::chrono::time_point< std::chrono::system_clock > now =
+  std::chrono::time_point <std::chrono::system_clock> now =
     std::chrono::system_clock::now( );
 
   unsigned int elapsedMicroseconds =
@@ -858,8 +840,8 @@ void OpenGLWidget::paintGL( void )
            _elapsedTimeRenderAcc >= _renderPeriodMicroseconds )
       {
         //TODO
-        float delta = _elapsedTimeRenderAcc * 0.000001;
-//        std::cout << "Delta " << delta << std::endl;
+        const float delta = _elapsedTimeRenderAcc * 0.000001;
+
         _psManager->particleSystem( )->update(
           _dynamicMovement ? delta : 0.0f );
         _elapsedTimeRenderAcc = 0.0f;
@@ -1092,9 +1074,6 @@ void OpenGLWidget::keyPressEvent( QKeyEvent* event_ )
       }
       system->renderer( )->enableAccumulativeMode( _alphaBlendingAccumulative );
       delete old;
-
-      break;
-
       break;
   }
 }
@@ -1139,38 +1118,10 @@ nsol::DataSet* OpenGLWidget::dataset( void )
   return _dataset;
 }
 
-const std::vector< nsol::MorphologySynapsePtr >&
+const std::vector <nsol::MorphologySynapsePtr>&
 OpenGLWidget::currentSynapses( void )
 {
   return _domainManager->getSynapses( );
-}
-
-void OpenGLWidget::colorSelectedPre( const syncopa::vec3& color )
-{
-  _colorSelectedPre = color;
-
-  setColor( _neuronsSelectedPre , _colorSelectedPre );
-}
-
-void OpenGLWidget::colorSelectedPost( const syncopa::vec3& color )
-{
-  _colorSelectedPost = color;
-
-  setColor( _neuronsSelectedPost , _colorSelectedPost );
-}
-
-void OpenGLWidget::colorRelated( const syncopa::vec3& color )
-{
-  _colorRelated = color;
-
-  setColor( _neuronsContext , _colorRelated );
-}
-
-void OpenGLWidget::colorContext( const syncopa::vec3& color )
-{
-  _colorContext = color;
-
-  setColor( _neuronsOther , _colorContext );
 }
 
 void OpenGLWidget::colorSynapsesPre( const syncopa::vec3& color )
@@ -1207,26 +1158,6 @@ void OpenGLWidget::colorPathsPost( const syncopa::vec3& color )
   syncopa::vec4 composedColor( color.x( ) , color.y( ) , color.z( ) ,
                                _alphaPathsPost );
   _psManager->colorPaths( composedColor , syncopa::POSTSYNAPTIC );
-}
-
-const syncopa::vec3& OpenGLWidget::colorSelectedPre( void ) const
-{
-  return _colorSelectedPre;
-}
-
-const syncopa::vec3& OpenGLWidget::colorSelectedPost( void ) const
-{
-  return _colorSelectedPost;
-}
-
-const syncopa::vec3& OpenGLWidget::colorRelated( void ) const
-{
-  return _colorRelated;
-}
-
-const syncopa::vec3& OpenGLWidget::colorContext( void ) const
-{
-  return _colorContext;
 }
 
 const syncopa::vec3& OpenGLWidget::colorSynapsesPre( void ) const
@@ -1351,26 +1282,12 @@ float OpenGLWidget::alphaSynapsesMap( void ) const
   return _alphaSynapsesMap;
 }
 
-//bool OpenGLWidget::showDialog( QColor& current, const std::string& message )
-//{
-//  QColor result = QColorDialog::getColor( current, this,
-//                                          QString( message ),
-//                                          QColorDialog::DontUseNativeDialog);
-//
-//  if( result.isValid( ))
-//  {
-//    current = result;
-//    return true;
-//  }
-//  else
-//    return false;
-//
-//}
-
 void OpenGLWidget::updatePathsVisibility( void )
 {
-  _psManager->showPaths( _showPaths && _showPathsPre , PRESYNAPTIC );
-  _psManager->showPaths( _showPaths && _showPathsPost , POSTSYNAPTIC );
+  _psManager->showPaths( _mode == syncopa::PATHS && _showPathsPre ,
+                         PRESYNAPTIC );
+  _psManager->showPaths( _mode == syncopa::PATHS && _showPathsPost ,
+                         POSTSYNAPTIC );
 }
 
 void OpenGLWidget::updateSynapsesVisibility( void )
@@ -1379,73 +1296,28 @@ void OpenGLWidget::updateSynapsesVisibility( void )
   _psManager->showSynapses( _showSynapsesPost , POSTSYNAPTIC );
 }
 
-void OpenGLWidget::showSelectedPre( int state )
-{
-  _showSelectedPre = state;
-}
-
-void OpenGLWidget::showSelectedPost( int state )
-{
-  _showSelectedPost = state;
-}
-
-void OpenGLWidget::showRelated( int state )
-{
-  _showRelated = state;
-}
-
-void OpenGLWidget::showContext( int state )
-{
-  _showContext = state;
-}
-
-void OpenGLWidget::showSynapsesPre( int state )
+void OpenGLWidget::showSynapsesPre( bool state )
 {
   _showSynapsesPre = state;
   _psManager->showSynapses( state , syncopa::PRESYNAPTIC );
 }
 
-void OpenGLWidget::showSynapsesPost( int state )
+void OpenGLWidget::showSynapsesPost( bool state )
 {
   _showSynapsesPost = state;
   _psManager->showSynapses( state , syncopa::POSTSYNAPTIC );
 }
 
-void OpenGLWidget::showPathsPre( int state )
+void OpenGLWidget::showPathsPre( bool state )
 {
   _showPathsPre = state;
   _psManager->showPaths( state , syncopa::PRESYNAPTIC );
 }
 
-void OpenGLWidget::showPathsPost( int state )
+void OpenGLWidget::showPathsPost( bool state )
 {
   _showPathsPost = state;
   _psManager->showPaths( state , syncopa::POSTSYNAPTIC );
-}
-
-//void OpenGLWidget::showMorphologies( bool show )
-//{
-//  _showMorphologies = show;
-//}
-
-void OpenGLWidget::showFullMorphologiesPre( bool show )
-{
-  _showFullMorphologiesPre = show;
-}
-
-void OpenGLWidget::showFullMorphologiesPost( bool show )
-{
-  _showFullMorphologiesPost = show;
-}
-
-void OpenGLWidget::showFullMorphologiesContext( bool show )
-{
-  _showFullMorphologiesContext = show;
-}
-
-void OpenGLWidget::showFullMorphologiesOther( bool show )
-{
-  _showFullMorphologiesOther = show;
 }
 
 bool OpenGLWidget::dynamicActive( void ) const
@@ -1479,14 +1351,9 @@ void OpenGLWidget::setSynapseMappingState( bool state )
 {
   if ( !_dataset )
     return;
-
   _mapSynapseValues = state;
-
   _domainManager->synapseMappingAttrib( _currentSynapseAttrib );
-
   setupSynapses( );
-//  _psManager->configureSynapses( _pathFinder->getSynapses( ),
-//                                 state, _currentSynapseAttrib );
 }
 
 void OpenGLWidget::setSynapseMapping( int attrib )
@@ -1494,12 +1361,10 @@ void OpenGLWidget::setSynapseMapping( int attrib )
   if ( !_dataset )
     return;
 
-  if ( attrib < 0 || ( attrib > ( int ) TBSA_SYNAPSE_OTHER ))
+  if ( attrib < 0 || ( attrib > static_cast<int>(TBSA_SYNAPSE_OTHER)))
     return;
 
-  std::cout << "Synapse mapping changed to attribute " << attrib << std::endl;
-
-  _currentSynapseAttrib = ( TBrainSynapseAttribs ) attrib;
+  _currentSynapseAttrib = static_cast<TBrainSynapseAttribs>(attrib);
 
   _domainManager->synapseMappingAttrib( _currentSynapseAttrib );
 
@@ -1544,47 +1409,16 @@ void OpenGLWidget::mode( TMode mode_ )
 {
   _mode = mode_;
 
-  if ( _mode == SYNAPSES )
-  {
-    _showPaths = false;
-//    _showMorphologies = true;
-
-    _dynPathManager->clear( );
-
-    _lastSelectedPre = &_gidsSelectedPre;
-    _lastSelectedPost = &_gidsRelated;
-
-    if ( _lastSelectedPre && !_lastSelectedPre->empty( ))
-    {
-      gidVec selection( _lastSelectedPre->begin( ) , _lastSelectedPre->end( ));
-      selectPresynapticNeuron( selection );
-    }
-
-    _alphaBlendingAccumulative = false;
-
-  }
-  else if ( _mode == PATHS )
-  {
-    _showPaths = true;
-//    _showMorphologies = true;
-
-    _dynPathManager->clear( );
-
-    _lastSelectedPre = &_gidsSelectedPre;
-    _lastSelectedPost = &_gidsSelectedPost;
-
-    if ( _lastSelectedPre && !_lastSelectedPre->empty( ))
-      selectPresynapticNeuron( *_lastSelectedPre->begin( ));
-
-    _alphaBlendingAccumulative = true;
-  }
-
+  _dynPathManager->clear( );
+  _alphaBlendingAccumulative = (_mode == PATHS);
 
   setupSynapses( );
   setupPaths( );
 
   updateSynapsesVisibility( );
   updatePathsVisibility( );
+
+  home( );
 }
 
 TMode OpenGLWidget::mode( void ) const
@@ -1667,5 +1501,19 @@ void OpenGLWidget::loadPostprocess( )
   }
 
   createParticleSystem( );
-  defaultScene( );
+}
+
+DomainManager* OpenGLWidget::getDomainManager( ) const
+{
+  return _domainManager;
+}
+
+const gidUSet& OpenGLWidget::getGidsAll( ) const
+{
+  return _gidsAll;
+}
+
+PSManager* OpenGLWidget::getPsManager( ) const
+{
+  return _psManager;
 }

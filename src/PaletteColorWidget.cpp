@@ -41,6 +41,12 @@ const static std::vector< std::string > paletteNamesUniform =
   "Viridis", "Magma", "Inferno", "Plasma"
 };
 
+constexpr int MIN_SLIDER = 0;
+constexpr int MAX_SLIDER = 99;
+constexpr float INV_RANGE = 1.0 / (MAX_SLIDER - MIN_SLIDER);
+
+const QStringList PALETTE_TYPES = { "Sequential", "Categorical", "Diverging", "Uniform" };
+
 PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 : QWidget( parent_ )
 , _selectionState( -1 )
@@ -48,10 +54,6 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _paletteSize( 4 )
 , _invertPaletteColors( false )
 , _frameResult( nullptr )
-, _radioSequential( nullptr )
-, _radioCategorical( nullptr )
-, _radioDiverging( nullptr )
-, _radioUniform( nullptr )
 , _checkInvertPalette( nullptr )
 , _checkFilterActive( nullptr )
 , _comboPalettes( nullptr )
@@ -60,9 +62,6 @@ PaletteColorWidget::PaletteColorWidget( QWidget* parent_)
 , _labelTotalRange( nullptr )
 , _labelActualRange( nullptr )
 , _rangeFilterSlider( nullptr )
-, _minPosSlider( 0 )
-, _maxPosSlider( 100 )
-, _invPosSlider( 0 )
 , _filtering( false )
 , _currentLowerLimit( 0.0f )
 , _currentUpperLimit( 1.0f )
@@ -79,59 +78,47 @@ void PaletteColorWidget::init( bool dialog )
   _frameResult->setMaximumHeight( 50 );
   _frameResult->setDirection( GradientWidget::HORIZONTAL );
 
-  _radioSequential = new QRadioButton( "Sequential" );
-  _radioCategorical = new QRadioButton( "Categorical" );
-  _radioDiverging = new QRadioButton( "Diverging" );
-  _radioUniform = new QRadioButton( "Uniform" );
   _comboPalettes = new QComboBox( );
 
   _checkInvertPalette = new QCheckBox( "Invert colors" );
   _checkFilterActive = new QCheckBox( "Filtering" );
 
-  _buttonApply = new QPushButton( "Apply" );
-
-  unsigned int colDialog = 1;
-
   if( dialog )
   {
+    _buttonApply = new QPushButton( "Apply" );
     _buttonCancel = new QPushButton( "Cancel" );
-    colDialog = 2;
   }
 
   _rangeFilterSlider = new ctkRangeSlider( Qt::Horizontal );
-  _rangeFilterSlider->setValues( _minPosSlider, _maxPosSlider );
-  _rangeFilterSlider->setPositions( _minPosSlider, _maxPosSlider );
+  _rangeFilterSlider->setValues( MIN_SLIDER, MAX_SLIDER );
+  _rangeFilterSlider->setPositions( MIN_SLIDER, MAX_SLIDER );
   _rangeFilterSlider->setEnabled( false );
-  _invPosSlider = 1.0 / ( _maxPosSlider - _minPosSlider - 1 );
 
   _labelTotalRange = new QLabel( "Min:" );
   _labelActualRange = new QLabel( "Max:" );
 
-  QGroupBox* groupRadioButtons = new QGroupBox( "Palette type: " );
+  QGroupBox* groupPaletteType = new QGroupBox( "Palette type: " );
   QGroupBox* groupPaletteSelection= new QGroupBox( "Palette: " );
 
-//    QWidget* uppestContainer = new QWidget( );
   QGridLayout* uppestLayout = new QGridLayout( );
-//  QGridLayout* uppestLayout = dynamic_cast< QGridLayout* >( layout( ));
-//  assert( uppestLayout );
-//    QWidget* upperLeftContainer = new QWidget( );
-//    QWidget* upperRightContainer = new QWidget( );
   QWidget* confirmationButtonsContainer = new QWidget( );
 
-  // Radio buttons widget
-  QHBoxLayout* layoutRadio = new QHBoxLayout( );
-  layoutRadio->addWidget( _radioSequential );
-  layoutRadio->addWidget( _radioCategorical );
-  layoutRadio->addWidget( _radioDiverging );
-  layoutRadio->addWidget( _radioUniform );
+  // Palettes type combobox
+  auto typeCombo = new QComboBox();
+  typeCombo->addItems(PALETTE_TYPES);
 
-  groupRadioButtons->setLayout( layoutRadio );
+  connect(typeCombo, SIGNAL(currentIndexChanged(int)),
+          this, SLOT(paletteTypeChanged(int)));
+
+  auto typeLayout = new QHBoxLayout();
+  typeLayout->addWidget(typeCombo, 1);
+
+  groupPaletteType->setLayout( typeLayout );
 
   // Palette selection widget
   QGridLayout* paletteLayout = new QGridLayout( );
-  paletteLayout->addWidget( _comboPalettes, 0, 0, 1, 1 );
-  paletteLayout->addWidget( _checkInvertPalette, 0, 1, 1, 1 );
-  paletteLayout->addWidget( _frameResult, 1, 0, 1, colDialog );
+  paletteLayout->addWidget( _comboPalettes, 0, 0, 1, 2 );
+  paletteLayout->addWidget( _frameResult, 1, 0, 1, 2 );
   groupPaletteSelection->setLayout( paletteLayout );
 
   if( dialog )
@@ -142,35 +129,18 @@ void PaletteColorWidget::init( bool dialog )
     confirmLayout->addWidget( _buttonApply );
     confirmationButtonsContainer->setLayout( confirmLayout );
   }
-  else
-  {
-    paletteLayout->addWidget( _buttonApply, 1, 1, 1, 1 );
-  }
 
-  paletteLayout->addWidget( _rangeFilterSlider, 2, 0, 1, colDialog );
-  paletteLayout->addWidget( _checkFilterActive, 2, colDialog, 1, 1 );
+  paletteLayout->addWidget( _rangeFilterSlider, 2, 0, 1, 2 );
+  paletteLayout->addWidget( _labelActualRange, 3, 0, 1, 2 );
+  paletteLayout->addWidget( _labelTotalRange, 4, 0, 1, 2 );
+  paletteLayout->addWidget( _checkFilterActive, 5, 0, 1, 2 );
+  paletteLayout->addWidget( _checkInvertPalette, 6, 0, 1, 2 );
 
-  paletteLayout->addWidget( _labelActualRange, 3, 0, 1, 1 );
-  paletteLayout->addWidget( _labelTotalRange, 3, 1, 1, 1 );
-
-  uppestLayout->addWidget( groupRadioButtons );
+  uppestLayout->addWidget( groupPaletteType );
   uppestLayout->addWidget( groupPaletteSelection );
   uppestLayout->addWidget( confirmationButtonsContainer );
 
   this->setLayout( uppestLayout );
-
-  connect( _radioSequential, SIGNAL( toggled( bool )),
-           this, SLOT( radioButtonClicked( bool )));
-
-  connect( _radioCategorical, SIGNAL( toggled( bool )),
-           this, SLOT( radioButtonClicked( bool )));
-
-  connect( _radioDiverging, SIGNAL( toggled( bool )),
-           this, SLOT( radioButtonClicked( bool )));
-
-  connect( _radioUniform, SIGNAL( toggled( bool )),
-           this, SLOT( radioButtonClicked( bool )));
-
 
   connect( _comboPalettes, SIGNAL( currentIndexChanged( int )),
            this, SLOT( paletteSelectionChanged( int )));
@@ -178,11 +148,11 @@ void PaletteColorWidget::init( bool dialog )
   connect( _checkInvertPalette, SIGNAL( stateChanged( int )),
            this, SLOT( checkInvertColorsToggled( int )));
 
-  connect( _buttonApply, SIGNAL( clicked( void )),
-           this, SLOT( buttonAcceptClicked( void )));
-
   if( dialog )
   {
+    connect( _buttonApply, SIGNAL( clicked( void )),
+             this, SLOT( buttonAcceptClicked( void )));
+
     connect( _buttonCancel, SIGNAL( clicked( void )),
              this, SLOT( buttonCancelClicked( void )));
   }
@@ -190,11 +160,13 @@ void PaletteColorWidget::init( bool dialog )
   connect( _checkFilterActive, SIGNAL( toggled( bool )),
            this, SLOT( setFilterActive( bool )));
 
-  connect( _rangeFilterSlider, SIGNAL( positionsChanged( int, int )),
-           this, SLOT( filterSliderChanged( int, int )));
+  connect( _rangeFilterSlider, SIGNAL( maximumPositionChanged( int )),
+           this, SLOT( filterSliderChanged()));
 
-  _radioSequential->setChecked( true );
+  connect( _rangeFilterSlider, SIGNAL( minimumValueChanged( int )),
+           this, SLOT( filterSliderChanged()));
 
+  paletteTypeChanged(0);
 }
 
 tQColorVec PaletteColorWidget::getColors( void ) const
@@ -207,24 +179,9 @@ const QGradientStops& PaletteColorWidget::getGradientStops( void ) const
   return _frameResult->getGradientStops( );
 }
 
-void PaletteColorWidget::radioButtonClicked( bool )
+void PaletteColorWidget::paletteTypeChanged( int index )
 {
-//  if( checked )
-//    _selectionState = ( int ) PALETTE_SEQUENTIAL;
-//  else
-//    _selectionState = ( int ) PALETTE_CATEGORICAL;
-
-  auto src = sender( );
-
-  if( src == _radioSequential )
-    _selectionState = ( int ) PALETTE_SEQUENTIAL;
-  if( src == _radioCategorical )
-      _selectionState = ( int ) PALETTE_CATEGORICAL;
-  if( src == _radioDiverging )
-      _selectionState = ( int ) PALETTE_DIVERGING;
-  if( src == _radioUniform )
-      _selectionState = ( int ) PALETTE_UNIFORM;
-
+  _selectionState = static_cast<tColorType>(index);
 
   _currentPalette = 0;
 
@@ -236,7 +193,7 @@ void PaletteColorWidget::_fillPaletteNames( void )
 {
   const std::vector< std::string >* paletteNames = nullptr;
 
-  switch(( tColorType ) _selectionState )
+  switch(static_cast<tColorType>( _selectionState ))
   {
     case PALETTE_SEQUENTIAL:
      paletteNames = &paletteNamesSequential;
@@ -271,29 +228,29 @@ void PaletteColorWidget::_fillColors( void )
 {
   scoop::ColorPalette colors;
 
-  switch( ( tColorType ) _selectionState )
+  switch( static_cast<tColorType>( _selectionState ))
   {
     case PALETTE_SEQUENTIAL:
 
-      colors = tscoop::colorBrewerSequential(( tpSeq ) _currentPalette,
+      colors = tscoop::colorBrewerSequential(static_cast<tpSeq>( _currentPalette),
                                        _paletteSize, _invertPaletteColors );
       break;
 
     case PALETTE_CATEGORICAL:
 
-      colors = tscoop::colorBrewerQualitative(( tpCat ) _currentPalette,
+      colors = tscoop::colorBrewerQualitative(static_cast<tpCat>( _currentPalette),
                                       _paletteSize, _invertPaletteColors );
       break;
 
     case PALETTE_DIVERGING:
 
-      colors = tscoop::colorBrewerDiverging(( tpDiv ) _currentPalette,
+      colors = tscoop::colorBrewerDiverging(static_cast<tpDiv>( _currentPalette),
                                       _paletteSize, _invertPaletteColors );
       break;
 
     case PALETTE_UNIFORM:
 
-      colors = tscoop::matplotlibPerceptualUniform(( tpUni ) _currentPalette ,
+      colors = tscoop::matplotlibPerceptualUniform(static_cast<tpUni>(_currentPalette ),
                                                    _invertPaletteColors );
       break;
 
@@ -315,6 +272,7 @@ void PaletteColorWidget::_fillColors( void )
 
   _frameResult->setGradientStops( stops );
 
+  emit filterPaletteChanged();;
 }
 
 void PaletteColorWidget::buttonAcceptClicked( void )
@@ -326,7 +284,6 @@ void PaletteColorWidget::buttonCancelClicked( void )
 {
   emit cancelClicked( );
 }
-
 
 void PaletteColorWidget::paletteSelectionChanged( int palette )
 {
@@ -357,7 +314,7 @@ void PaletteColorWidget::setPlot( QPolygonF plot, float minRange, float maxRange
       QString( ", " ) +
       QString::number( maxRange, 'f', 3 ) + QString( "]");
 
-  float range = ( _maxRange - _minRange );
+  const float range = ( _maxRange - _minRange );
   _currentMinValue = _currentLowerLimit * range + _minRange;
   _currentMaxValue = _currentUpperLimit * range + _minRange;
 
@@ -369,12 +326,6 @@ void PaletteColorWidget::setPlot( QPolygonF plot, float minRange, float maxRange
 
   _labelTotalRange->setText( rangetext );
   _labelActualRange->setText( currentRangetext );
-
-//  std::cout << "Plot: ";
-//  for( auto bin : plot )
-//    std::cout << " " << bin.x( ) << " " << bin.y( );
-//  std::cout << std::endl;
-
 }
 
 bool PaletteColorWidget::filter( void ) const
@@ -389,8 +340,6 @@ std::pair< float, float > PaletteColorWidget::filterBounds( void ) const
 
 void PaletteColorWidget::setFilterActive( bool active )
 {
-  std::cout << "Filtering " << std::boolalpha << active << std::endl;
-
   _filtering = active;
 
   _rangeFilterSlider->setEnabled( active );
@@ -401,16 +350,14 @@ void PaletteColorWidget::setFilterActive( bool active )
   emit filterStateChanged( );
 }
 
-
-void PaletteColorWidget::filterSliderChanged( int min, int max )
+void PaletteColorWidget::filterSliderChanged( )
 {
+  int min = _rangeFilterSlider->minimumPosition();
+  int max = _rangeFilterSlider->maximumPosition();
 
-  _currentLowerLimit = std::min( std::max( ( min - _minPosSlider ) * _invPosSlider, 0.0f ), 1.0f );
+  _currentLowerLimit = std::min( std::max( ( min - MIN_SLIDER ) * INV_RANGE, 0.0f ), 1.0f );
 
-  _currentUpperLimit = std::min( std::max(( max - _minPosSlider ) * _invPosSlider, 0.0f ), 1.0f );
-
-  std::cout << "Slider min " << min << " " << _currentLowerLimit
-            << " max " << max << " " << _currentUpperLimit << std::endl;
+  _currentUpperLimit = std::min( std::max( ( max - MIN_SLIDER ) * INV_RANGE, 0.0f ), 1.0f );
 
   _frameResult->limits( _currentLowerLimit, _currentUpperLimit );
   _frameResult->update( );
@@ -425,6 +372,5 @@ void PaletteColorWidget::filterSliderChanged( int min, int max )
       QString::number( _currentMaxValue, 'f', 3 ) + QString( "]");
 
   _labelActualRange->setText( currentRangetext );
-
   emit filterBoundsChanged( );
 }

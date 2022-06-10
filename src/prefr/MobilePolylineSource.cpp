@@ -13,18 +13,18 @@ namespace syncopa
 {
   unsigned int MobilePolylineSource::_counter = 0;
 
-  MobilePolylineSource::MobilePolylineSource( float emissionRate,
+  MobilePolylineSource::MobilePolylineSource( float emissionRate ,
                                               const vec3& position_ )
-  : prefr::Source( emissionRate, eigenToGLM( position_ ))
+    : prefr::Source( emissionRate , eigenToGLM( position_ ))
 //  , _initialNode( nullptr )
-  , _functionType( TSF_UNDEFINED )
-  , _currentSegment( 0 )
-  , _currentDistance( 0.0f )
-  , _lastDisplacement( 0.0f )
-  , _velocityModule( 0.0f )
-  , _delay( 0.0f )
-  , _currentTime( 0.0f )
-  , _invDisplacementIndex( 0.0f )
+    , _functionType( TSF_UNDEFINED )
+    , _currentSegment( 0 )
+    , _currentDistance( 0.0f )
+    , _lastDisplacement( 0.0f )
+    , _velocityModule( 0.0f )
+    , _delay( 0.0f )
+    , _currentTime( 0.0f )
+    , _invDisplacementIndex( 0.0f )
   {
     _gid = _counter;
     ++_counter;
@@ -42,9 +42,10 @@ namespace syncopa
     _position = eigenToGLM( _interpolator.firstPosition( ));
   }
 
-  void MobilePolylineSource::path( const utils::PolylineInterpolation& interpolator )
+  void
+  MobilePolylineSource::path( const utils::PolylineInterpolation& interpolator )
   {
-    if( interpolator.empty( ))
+    if ( interpolator.empty( ))
     {
       std::cout << "Error: Assigning empty path interpolator." << std::endl;
       return;
@@ -62,9 +63,10 @@ namespace syncopa
     _position = eigenToGLM( _interpolator.firstPosition( ));
   }
 
-  void MobilePolylineSource::path( const utils::EventPolylineInterpolation& interpolator )
+  void MobilePolylineSource::path(
+    const utils::EventPolylineInterpolation& interpolator )
   {
-    if( interpolator.empty( ))
+    if ( interpolator.empty( ))
     {
       std::cout << "Error: Assigning empty path interpolator." << std::endl;
       return;
@@ -103,9 +105,9 @@ namespace syncopa
     return _functionType;
   }
 
-  void MobilePolylineSource::addEventNode( float distance, cnode_ptr section )
+  void MobilePolylineSource::addEventNode( float distance , cnode_ptr section )
   {
-    _interpolator.addEventNode( distance, section->section( )->id( ));
+    _interpolator.addEventNode( distance , section->section( )->id( ));
   }
 
 //  void MobilePolylineSource::initialNode( cnode_ptr section_ )
@@ -125,7 +127,7 @@ namespace syncopa
 
   void MobilePolylineSource::_checkEmissionEnd( )
   {
-    if( _maxEmissionCycles > 0 )
+    if ( _maxEmissionCycles > 0 )
       _continueEmission = !( _currentCycle >= _maxEmissionCycles );
     else
       _continueEmission = true;
@@ -136,32 +138,32 @@ namespace syncopa
 
   void MobilePolylineSource::_checkFinished( )
   {
-    if( _currentDistance >= _interpolator.totalDistance( ))
+    if ( _currentDistance >= _interpolator.totalDistance( ))
     {
 //      std::cout << "Reached end source " << _gid
 //                << " " << _lastFrameAliveParticles
 //                << " " << std::boolalpha << _continueEmission
 //                << std::endl;
 
-      if( _continueEmission  )
+      if ( _continueEmission )
       {
-          _finished = false;
-          _currentDistance = 0;
-          _position = eigenToGLM( _interpolator.firstPosition( ));
-  //        _totalTime = 0;
+        _finished = false;
+        _currentDistance = 0;
+        _position = eigenToGLM( _interpolator.firstPosition( ));
+        //        _totalTime = 0;
 
       }
-      else if( _lastFrameAliveParticles == 0 )
+      else if ( _lastFrameAliveParticles == 0 )
       {
         _finished = true;
 
-        if( _autoDeactivateWhenFinished )
+        if ( _autoDeactivateWhenFinished )
         {
           _active = false;
-          if( _killParticlesIfInactive )
+          if ( _killParticlesIfInactive )
           {
-            _updateConfig->setDead( _particles.indices( ), true );
-            _updateConfig->setEmitted( _particles.indices( ), false );
+            _updateConfig->setDead( _particles.indices( ) , true );
+            _updateConfig->setEmitted( _particles.indices( ) , false );
           }
         }
 
@@ -217,7 +219,7 @@ namespace syncopa
 
   void MobilePolylineSource::_updatePosition( float deltaTime )
   {
-    if( !_continueEmission || _finished )
+    if ( !_continueEmission || _finished )
     {
       _lastDisplacement = 0.0f;
       _invDisplacementIndex = 1.0f;
@@ -234,10 +236,10 @@ namespace syncopa
     _currentDistance += displacement;
     _lastDisplacement = displacement;
 
-    auto events = _interpolator.eventsAt( _currentDistance, displacement );
-    for( auto event : events )
+    auto events = _interpolator.eventsAt( _currentDistance , displacement );
+    for ( auto event: events )
     {
-      if( std::get< 2 >( event ) == utils::TEvent_section )
+      if ( std::get< 2 >( event ) == utils::TEvent_section )
       {
         finishedSection( std::get< 1 >( event ));
 //        std::cout << "Reached section " << std::get< 1 >( event ) << std::endl;
@@ -251,7 +253,7 @@ namespace syncopa
       }
     }
 
-    if( _currentDistance >= _interpolator.totalDistance( ))
+    if ( _currentDistance >= _interpolator.totalDistance( ))
     {
       ++_currentCycle;
       _currentDistance = _interpolator.totalDistance( );
@@ -262,7 +264,7 @@ namespace syncopa
 
     _currentSegment = _interpolator.segmentFromDistance( _currentDistance );
 
-    _position = eigenToGLM( _interpolator.pointAtDistance( _currentDistance,
+    _position = eigenToGLM( _interpolator.pointAtDistance( _currentDistance ,
                                                            _currentSegment ));
 
     _invDisplacementIndex = _lastDisplacement / _currentFrameEmittedParticles;
@@ -281,21 +283,7 @@ namespace syncopa
     Source::sample( values );
 
     auto index = _emittedIndices.find( values->index );
-    assert( index != _emittedIndices.end( ));
-
-//    std::cout << "Sampling " << values->index
-//              << " index " << index->second
-//              << " segment " << _currentSegment
-//              << " disp " << _invDisplacementIndex
-//              << std::endl;
-
-//    float distance = std::min( _interpolator.segmentDistance( _currentSegment ),
-//                               index->second * _invDisplacementIndex );
-//
-//    vec3 displacement =
-//        _interpolator.segmentDirection( _currentSegment ) * distance;
-//
-//    values->position += eigenToGLM( displacement );
+    if ( index == _emittedIndices.end( )) return;
 
     float distance = index->second * _invDisplacementIndex;
     distance += ( _currentDistance - _lastDisplacement );

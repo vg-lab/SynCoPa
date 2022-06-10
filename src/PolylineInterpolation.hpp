@@ -45,10 +45,11 @@ namespace utils
 
     virtual void insert( const PolylineInterpolation& other )
     {
-      unsigned int totalSize = _size + other.size( );
+      if(other.empty()) return;
 
-      float offsetDistance = totalDistance( );
-      unsigned int offsetIndex = _size;
+      const unsigned int totalSize = _size + other.size( );
+      const float offsetDistance = totalDistance( );
+      const unsigned int offsetIndex = _size;
 
       insert( other.firstPosition( ));
 
@@ -66,9 +67,7 @@ namespace utils
 
     virtual void insert( const std::vector< vec3 >& nodes )
     {
-
-      if( nodes.empty( ))
-        return;
+      if( nodes.empty( )) return;
 
       float accDist = 0;
 
@@ -85,7 +84,7 @@ namespace utils
         nextPoint = nodes[ i + 1 ];
 
         vec3 dir = nextPoint - currentPoint;
-        float module = dir.norm( );
+        const float module = dir.norm( );
         accDist += module;
         dir = dir / module;
 
@@ -101,11 +100,11 @@ namespace utils
       }
       else
       {
-        vec3 prevPoint = _positions.back( );
+        const vec3 prevPoint = _positions.back( );
         float accDist = _distances.back( );
 
         vec3 dir = node - prevPoint;
-        float module = dir.norm( );
+        const float module = dir.norm( );
         accDist += module;
         dir = dir / module;
 
@@ -118,48 +117,14 @@ namespace utils
       if( !_positions.empty( ) && position == _positions.back( ))
         return _size;
 
-//      unsigned int i = 0;
-//
-//      // Iterate over time values till the last minus one
-//      while( i < _size && _size > 0 )
-//      {
-//        // Overwrite position
-//        if (distance == _distances[ i ])
-//        {
-//          _positions[ i ] = position;
-//          return _size;
-//        }
-//        // New intermediate position
-//        else if( distance < _distances[ i ])
-//        {
-//          _distances.emplace( _distances.begin( ) + i, distance );
-//          _positions.emplace( _positions.begin( ) + i, position );
-//          _directions.emplace( _directions.begin( ) + i, direction );
-//
-////          precision = GetPrecision(distance);
-////          precisionValues.emplace(precisionValues.begin() + i,
-////                                  precision);
-//
-//          _size = ( unsigned int ) _distances.size( );
-////          UpdateQuickReference(precision);
-//          return i;
-//        }
-//        i++;
-//      }
-
       // New highest position
       _distances.push_back( distance );
       _positions.push_back( position );
       _directions.push_back( direction );
 
-//      precision = GetPrecision(distance);
-//      precisionValues.push_back(precision);
-
-      _size = (unsigned int) _distances.size();
+      _size = static_cast<unsigned int>(_distances.size());
 
       return _size - 1;
-
-//      UpdateQuickReference(precision);
     }
 
     inline void clear()
@@ -172,10 +137,7 @@ namespace utils
 
     inline const vec3& firstPosition() const
     {
-//      if (!values.empty())
-        return _positions[0];
-
-//      return defaultValue;
+      return _positions[0];
     }
 
     const vec3& lastPosition( ) const
@@ -258,8 +220,7 @@ namespace utils
     {
       if( _size > 1 && distance > 0.0f )
       {
-       unsigned int i = segmentFromDistance( distance );
-
+       const unsigned int i = segmentFromDistance( distance );
        return pointAtDistance( distance, i );
       }
       else
@@ -274,11 +235,9 @@ namespace utils
       if( segmentIdx >= _size )
         segmentIdx = _size -1;
 
-      float accumulated = distance - _distances[ segmentIdx ];
-
-      vec3 dir = _directions[ segmentIdx + 1 ];
-
-      vec3 res = _positions[ segmentIdx ] + dir * accumulated;
+      const float accumulated = distance - _distances[ segmentIdx ];
+      const vec3 dir = _directions[ segmentIdx + 1 ];
+      const vec3 res = _positions[ segmentIdx ] + dir * accumulated;
 
       return res;
     }
@@ -291,7 +250,7 @@ namespace utils
 
       while( currentDist < _distances.back( ))
       {
-        vec3 pos = pointAtDistance( currentDist );
+        const vec3 pos = pointAtDistance( currentDist );
 
         result.push_back( operation( pos ));
 
@@ -341,13 +300,11 @@ namespace utils
     }
 
   protected:
-
     std::vector< float > _distances;
     std::vector< vec3 > _positions;
     std::vector< vec3 > _directions;
 
     unsigned int _size;
-
   };
 
   enum tEventType
@@ -387,7 +344,7 @@ namespace utils
 
     void addEventNode( float distance, unsigned long int eventID, tEventType type = TEvent_section )
     {
-      _events.push_back( std::make_tuple( distance, eventID, ( unsigned int ) type ));
+      _events.push_back( std::make_tuple( distance, eventID, static_cast<int>(type) ));
 //      unsigned int pos = _segmentFromDistance( distance );
 //
 //      if( pos >= _size - 1 )
@@ -415,17 +372,15 @@ namespace utils
     {
       tSectionEvents result;
 
-      float prevDist = std::max( 0.0f, distance - step );
-
-      unsigned int i = segmentFromDistance( prevDist );
+      const float prevDist = std::max( 0.0f, distance - step );
+      const unsigned int i = segmentFromDistance( prevDist );
 
       if( i >= _size )
         return result;
 
       for( auto event : _events )
-//      for( auto event : _eventSection[ i ] )
       {
-        float eventDistance = std::get< 0 >( event );
+        const float eventDistance = std::get< 0 >( event );
         if( eventDistance >= prevDist && eventDistance < distance )
         {
           result.push_back( event );
@@ -436,15 +391,8 @@ namespace utils
     }
 
   protected:
-
-
     tSectionEvents _events;
-//    std::vector< tSectionEvents> _eventSection;
-
-
   };
-
-
 }
 
 #endif /* POLYLINEINTERPOLATION_H_ */
