@@ -9,40 +9,43 @@
 
 #include "DynamicPathManager.h"
 
+#include <QDebug>
+
 namespace syncopa
 {
   DynamicPathManager::DynamicPathManager( )
-  : _presynapticGID( 0 )
-  , _pathFinder( nullptr )
-  , _psManager( nullptr )
+    : _pathFinder( nullptr )
+    , _psManager( nullptr )
   { }
 
-  void DynamicPathManager::init( PathFinder* pathFinder_, PSManager* psManager_ )
+  void
+  DynamicPathManager::init( PathFinder* pathFinder_ , PSManager* psManager_ )
   {
     _pathFinder = pathFinder_;
     _psManager = psManager_;
   }
 
 
-  void DynamicPathManager::_createSourceOnDeepestPath( nsolMSection_ptr origin,
+  void DynamicPathManager::_createSourceOnDeepestPath( nsolMSection_ptr origin ,
                                                        MobilePolylineSource* source )
   {
 
-    if( !_pathFinder )
+    if ( !_pathFinder )
       return;
 
-    if( _sources.find( source->gid( )) != _sources.end( ))
+    if ( _sources.find( source->gid( )) != _sources.end( ))
       std::cout << "ERROR: Creating already existing source" << std::endl;
 
     auto computedPath = _pathFinder->computeDeepestPathFrom( origin->id( ));
-    if( computedPath.size( ) > 0 )
+    if ( computedPath.size( ) > 0 )
     {
-      _sources.insert( std::make_pair( source->gid( ), source ));
+      _sources.insert( std::make_pair( source->gid( ) , source ));
       source->path( computedPath );
     }
     else
     {
-      std::cout << "Error: path from node " << origin->id( ) << " not found." << std::endl;
+      std::cout << "Error: path from node " << origin->id( ) << " not found."
+                << std::endl;
       return;
     }
 //    std::cout << std::endl;
@@ -50,19 +53,25 @@ namespace syncopa
 //    source->initialNode( origin );
     source->restart( );
 
-    source->finishedPath.connect( boost::bind ( &DynamicPathManager::finished, this, _1) );
+    source->finishedPath.connect(
+      [ this ]( auto PH1 )
+      { this->finished( std::forward< decltype( PH1 ) >( PH1 )); } );
 
-    source->finishedSection.connect( boost::bind ( &DynamicPathManager::finishedSection, this, _1));
+    source->finishedSection.connect(
+      [ this ]( auto PH1 )
+      { this->finishedSection( std::forward< decltype( PH1 ) >( PH1 )); } );
 
-    source->reachedSynapse.connect( boost::bind( &DynamicPathManager::synapse, this, _1));
+    source->reachedSynapse.connect(
+      [ this ]( auto PH1 )
+      { this->synapse( std::forward< decltype( PH1 ) >( PH1 )); } );
   }
 
-  void DynamicPathManager::clear( void )
+  void DynamicPathManager::clear( )
   {
-    for( auto source : _sources )
+    for ( auto source: _sources )
       _psManager->releaseMobileSource( source.second );
 
-    for( auto source: _rootSources )
+    for ( auto source: _rootSources )
       _psManager->releaseMobileSource( source );
 
     _sectionSources.clear( );
@@ -102,17 +111,19 @@ namespace syncopa
 
   void DynamicPathManager::createRootSources( void )
   {
-    for( auto rootNode : _pathFinder->presynapticTree( ).rootNodes( ))
+    qDebug( ) << "STARTING";
+    for ( const auto& item: _pathFinder->presynapticTrees( ))
     {
-//      auto section = rootNode->section( );
-      auto source = _psManager->getSpareMobileSouce( );
-      source->functionType( TSF_ROOT );
-
-      _createSourceOnDeepestPath( rootNode->section( ), source );
-
-//      std::cout << "Generating root node: " << rootNode->section( )->id( ) << std::endl;
-
-      _rootSources.insert( source );
+      auto& tree = item.second;
+      qDebug( ) << "TREE " << tree.size( );
+      for ( auto rootNode: tree.rootNodes( ))
+      {
+        auto source = _psManager->getSpareMobileSouce( );
+        source->functionType( TSF_ROOT );
+        _createSourceOnDeepestPath( rootNode->section( ) , source );
+        _rootSources.insert( source );
+        qDebug( ) << source;
+      }
     }
   }
 
@@ -120,39 +131,41 @@ namespace syncopa
   {
 
     // Finished sections
-    for( auto sectionID : _pendingSections )
+    for ( auto sectionID: _pendingSections )
     {
 
-      auto node = _pathFinder->presynapticTree( ).node( sectionID );
-      if( !node )
+      auto node = _pathFinder->node( sectionID ).second;
+      if ( !node )
       {
-        std::cout << "ERROR: Section node " << sectionID << " not found. " << std::endl;
+        std::cout << "ERROR: Section node " << sectionID << " not found. "
+                  << std::endl;
         return;
       }
 
       {
         unsigned int nodeSectionID = node->deepestChild( )->section( )->id( );
 
-        for( auto child : node->children( ))
+        for ( auto child: node->children( ))
         {
           unsigned int childSectionID = child->section( )->id( );
 
-          if( childSectionID != nodeSectionID )
+          if ( childSectionID != nodeSectionID )
           {
             auto sectionSource = _sectionSources.find( childSectionID );
-            if( sectionSource == _sectionSources.end( ))
+            if ( sectionSource == _sectionSources.end( ))
             {
               auto source = _psManager->getSpareMobileSouce( );
               source->maxEmissionCycles( 1 );
               source->functionType( TSF_BIFURCATION );
 
-              _createSourceOnDeepestPath( child->section( ), source );
+              _createSourceOnDeepestPath( child->section( ) , source );
 
-              _sectionSources.insert( std::make_pair( childSectionID, source ));
+              _sectionSources.insert(
+                std::make_pair( childSectionID , source ));
             }
             else
             {
-              if( sectionSource->second->active( ))
+              if ( sectionSource->second->active( ))
               {
                 _orphanSources.insert( sectionSource->second );
 
@@ -160,10 +173,11 @@ namespace syncopa
                 source->maxEmissionCycles( 1 );
                 source->functionType( TSF_BIFURCATION );
 
-                _createSourceOnDeepestPath( child->section( ), source );
+                _createSourceOnDeepestPath( child->section( ) , source );
 
                 _sectionSources.erase( childSectionID );
-                _sectionSources.insert( std::make_pair( childSectionID, source ));
+                _sectionSources.insert(
+                  std::make_pair( childSectionID , source ));
 
               }
               else
@@ -182,26 +196,28 @@ namespace syncopa
   void DynamicPathManager::processPendingSynapses( void )
   {
 //    return; //TODO
-    for( auto synapse : _pendingSynapses )
+    for ( auto synapse: _pendingSynapses )
     {
 //      std::cout << "Creating source for synapse " << synapse->gid( ) << std::endl;
       auto path = _pathFinder->getPostsynapticPath( synapse );
 
-      if( path.empty( ) && synapse->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC )
+      if ( path.empty( ) &&
+           synapse->synapseType( ) != nsol::MorphologySynapse::AXOSOMATIC )
       {
-        std::cout << "Error: Assigning empty post path to synapse " << synapse << std::endl;
+        std::cout << "Error: Assigning empty post path to synapse " << synapse
+                  << std::endl;
         continue;
       }
 
       auto section = synapse->postSynapticSection( );
-      if( !section )
+      if ( !section )
         continue;
 
-      if( synapse->synapseType( ) == nsol::MorphologySynapse::AXOSOMATIC )
+      if ( synapse->synapseType( ) == nsol::MorphologySynapse::AXOSOMATIC )
         continue;
 
       auto synapseSource = _synapseSources.find( synapse );
-      if( synapseSource == _synapseSources.end( ))
+      if ( synapseSource == _synapseSources.end( ))
       {
 
         auto source = _psManager->getSpareMobileSouce( POSTSYNAPTIC );
@@ -210,14 +226,16 @@ namespace syncopa
         source->path( path );
         source->restart( );
 
-        source->finishedPath.connect( boost::bind(&DynamicPathManager::finished, this, _1));
+        source->finishedPath.connect(
+          [ this ]( auto PH1 )
+          { this->finished( std::forward< decltype( PH1 ) >( PH1 )); } );
 
-        _sources.insert( std::make_pair( source->gid( ), source ));
-        _synapseSources.insert( std::make_pair( synapse, source ));
+        _sources.insert( std::make_pair( source->gid( ) , source ));
+        _synapseSources.insert( std::make_pair( synapse , source ));
       }
       else
       {
-        if( synapseSource->second->active( ))
+        if ( synapseSource->second->active( ))
         {
           _orphanSources.insert( synapseSource->second );
 
@@ -227,11 +245,13 @@ namespace syncopa
           source->path( path );
           source->restart( );
 
-          source->finishedPath.connect( boost::bind(&DynamicPathManager::finished, this, _1));
+          source->finishedPath.connect(
+            [ this ]( auto PH1 )
+            { this->finished( std::forward< decltype( PH1 ) >( PH1 )); } );
 
-          _sources.insert( std::make_pair( source->gid( ), source ));
+          _sources.insert( std::make_pair( source->gid( ) , source ));
           _synapseSources.erase( synapse );
-          _synapseSources.insert( std::make_pair( synapse, source ));
+          _synapseSources.insert( std::make_pair( synapse , source ));
 
         }
         else
@@ -246,22 +266,22 @@ namespace syncopa
   {
 //    std::cout << "Releashing finished sources" << std::endl;
 
-    for( auto sourceID : _pendingSources )
+    for ( auto sourceID: _pendingSources )
     {
 //      std::cout << "Processing source " << sourceID << std::endl;
 
       auto sourceIt = _sources.find( sourceID );
-      if( sourceIt != _sources.end( ))
+      if ( sourceIt != _sources.end( ))
       {
         auto source = sourceIt->second;
 
-        if( _rootSources.find( source ) == _rootSources.end( ))
+        if ( _rootSources.find( source ) == _rootSources.end( ))
         {
 //          source->active( false );
 //          std::cout << "Releasing source " << sourceID << std::endl;
 //          _psManager->releaseMobileSource( source );
 //          _sources.erase( sourceID );
-          if( _orphanSources.find( source ) != _orphanSources.end( ))
+          if ( _orphanSources.find( source ) != _orphanSources.end( ))
           {
             _psManager->releaseMobileSource( source );
             _orphanSources.erase( source );
@@ -278,15 +298,15 @@ namespace syncopa
     _pendingSources.clear( );
   }
 
-  void DynamicPathManager::restart( void )
+  void DynamicPathManager::restart( )
   {
-    for( auto source : _sources )
+    for ( auto source: _sources )
     {
       _psManager->releaseMobileSource( source.second );
     }
     _sources.clear( );
 
-    for( auto source : _rootSources )
+    for ( auto source: _rootSources )
       source->restart( );
   }
 

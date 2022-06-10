@@ -34,6 +34,7 @@
     <addaction name="actionOpenBlueConfig"/>
     <addaction name="separator"/>
     <addaction name="actionExport"/>
+    <addaction name="actionSyncScene"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -52,8 +53,14 @@
     <addaction name="actionBackgroundColor"/>
     <addaction name="actionNetworkConnection"/>
    </widget>
+   <widget class="QMenu" name="menuPanels">
+    <property name="title">
+     <string>Panels</string>
+    </property>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuOptions"/>
+   <addaction name="menuPanels"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -72,6 +79,7 @@
    <addaction name="actionBackgroundColor"/>
    <addaction name="separator"/>
    <addaction name="actionNetworkConnection"/>
+   <addaction name="separator"/>
   </widget>
   <action name="actionQuit">
    <property name="text">
@@ -159,6 +167,11 @@
    </property>
    <property name="text">
     <string>Network Connection</string>
+   </property>
+  </action>
+  <action name="actionSyncScene">
+   <property name="text">
+    <string>Sync the scene throughout the network</string>
    </property>
   </action>
  </widget>

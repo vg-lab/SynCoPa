@@ -27,20 +27,11 @@ namespace syncopa
     {
       if( _positions.find( idx ) == _positions.end( ))
       {
-//        std::cout << idx << " " << posIt->x( )
-//                         << " " << posIt->y( )
-//                         << " " << posIt->z( )
-//                         << std::endl;
-
         _positions.insert( std::make_pair( idx,  *posIt ));
       }
 
       ++posIt;
     }
-
-//    _particles.addIndices( indices );
-//    _updateConfig->setSource( this, indices );
-
   }
 
   void SourceMultiPosition::removeElements( const prefr::ParticleSet& indices )
@@ -49,10 +40,7 @@ namespace syncopa
     resultPositions.reserve( _positions.size( ));
     prefr::ParticleSet resultIndices;
 
-    for( auto idx : indices )
-    {
-      _positions.erase( idx );
-    }
+    for( auto idx : indices ) _positions.erase( idx );
 
     _updateConfig->removeSourceIndices( this, indices );
   }

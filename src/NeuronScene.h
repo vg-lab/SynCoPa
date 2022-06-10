@@ -20,31 +20,43 @@ namespace syncopa
 {
   struct MeshConfig
   {
-    public:
-      nlgeometry::Mesh mesh;
-      mat4 transform;
-      vec3 color;
+  public:
+    nlgeometry::Mesh mesh;
+    mat4 transform;
+    vec3 color;
   };
 
   enum TRenderEnum
   {
-    ID = 0,
-    MESH,
-    MATRIX,
-    COLOR
+    ID = 0 ,
+    MESH ,
+    MATRIX ,
+    COLOR,
+    SHOW_SOMA,
+    SHOW_MORPHOLOGIES
   };
 
-  typedef std::tuple< std::vector< unsigned int >,
-                      std::vector< nlgeometry::MeshPtr >,
-                      std::vector< mat4 >,
-                      std::vector< vec3 >> TRenderMorpho;
+  enum TEgoNetworkEnum
+  {
+    EGO_COLOR = 0 ,
+    EGO_SHOW_MORPHS ,
+    EGO_ENABLED ,
+  };
+
+  typedef std::tuple< std::vector< unsigned int > ,
+    std::vector< nlgeometry::MeshPtr > ,
+    std::vector< mat4 > ,
+    std::vector< vec3 > ,
+    bool ,
+    bool > TRenderMorpho;
 
   class NeuronScene
-  : public QObject
+    : public QObject
   {
-      Q_OBJECT
-public:
+  Q_OBJECT
+  public:
     NeuronScene( nsol::DataSet* dataset );
+
     ~NeuronScene( void );
 
     void clear( void );
@@ -53,7 +65,7 @@ public:
 
     void generateMeshes( void );
 
-    void uploadMeshes();
+    void uploadMeshes( );
 
     TRenderMorpho getRender( const gidUSet& gids ) const;
 
@@ -63,12 +75,13 @@ public:
 
     nlgeometry::AxisAlignedBoundingBox boundingBox( void ) const;
 
-    void color( const vec3& color_, TNeuronConnection type );
+    void color( const vec3& color_ , TNeuronConnection type );
 
-signals:
-    void progress(const QString &message, const unsigned int value);
+  signals:
 
-protected:
+    void progress( const QString& message , const unsigned int value );
+
+  protected:
     nsol::DataSet* _dataset;
 
     nlgeometry::AxisAlignedBoundingBox _boundingBox;
@@ -76,8 +89,8 @@ protected:
     //! Meshes attribs format
     nlgeometry::AttribsFormat _attribsFormat;
 
-    std::unordered_map< nsol::NeuronMorphologyPtr, nlgeometry::MeshPtr > _neuronMeshes;
-    std::unordered_map< unsigned int, nsol::NeuronMorphologyPtr > _neuronMorphologies;
+    std::unordered_map< nsol::NeuronMorphologyPtr , nlgeometry::MeshPtr > _neuronMeshes;
+    std::unordered_map< unsigned int , nsol::NeuronMorphologyPtr > _neuronMorphologies;
 
     vec3 _colorPre;
     vec3 _colorPost;

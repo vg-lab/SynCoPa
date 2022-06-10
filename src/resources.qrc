@@ -10,5 +10,22 @@
     <file>icons/folder-bc.svg</file>
     <file>icons/connect.svg</file>
     <file>icons/disconnect.svg</file>        
+    <file>icons/eye_open.svg</file>
+    <file>icons/eye_closed.svg</file>
+    <file>icons/eye_focus.svg</file>
+    <file>icons/neuron_all.png</file>
+    <file>icons/neuron_paths.png</file>
+    <file>icons/neuron_soma.png</file>
+    <file>icons/synapses_hidden.svg</file>
+    <file>icons/synapses_connected.svg</file>
+    <file>icons/synapses_all.svg</file>
+    <file>icons/paths_hidden.svg</file>
+    <file>icons/paths_connected.svg</file>
+    <file>icons/paths_all.svg</file>
+    <file>icons/paths_pre.svg</file>
+    <file>icons/paths_post.svg</file>
+    <file>icons/paths_pre_post.svg</file>
+    <file>icons/information.svg</file>
+    <file>icons/colorpicker.svg</file>
   </qresource>
 </RCC>

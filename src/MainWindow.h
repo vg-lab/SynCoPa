@@ -7,6 +7,9 @@
  *          Do not distribute without further notice.
  */
 
+#ifndef SYNCOPA_MAINWINDOW_H
+#define SYNCOPA_MAINWINDOW_H
+
 #include <QMainWindow>
 #include <QDockWidget>
 #include <QPushButton>
@@ -24,21 +27,24 @@
 #include <QPolygonF>
 #include <QThread>
 #include <QDialog>
+#include <wcw/WebClientManager.h>
 
 #include "GradientWidget.h"
 
 #include "OpenGLWidget.h"
 #include "PaletteColorWidget.h"
+#include "SynCoPaWebAPI.h"
 
 #include "ui_syncopa.h"
-#include "WebSocketThread.h"
+#include "NeuronClusterManager.h"
 #include <memory>
+
 
 class QProgressBar;
 
 namespace Ui
 {
-class MainWindow;
+  class MainWindow;
 }
 
 class MainWindow;
@@ -48,79 +54,82 @@ class MainWindow;
  *
  */
 class LoadingThread
-: public QThread
+  : public QThread
 {
-    Q_OBJECT
-  public:
-    /** \brief LoadingThread class constructor.
-     * \param[in] blueconfig Blueconfig file path.
-     * \param[in] target Blueconfig target.
-     * \param[in] mainW Application main window.
-     */
-    explicit LoadingThread(const std::string &blueconfig, const std::string &target, MainWindow *mainW)
-    : m_blueconfig{blueconfig}
-    , m_target{target}
-    , m_parent{mainW}
-    {}
+Q_OBJECT
+public:
+  /** \brief LoadingThread class constructor.
+   * \param[in] blueconfig Blueconfig file path.
+   * \param[in] target Blueconfig target.
+   * \param[in] mainW Application main window.
+   */
+  explicit LoadingThread( const std::string& blueconfig ,
+                          const std::string& target , MainWindow* mainW )
+    : m_blueconfig{ blueconfig }
+    , m_target{ target }
+    , m_parent{ mainW }
+  { }
 
-    virtual ~LoadingThread()
-    {}
+  virtual ~LoadingThread( )
+  { }
 
-    std::string errors() const
-    { return m_errors; }
+  std::string errors( ) const
+  { return m_errors; }
 
-  signals:
-    void progress(const QString &message, const unsigned int value);
+signals:
 
-  protected:
-    virtual void run();
+  void progress( const QString& message , const unsigned int value );
 
-  private:
-    const std::string m_blueconfig; /** blueconfig file path.              */
-    const std::string m_target;     /** blueconfig target.                 */
-    MainWindow        *m_parent;     /** parent application main window.    */
-    std::string        m_errors;     /** error message or empty if success. */
+protected:
+  virtual void run( );
+
+private:
+  const std::string m_blueconfig; /** blueconfig file path.              */
+  const std::string m_target;     /** blueconfig target.                 */
+  MainWindow* m_parent;     /** parent application main window.    */
+  std::string m_errors;     /** error message or empty if success. */
 };
 
 class LoadingDialog
-: public QDialog
+  : public QDialog
 {
-    Q_OBJECT
-  public:
-    /** \brief LoadingDialog class constructor.
-     * \param[in] p Raw pointer of the widget parent of this one.
-     * \param[in] f QDialog flags.
-     *
-     */
-    explicit LoadingDialog(QWidget *p = nullptr);
+Q_OBJECT
+public:
+  /** \brief LoadingDialog class constructor.
+   * \param[in] p Raw pointer of the widget parent of this one.
+   * \param[in] f QDialog flags.
+   *
+   */
+  explicit LoadingDialog( QWidget* p = nullptr );
 
-    /** \brief LoadingDialog class virtual destructor.
-     *
-     */
-    virtual ~LoadingDialog()
-    {};
+  /** \brief LoadingDialog class virtual destructor.
+   *
+   */
+  virtual ~LoadingDialog( )
+  { };
 
-  public slots:
-    /** \brief Updates the dialog with the message and progress value
-     * \param[in] message Progress message.
-     * \param[in] value Progress value in [0,100].
-     *
-     */
-    void progress(const QString &message, const unsigned int value);
+public slots:
 
-    /** \brief Closes and deletes the dialog.
-     *
-     */
-    void closeDialog();
+  /** \brief Updates the dialog with the message and progress value
+   * \param[in] message Progress message.
+   * \param[in] value Progress value in [0,100].
+   *
+   */
+  void progress( const QString& message , const unsigned int value );
 
-  private:
-    QProgressBar *m_progress; /** progress bar. */
+  /** \brief Closes and deletes the dialog.
+   *
+   */
+  void closeDialog( );
+
+private:
+  QProgressBar* m_progress; /** progress bar. */
 };
 
 class MainWindow
   : public QMainWindow
 {
-  Q_OBJECT
+Q_OBJECT
 
 public:
 
@@ -132,15 +141,30 @@ public:
    *
    */
   explicit MainWindow(
-                       QWidget* parent = 0,
-                       bool updateOnIdle = true,
-                       bool fps = false);
+    QWidget* parent = 0 ,
+    bool updateOnIdle = true ,
+    bool fps = false );
 
   virtual ~MainWindow( void );
 
   void init( );
 
+  const std::shared_ptr< syncopa::NeuronClusterManager >&
+  getNeuronClusterManager( ) const;
+
   void loadData( const std::string& dataset , const std::string& target );
+
+
+  // Web events
+  void manageSelectionEvent( const std::vector< unsigned int >& selection );
+
+  void
+  manageSynapsesSelectionEvent( const std::vector< unsigned int >& selection );
+
+  void managePathsSelectionEvent(
+    unsigned int preSelection ,
+    const std::vector< unsigned int >& postSelection );
+
 
 protected slots:
 
@@ -148,11 +172,7 @@ protected slots:
 
   void exportDataDialog( void );
 
-  void exportMatrixCSV( const QString& filename ) const;
-
-  void exportCompactCSV( const QString& filename ) const;
-
-  void exportXML( const QString& filename ) const;
+  void syncScene( void );
 
   void presynapticNeuronClicked( );
 
@@ -166,55 +186,59 @@ protected slots:
 
   void colorSynapseMapAccepted( void );
 
-  void colorSynapseMapCancelled( void );
-
   void transparencySliderMoved( int );
 
   void sizeSpinBoxChanged( double );
 
-  void showFullMorphologyChecked( bool );
-
   void filteringStateChanged( void );
+
   void filteringBoundsChanged( void );
 
+  void filteringPaletteChanged( void );
+
   void modeChanged( bool state );
+
   void alphaModeChanged( bool state );
 
   void clear( void );
 
   void dynamicStart( void );
+
   void dynamicPause( void );
+
   void dynamicStop( void );
+
+  void neuronClusterManagerStructureRefresh( void );
+
+  void neuronClusterManagerMetadataRefresh( void );
 
   /** \brief Helper method called after loading data.
    *
    */
-  void onDataLoaded();
+  void onDataLoaded( );
 
   /** \brief Shows the about dialog.
    *
    */
-  void aboutDialog();
+  void aboutDialog( );
 
   /** \brief Starts/Stops the network connection.
    * \param[in] value True if button is checked and false otherwise.
    *
    */
-  void onConnectionButtonTriggered(bool value);
+  void onConnectionButtonTriggered( bool value );
 
-  void onConnectionStateChanged();
+  void onConnectionError( );
 
-  void onMessageReceived();
-
-  void onConnectionError();
-
-  void onConnectionThreadTerminated();
+  void onConnectionThreadTerminated( );
 
 protected:
 
-  bool showDialog( QColor& current, const QString& message = "" );
+  bool showDialog( QColor& current , const QString& message = "" );
 
   void initListDock( void );
+
+  void initSceneDock( void );
 
   void initColorDock( void );
 
@@ -234,12 +258,6 @@ protected:
    *
    */
   void disableInterface( bool value );
-
-  // JSON
-
-  void parseSelectionJSON( std::shared_ptr< SynapsesModeSelection > selection );
-
-  void parseSelectionJSON( std::shared_ptr< PathsModeSelection > selection );
 
   Ui::MainWindow* _ui;
 
@@ -266,33 +284,22 @@ protected:
   QWidget* _widgetInfoPost;
 
   QDockWidget* _dockColor;
-  QPushButton* _frameColorMorphoPre;
-  QPushButton* _frameColorMorphoPost;
-  QPushButton* _frameColorMorphoContext;
-  QPushButton* _frameColorMorphoOther;
   QPushButton* _frameColorSynapsesPre;
   QPushButton* _frameColorSynapsesPost;
   QPushButton* _frameColorPathsPre;
   QPushButton* _frameColorPathsPost;
 
-  QPushButton* _buttonShowFullMorphoPre;
-  QPushButton* _buttonShowFullMorphoPost;
-  QPushButton* _buttonShowFullMorphoContext;
-  QPushButton* _buttonShowFullMorphoOther;
+  QGroupBox* _checkSynapsesPre;
+  QGroupBox* _checkSynapsesPost;
+  QGroupBox* _checkPathsPre;
+  QGroupBox* _checkPathsPost;
 
-  QIcon _fullMorphoOn;
-  QIcon _fullMorphoOff;
+  std::vector< std::tuple< QPushButton* , QPushButton* , QCheckBox*>>
+    _egoNetworkButtons;
 
-  QCheckBox* _checkShowMorphoPre;
-  QCheckBox* _checkShowMorphoPost;
-  QCheckBox* _checkShowMorphoContext;
-  QCheckBox* _checkShowMorphoOther;
-  QCheckBox* _checkSynapsesPre;
-  QCheckBox* _checkSynapsesPost;
-  QCheckBox* _checkPathsPre;
-  QCheckBox* _checkPathsPost;
+  std::vector< std::tuple< QColor , bool , bool>>
+    _egoNetworkParameters;
 
-//  GradientWidget* _frameColorSynapseMapGradient;
   PaletteColorWidget* _colorMapWidget;
 
   QSlider* _sliderAlphaSynapsesPre;
@@ -302,10 +309,6 @@ protected:
 
   QSlider* _sliderAlphaSynapsesMap;
 
-  float _invRangeSliders;
-  int _sliderMin;
-  int _sliderMax;
-
   QDoubleSpinBox* _spinBoxSizeSynapsesPre;
   QDoubleSpinBox* _spinBoxSizeSynapsesPost;
   QDoubleSpinBox* _spinBoxSizePathsPre;
@@ -313,25 +316,28 @@ protected:
 
   QDoubleSpinBox* _spinBoxSizeSynapsesMap;
 
-  QLabel* _labelTransSynPre;
-  QLabel* _labelTransSynPost;
-  QLabel* _labelTransPathPre;
-  QLabel* _labelTransPathPost;
-  QLabel* _labelTransSynMap;
-
+  QPushButton* _frameColorDynamicPre;
+  QPushButton* _frameColorDynamicPost;
   QPushButton* _buttonDynamicStart;
   QPushButton* _buttonDynamicStop;
 
   QComboBox* _comboSynapseMapAttrib;
 
+  QLayout* _sceneLayout;
+
   QGroupBox* _groupBoxGeneral;
-  QGroupBox* _groupBoxMorphologies;
   QGroupBox* _groupBoxSynapses;
   QGroupBox* _groupBoxPaths;
   QGroupBox* _groupBoxDynamic;
 
   std::shared_ptr< LoadingThread > m_thread;
-  WebSocketThread* m_socket;
+
+  SynCoPaWebAPI _web_api;
+  std::shared_ptr< wcw::WebClientManager > _web_socket;
+
+  std::shared_ptr< syncopa::NeuronClusterManager > _neuronClusterManager;
 
   friend class LoadingThread;
 };
+
+#endif //SYNCOPA_MAINWINDOW_H

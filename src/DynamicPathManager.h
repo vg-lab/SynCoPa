@@ -51,10 +51,6 @@ namespace syncopa
 
     void _createSourceOnDeepestPath( nsolMSection_ptr origin, MobilePolylineSource* source  );
 
-
-
-    unsigned int _presynapticGID;
-
     PathFinder* _pathFinder;
 
     PSManager* _psManager;

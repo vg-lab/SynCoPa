@@ -50,6 +50,7 @@ common_find_package( Qt5Gui 5.4 REQUIRED )
 common_find_package( Qt5Widgets 5.4 REQUIRED )
 common_find_package( Qt5OpenGL REQUIRED )
 common_find_package( Qt5WebSockets REQUIRED )
+common_find_package( Qt5WebChannel REQUIRED )
 common_find_package( GLEW REQUIRED SYSTEM )
 common_find_package( OpenGL REQUIRED )
 common_find_package( Eigen3 REQUIRED SYSTEM)
@@ -60,6 +61,7 @@ common_find_package( prefr REQUIRED )
 common_find_package( Brion REQUIRED )
 common_find_package( OpenMP )
 common_find_package( scoop REQUIRED )
+common_find_package( wcw REQUIRED )
 
 list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
   prefr
@@ -70,10 +72,15 @@ list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
   GLEW
   Eigen3
   Brion
+  wcw
 )
 
 if( QT5CORE_FOUND )
   list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5Core )
+endif( )
+
+if( QT5GUI_FOUND )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5Gui )
 endif( )
 
 if( QT5WIDGETS_FOUND )
@@ -82,6 +89,14 @@ endif( )
 
 if( QT5OPENGL_FOUND )
   list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5OpenGL )
+endif( )
+
+if( QT5WEBSOCKETS_FOUND )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5WebSockets )
+endif( )
+
+if( QT5WEBCHANNEL_FOUND )
+  list( APPEND SYNCOPA_DEPENDENT_LIBRARIES Qt5WebChannel )
 endif( )
 
 if( OPENMP_FOUND )

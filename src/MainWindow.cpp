@@ -8,6 +8,8 @@
  */
 
 #include "MainWindow.h"
+#include "NeuronClusterView.h"
+#include "DataExport.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -15,10 +17,12 @@
 #include <QScrollArea>
 #include <QColorDialog>
 #include <QMessageBox>
+#include <QJsonDocument>
 #include <QProgressBar>
 #include <QDateTime>
 #include <QSurface>
 #include <QUrl>
+#include <QMenu>
 
 #include <syncopa/version.h>
 
@@ -27,9 +31,8 @@
 #endif
 
 #include <thread>
-#include <QJsonObject>
-#include <QJsonDocument>
-#include <QJsonArray>
+
+#define INITIAL_EGO_NETWORK_DISTANCES 5
 
 using namespace syncopa;
 
@@ -44,81 +47,65 @@ syncopa::vec3 colorQtToEigen( const QColor& color_ )
 
 QColor colorEigenToQt( const syncopa::vec3& color_ )
 {
-  return QColor( std::min( 255, std::max( 0, int( color_.x( ) * 255 ))),
-                 std::min( 255, std::max( 0, int( color_.y( ) * 255 ))),
-                 std::min( 255, std::max( 0, int( color_.z( ) * 255 ))));
+  return QColor( std::min( 255 , std::max( 0 , int( color_.x( ) * 255 ))) ,
+                 std::min( 255 , std::max( 0 , int( color_.y( ) * 255 ))) ,
+                 std::min( 255 , std::max( 0 , int( color_.z( ) * 255 ))));
 }
 
+constexpr int SLIDER_MIN = 0;
+constexpr int SLIDER_MAX = 100;
+constexpr float INV_RANGE_SLIDERS = 1.0 / ( SLIDER_MAX - SLIDER_MIN );
+
 MainWindow::MainWindow(
-                        QWidget* parent_,
-                        bool updateOnIdle,
-                        bool fps)
-: QMainWindow( parent_ )
-, _ui( new Ui::MainWindow )
-, _openGLWidget( nullptr )
-, _dockList( nullptr )
-, _listPresynaptic( nullptr )
-, _modelListPre( nullptr )
-, _listPostsynaptic( nullptr )
-, _modelListPost( nullptr )
-, _radioModeSynapses( nullptr )
-, _radioModePaths( nullptr )
-, _radioAlphaModeNormal( nullptr )
-, _radioAlphaModeAccumulative( nullptr )
-, _dockInfo( nullptr )
-, _layoutInfo( nullptr )
-, _widgetInfoPre( nullptr )
-, _widgetInfoPost( nullptr )
-, _dockColor( nullptr )
-, _frameColorMorphoPre( nullptr )
-, _frameColorMorphoPost( nullptr )
-, _frameColorMorphoContext( nullptr )
-, _frameColorMorphoOther( nullptr )
-, _frameColorSynapsesPre( nullptr )
-, _frameColorSynapsesPost( nullptr )
-, _frameColorPathsPre( nullptr )
-, _frameColorPathsPost( nullptr )
-, _buttonShowFullMorphoPre( nullptr )
-, _buttonShowFullMorphoPost( nullptr )
-, _buttonShowFullMorphoContext( nullptr )
-, _buttonShowFullMorphoOther( nullptr )
-, _checkShowMorphoPre( nullptr )
-, _checkShowMorphoPost( nullptr )
-, _checkShowMorphoContext( nullptr )
-, _checkShowMorphoOther( nullptr )
-, _checkSynapsesPre( nullptr )
-, _checkSynapsesPost( nullptr )
-, _checkPathsPre( nullptr )
-, _checkPathsPost( nullptr )
-, _colorMapWidget( nullptr )
-, _sliderAlphaSynapsesPre( nullptr )
-, _sliderAlphaSynapsesPost( nullptr )
-, _sliderAlphaPathsPre( nullptr )
-, _sliderAlphaPathsPost( nullptr )
-, _sliderAlphaSynapsesMap( nullptr )
-, _invRangeSliders( 0.0f )
-, _sliderMin( 0 )
-, _sliderMax( 100 )
-, _spinBoxSizeSynapsesPre( nullptr )
-, _spinBoxSizeSynapsesPost( nullptr )
-, _spinBoxSizePathsPre( nullptr )
-, _spinBoxSizePathsPost( nullptr )
-, _spinBoxSizeSynapsesMap( nullptr )
-, _labelTransSynPre( nullptr )
-, _labelTransSynPost( nullptr )
-, _labelTransPathPre( nullptr )
-, _labelTransPathPost( nullptr )
-, _labelTransSynMap( nullptr )
-, _buttonDynamicStart( nullptr )
-, _buttonDynamicStop( nullptr )
-, _comboSynapseMapAttrib( nullptr )
-, _groupBoxGeneral( nullptr )
-, _groupBoxMorphologies( nullptr )
-, _groupBoxSynapses( nullptr )
-, _groupBoxPaths( nullptr )
-, _groupBoxDynamic( nullptr )
-, m_thread{ nullptr }
-, m_socket(nullptr)
+  QWidget* parent_ ,
+  bool updateOnIdle ,
+  bool fps )
+  : QMainWindow( parent_ )
+  , _ui( new Ui::MainWindow )
+  , _openGLWidget( nullptr )
+  , _dockList( nullptr )
+  , _listPresynaptic( nullptr )
+  , _modelListPre( nullptr )
+  , _listPostsynaptic( nullptr )
+  , _modelListPost( nullptr )
+  , _radioModeSynapses( nullptr )
+  , _radioModePaths( nullptr )
+  , _radioAlphaModeNormal( nullptr )
+  , _radioAlphaModeAccumulative( nullptr )
+  , _dockInfo( nullptr )
+  , _layoutInfo( nullptr )
+  , _widgetInfoPre( nullptr )
+  , _widgetInfoPost( nullptr )
+  , _dockColor( nullptr )
+  , _frameColorSynapsesPre( nullptr )
+  , _frameColorSynapsesPost( nullptr )
+  , _checkSynapsesPre( nullptr )
+  , _checkSynapsesPost( nullptr )
+  , _checkPathsPre( nullptr )
+  , _checkPathsPost( nullptr )
+  , _colorMapWidget( nullptr )
+  , _sliderAlphaSynapsesPre( nullptr )
+  , _sliderAlphaSynapsesPost( nullptr )
+  , _sliderAlphaPathsPre( nullptr )
+  , _sliderAlphaPathsPost( nullptr )
+  , _sliderAlphaSynapsesMap( nullptr )
+  , _spinBoxSizeSynapsesPre( nullptr )
+  , _spinBoxSizeSynapsesPost( nullptr )
+  , _spinBoxSizePathsPre( nullptr )
+  , _spinBoxSizePathsPost( nullptr )
+  , _spinBoxSizeSynapsesMap( nullptr )
+  , _buttonDynamicStart( nullptr )
+  , _buttonDynamicStop( nullptr )
+  , _comboSynapseMapAttrib( nullptr )
+  , _sceneLayout( nullptr )
+  , _groupBoxGeneral( nullptr )
+  , _groupBoxSynapses( nullptr )
+  , _groupBoxPaths( nullptr )
+  , _groupBoxDynamic( nullptr )
+  , m_thread{ nullptr }
+  , _web_api( this , this )
+  , _web_socket( nullptr )
+  , _neuronClusterManager( std::make_shared< NeuronClusterManager >( ))
 {
   _ui->setupUi( this );
 
@@ -134,12 +121,13 @@ MainWindow::MainWindow(
   connect( _ui->actionExport , SIGNAL( triggered( void )) ,
            this , SLOT( exportDataDialog( void )) );
 
-  connect(_ui->actionNetworkConnection, SIGNAL(triggered(bool)),
-          this, SLOT(onConnectionButtonTriggered(bool)));
+  connect( _ui->actionSyncScene , SIGNAL( triggered( void )) ,
+           this , SLOT( syncScene( void )) );
 
-  _invRangeSliders = 1.0 / ( _sliderMax - _sliderMin );
+  connect( _ui->actionNetworkConnection , SIGNAL( triggered( bool )) ,
+           this , SLOT( onConnectionButtonTriggered( bool )) );
 
-  _openGLWidget = new OpenGLWidget( nullptr, Qt::WindowFlags() );
+  _openGLWidget = new OpenGLWidget( nullptr , Qt::WindowFlags( ));
   setCentralWidget( _openGLWidget );
 
   if ( _openGLWidget->format( ).version( ).first < 4 )
@@ -151,22 +139,26 @@ MainWindow::MainWindow(
 
 MainWindow::~MainWindow( void )
 {
+  onConnectionThreadTerminated( );
+
   delete _ui;
 }
 
-void MainWindow::init()
+void MainWindow::init( )
 {
   _openGLWidget->createParticleSystem( );
 
+  initSceneDock( );
   initListDock( );
   initColorDock( );
   initInfoDock( );
 
-  tabifyDockWidget(_dockList, _dockColor);
-  tabifyDockWidget(_dockColor, _dockInfo);
+  tabifyDockWidget( _dockList , _dockColor );
+  tabifyDockWidget( _dockColor , _dockInfo );
 
   _openGLWidget->idleUpdate( _ui->actionUpdateOnIdle->isChecked( ));
   _openGLWidget->showFps( _ui->actionShowFPSOnIdleUpdate->isChecked( ));
+  _ui->actionSyncScene->setEnabled( false );
 
   connect( _ui->actionUpdateOnIdle , SIGNAL( triggered( )) ,
            _openGLWidget , SLOT( toggleUpdateOnIdle( )) );
@@ -177,8 +169,8 @@ void MainWindow::init()
   connect( _ui->actionShowFPSOnIdleUpdate , SIGNAL( triggered( )) ,
            _openGLWidget , SLOT( toggleShowFPS( )) );
 
-  connect( _ui->actionAbout , SIGNAL( triggered( )),
-           this, SLOT( aboutDialog( )) );
+  connect( _ui->actionAbout , SIGNAL( triggered( )) ,
+           this , SLOT( aboutDialog( )) );
 
   _radioModeSynapses->setChecked( true );
 
@@ -190,8 +182,8 @@ void MainWindow::initListDock( void )
   _radioModeSynapses = new QRadioButton( tr( "Synapses" ));
   _radioModePaths = new QRadioButton( tr( "Paths" ));
 
-  QGroupBox* groupSelection = new QGroupBox( "Selection mode" );
-  QHBoxLayout* selectionLayout = new QHBoxLayout( );
+  auto groupSelection = new QGroupBox( "Selection mode" );
+  auto selectionLayout = new QVBoxLayout( );
 
   selectionLayout->addWidget( _radioModeSynapses );
   selectionLayout->addWidget( _radioModePaths );
@@ -199,52 +191,107 @@ void MainWindow::initListDock( void )
   groupSelection->setLayout( selectionLayout );
 
   _listPresynaptic = new QListView( );
-  _listPresynaptic->setMaximumWidth( 150 );
+  _listPresynaptic->setSelectionMode( QAbstractItemView::SingleSelection );
   _listPresynaptic->setEditTriggers( QAbstractItemView::NoEditTriggers );
 
   _listPostsynaptic = new QListView( );
-  _listPostsynaptic->setMaximumWidth( 150 );
   _listPostsynaptic->setSelectionMode( QAbstractItemView::ExtendedSelection );
   _listPostsynaptic->setEditTriggers( QAbstractItemView::NoEditTriggers );
 
   _dockList = new QDockWidget( tr( "Selection" ));
-  _dockList->setMaximumHeight( 500 );
+  _dockList->setMinimumHeight( 400 );
 
-  auto dockLayout = new QGridLayout( );
+  auto dockLayout = new QVBoxLayout( );
   dockLayout->setAlignment( Qt::AlignTop );
 
   auto container = new QWidget( );
   container->setLayout( dockLayout );
 
   auto clearButton = new QPushButton( "Clear selection" );
-  connect( clearButton, SIGNAL( clicked( void )),
-           this, SLOT( clear( void )));
+  connect( clearButton , SIGNAL( clicked( void )) ,
+           this , SLOT( clear( void )) );
 
-  dockLayout->addWidget( groupSelection, 0, 0, 1, 4 );
-  dockLayout->addWidget( new QLabel( "Presynaptic:" ), 1, 0, 1, 2 );
-  dockLayout->addWidget( new QLabel( "Postsynaptic:" ), 1, 2, 1, 2 );
-  dockLayout->addWidget( _listPresynaptic, 2, 0, 6, 2 );
-  dockLayout->addWidget( _listPostsynaptic, 2, 2, 6, 2 );
+  dockLayout->addWidget( groupSelection , 0 );
+  dockLayout->addWidget( new QLabel( "Presynaptic:" ) , 0 );
+  dockLayout->addWidget( _listPresynaptic , 0 );
+  dockLayout->addWidget( new QLabel( "Postsynaptic:" ) , 0 );
+  dockLayout->addWidget( _listPostsynaptic , 0 );
   dockLayout->addWidget( clearButton );
 
   _dockList->setWidget( container );
 
-  connect( _radioModeSynapses, SIGNAL( toggled( bool )),
-           this, SLOT( modeChanged( bool )));
+  connect( _radioModeSynapses , SIGNAL( toggled( bool )) ,
+           this , SLOT( modeChanged( bool )) );
 
-  _modelListPre = new QStandardItemModel();
-  _listPresynaptic->setModel(_modelListPre);
+  _modelListPre = new QStandardItemModel( );
+  _listPresynaptic->setModel( _modelListPre );
 
-  connect( _listPresynaptic->selectionModel(), SIGNAL( selectionChanged( const QItemSelection &, const QItemSelection &)),
-           this, SLOT( presynapticNeuronClicked( )));
+  connect( _listPresynaptic->selectionModel( ) , SIGNAL(
+                                                   selectionChanged(
+                                                   const QItemSelection & , const QItemSelection &)) ,
+           this , SLOT( presynapticNeuronClicked( )) );
 
-  _modelListPost = new QStandardItemModel();
-  _listPostsynaptic->setModel(_modelListPost);
+  _modelListPost = new QStandardItemModel( );
+  _listPostsynaptic->setModel( _modelListPost );
 
-  connect( _listPostsynaptic->selectionModel(), SIGNAL( selectionChanged( const QItemSelection &, const QItemSelection &)),
-           this, SLOT( postsynapticNeuronClicked( )));
+  connect( _listPostsynaptic->selectionModel( ) , SIGNAL(
+                                                    selectionChanged(
+                                                    const QItemSelection & , const QItemSelection &)) ,
+           this , SLOT( postsynapticNeuronClicked( )) );
 
-  addDockWidget( Qt::RightDockWidgetArea, _dockList );
+  addDockWidget( Qt::RightDockWidgetArea , _dockList );
+
+  auto action = _dockList->toggleViewAction( );
+  action->setIcon( QIcon( ":/icons/neuron_all.png" ));
+  action->setToolTip( tr( "Toggle neuron lists panel visibility" ));
+  _ui->menuPanels->addAction( action );
+  _ui->toolBar->addAction( action );
+}
+
+void MainWindow::initSceneDock( )
+{
+  auto sceneWidget = new QWidget( );
+  _sceneLayout = new QVBoxLayout( );
+  _sceneLayout->setAlignment( Qt::AlignTop | Qt::AlignLeft );
+  _sceneLayout->setMargin( 0 );
+  _sceneLayout->setSpacing( 0 );
+  sceneWidget->setLayout( _sceneLayout );
+
+  auto scrollMorpho = new QScrollArea( );
+  scrollMorpho->setWidgetResizable( true );
+  scrollMorpho->setWidget( sceneWidget );
+
+  auto dockScene = new QDockWidget( "Scene" );
+  dockScene->setWidget( scrollMorpho );
+  addDockWidget( Qt::LeftDockWidgetArea , dockScene );
+
+  auto defaultSelections =
+    std::map< QString , std::unordered_set< unsigned int >>( );
+  defaultSelections[ "Presynaptic" ] = std::unordered_set< unsigned int >{ };
+  defaultSelections[ "Postsynaptic" ] = std::unordered_set< unsigned int >{ };
+  defaultSelections[ "Connected" ] = std::unordered_set< unsigned int >{ };
+  defaultSelections[ "Other" ] = std::unordered_set< unsigned int >{ };
+  auto selectionCluster = syncopa::NeuronCluster( "Main Group" ,
+                                                  defaultSelections );
+
+  _neuronClusterManager->addCluster( selectionCluster );
+  neuronClusterManagerStructureRefresh( );
+
+  connect(
+    _neuronClusterManager.get( ) , SIGNAL( onStructureModification( )) ,
+    this , SLOT( neuronClusterManagerStructureRefresh( ))
+  );
+
+  connect(
+    _neuronClusterManager.get( ) , SIGNAL( onMetadataModification( )) ,
+    this , SLOT( neuronClusterManagerMetadataRefresh( ))
+  );
+
+  auto action = dockScene->toggleViewAction( );
+  action->setIcon( QIcon( ":/icons/eye_open.svg" ));
+  action->setToolTip( tr( "Toggle scene configuration panel visibility" ));
+  _ui->menuPanels->addAction( action );
+  _ui->toolBar->addAction( action );
 }
 
 void MainWindow::initColorDock( void )
@@ -257,7 +304,6 @@ void MainWindow::initColorDock( void )
   container->setLayout( layout );
 
   _groupBoxGeneral = new QGroupBox( "Alpha blending" );
-  _groupBoxMorphologies = new QGroupBox( "Morphologies" );
   _groupBoxSynapses = new QGroupBox( "Synapses" );
   _groupBoxPaths = new QGroupBox( "Paths" );
   _groupBoxDynamic = new QGroupBox( "Dynamic" );
@@ -265,19 +311,16 @@ void MainWindow::initColorDock( void )
   _radioAlphaModeNormal = new QRadioButton( "Normal" );
   _radioAlphaModeAccumulative = new QRadioButton( "Accumulative" );
 
-  _checkShowMorphoPre = new QCheckBox( "Presynaptic" );
-  _checkShowMorphoPost = new QCheckBox( "Postsynaptic" );
-  _checkShowMorphoContext = new QCheckBox( "Connected" );
-  _checkShowMorphoOther = new QCheckBox( "Other" );
-  _checkSynapsesPre = new QCheckBox( "Presynaptic" );
-  _checkSynapsesPost = new QCheckBox( "Postsynaptic" );
-  _checkPathsPre = new QCheckBox( "Presynaptic" );
-  _checkPathsPost = new QCheckBox( "Postsynaptic" );
+  _checkSynapsesPre = new QGroupBox( "Presynaptic" );
+  _checkSynapsesPre->setCheckable( true );
+  _checkSynapsesPost = new QGroupBox( "Postsynaptic" );
+  _checkSynapsesPost->setCheckable( true );
 
-  _checkShowMorphoPre->setChecked( true );
-  _checkShowMorphoPost->setChecked( true );
-  _checkShowMorphoContext->setChecked( true );
-  _checkShowMorphoOther->setChecked( true );
+  _checkPathsPre = new QGroupBox( "Presynaptic" );
+  _checkPathsPre->setCheckable( true );
+  _checkPathsPost = new QGroupBox( "Postsynaptic" );
+  _checkPathsPost->setCheckable( true );
+
   _checkSynapsesPre->setChecked( true );
   _checkSynapsesPost->setChecked( true );
   _checkPathsPre->setChecked( true );
@@ -288,18 +331,9 @@ void MainWindow::initColorDock( void )
   containerGeneral->setLayout( layoutGeneral );
   layoutGeneral->addWidget( _groupBoxGeneral );
 
-  auto generalLayout = new QHBoxLayout( );
-  generalLayout->setAlignment(  Qt::AlignTop );
+  auto generalLayout = new QVBoxLayout( );
+  generalLayout->setAlignment( Qt::AlignTop );
   _groupBoxGeneral->setLayout( generalLayout );
-
-  auto containerMorpho = new QWidget( );
-  auto layoutMorpho = new QVBoxLayout( );
-  containerMorpho->setLayout( layoutMorpho );
-  layoutMorpho->addWidget( _groupBoxMorphologies );
-
-  auto morphoLayout = new QGridLayout( );
-  morphoLayout->setAlignment(  Qt::AlignTop );
-  _groupBoxMorphologies->setLayout( morphoLayout );
 
   auto layoutSynapses = new QVBoxLayout( );
   auto containerSynapses = new QWidget( );
@@ -307,18 +341,18 @@ void MainWindow::initColorDock( void )
   layoutSynapses->addWidget( _groupBoxSynapses );
 
   auto synLayout = new QGridLayout( );
-  synLayout->setAlignment(  Qt::AlignTop );
+  synLayout->setAlignment( Qt::AlignTop );
   _groupBoxSynapses->setLayout( synLayout );
 
   auto layoutPaths = new QVBoxLayout( );
   auto containerPaths = new QWidget( );
   containerPaths->setLayout( layoutPaths );
-
   layoutPaths->addWidget( _groupBoxPaths );
+
   layoutPaths->addWidget( _groupBoxDynamic );
 
   auto pathLayout = new QGridLayout( );
-  pathLayout->setAlignment(  Qt::AlignTop );
+  pathLayout->setAlignment( Qt::AlignTop );
   _groupBoxPaths->setLayout( pathLayout );
 
   auto layoutDynamic = new QGridLayout( );
@@ -328,139 +362,67 @@ void MainWindow::initColorDock( void )
   QPalette palette;
   QColor color;
 
-  _frameColorMorphoPre = new QPushButton( );
-  _frameColorMorphoPre->setFixedSize( 20, 20 );
-
-  color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
-  _frameColorMorphoPre->setStyleSheet( "background-color: " + color.name( ));
-
-  _frameColorMorphoPost = new QPushButton( );
-  _frameColorMorphoPost->setFixedSize( 20, 20 );
-
-  color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
-  _frameColorMorphoPost->setStyleSheet( "background-color: " + color.name( ));
-
-  _frameColorMorphoContext = new QPushButton( );
-  _frameColorMorphoContext->setFixedSize( 20, 20 );
-
-  color = colorEigenToQt(_openGLWidget->colorRelated( ));
-  _frameColorMorphoContext->setStyleSheet( "background-color: " + color.name( ));
-
-  _frameColorMorphoOther = new QPushButton( );
-  _frameColorMorphoOther->setFixedSize( 20, 20 );
-
-  color = colorEigenToQt( _openGLWidget->colorContext( ));
-  _frameColorMorphoOther->setStyleSheet( "background-color: " + color.name( ));
-
   _frameColorSynapsesPre = new QPushButton( );
-  _frameColorSynapsesPre->setFixedSize( 20, 20 );
+  _frameColorSynapsesPre->setFixedSize( 20 , 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
   _frameColorSynapsesPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorSynapsesPost = new QPushButton( );
-  _frameColorSynapsesPost->setFixedSize( 20, 20 );
+  _frameColorSynapsesPost->setFixedSize( 20 , 20 );
 
   color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
   _frameColorSynapsesPost->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPre = new QPushButton( );
-  _frameColorPathsPre->setFixedSize( 20, 20 );
+  _frameColorPathsPre->setFixedSize( 20 , 20 );
 
   color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
   _frameColorPathsPre->setStyleSheet( "background-color: " + color.name( ));
 
   _frameColorPathsPost = new QPushButton( );
-  _frameColorPathsPost->setFixedSize( 20, 20 );
+  _frameColorPathsPost->setFixedSize( 20 , 20 );
 
   color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
 
   QIcon neuronIcon;
-  neuronIcon.addFile(QStringLiteral(":/icons/neurotessmesh.png"), QSize(), QIcon::Normal, QIcon::On);
-  neuronIcon.addFile(QStringLiteral(":/icons/neurolots.png"), QSize(), QIcon::Normal, QIcon::Off);
-
-  _buttonShowFullMorphoPre = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoPre->setFixedSize( 20, 20 );
-  _buttonShowFullMorphoPre->setCheckable( true );
-
-  _buttonShowFullMorphoPost = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoPost->setFixedSize( 20, 20 );
-  _buttonShowFullMorphoPost->setCheckable( true );
-
-  _buttonShowFullMorphoContext = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoContext->setFixedSize( 20, 20 );
-  _buttonShowFullMorphoContext->setCheckable( true );
-
-  _buttonShowFullMorphoOther = new QPushButton( neuronIcon, "" );
-  _buttonShowFullMorphoOther->setFixedSize( 20, 20 );
-  _buttonShowFullMorphoOther->setCheckable( true );
+  neuronIcon.addFile( QStringLiteral( ":/icons/neurotessmesh.png" ) , QSize( ) ,
+                      QIcon::Normal , QIcon::On );
+  neuronIcon.addFile( QStringLiteral( ":/icons/neurolots.png" ) , QSize( ) ,
+                      QIcon::Normal , QIcon::Off );
 
   // General controls
   generalLayout->addWidget( _radioAlphaModeNormal );
   generalLayout->addWidget( _radioAlphaModeAccumulative );
 
-  // Morphologies
-  unsigned int row = 0;
-  unsigned int col = 0;
-
-  morphoLayout->addWidget( _frameColorMorphoPre, row, col++, 1, 1 );
-  morphoLayout->addWidget( _buttonShowFullMorphoPre, row, col++, 1, 1 );
-  morphoLayout->addWidget( _checkShowMorphoPre, row, col++, 1, 2 );
-
-  ++col;
-
-  morphoLayout->addWidget( _frameColorMorphoPost, row, col++, 1, 1 );
-  morphoLayout->addWidget( _buttonShowFullMorphoPost, row, col++, 1, 1 );
-  morphoLayout->addWidget( _checkShowMorphoPost, row, col++, 1, 2 );
-
-
-  ++row;
-  col = 0;
-
-  morphoLayout->addWidget( _frameColorMorphoContext, row, col++, 1, 1 );
-  morphoLayout->addWidget( _buttonShowFullMorphoContext, row, col++, 1, 1 );
-  morphoLayout->addWidget( _checkShowMorphoContext, row, col++, 1, 2 );
-
-  ++col;
-
-  morphoLayout->addWidget( _frameColorMorphoOther, row, col++, 1, 1 );
-  morphoLayout->addWidget( _buttonShowFullMorphoOther, row, col++, 1, 1 );
-  morphoLayout->addWidget( _checkShowMorphoOther, row, col++, 1, 2 );
-
   // Synapses
   _colorMapWidget = new PaletteColorWidget( );
   _colorMapWidget->init( false );
 
-  connect( _colorMapWidget, SIGNAL( acceptClicked( void )),
-           this, SLOT( colorSynapseMapAccepted( void )));
+  connect( _colorMapWidget , SIGNAL( filterStateChanged( void )) ,
+           this , SLOT( filteringStateChanged( void )));
 
-  connect( _colorMapWidget, SIGNAL( filterStateChanged( void )),
-           this, SLOT( filteringStateChanged( void )));
+  connect( _colorMapWidget , SIGNAL( filterPaletteChanged( void )) ,
+           this , SLOT( filteringPaletteChanged( void )));
 
-  connect( _colorMapWidget, SIGNAL( filterBoundsChanged( void )),
-             this, SLOT( filteringBoundsChanged( void )));
+  connect( _colorMapWidget , SIGNAL( filterBoundsChanged( void )) ,
+           this , SLOT( filteringBoundsChanged( void )));
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesPre->setRange(_sliderMin , _sliderMax);
+  _sliderAlphaSynapsesPre->setRange( SLIDER_MIN , SLIDER_MAX );
 
   _sliderAlphaSynapsesPost = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesPost->setRange(_sliderMin , _sliderMax);
+  _sliderAlphaSynapsesPost->setRange( SLIDER_MIN , SLIDER_MAX );
 
   _sliderAlphaPathsPre = new QSlider( Qt::Horizontal );
-  _sliderAlphaPathsPre->setRange(_sliderMin , _sliderMax);
+  _sliderAlphaPathsPre->setRange( SLIDER_MIN , SLIDER_MAX );
 
   _sliderAlphaPathsPost = new QSlider( Qt::Horizontal );
-  _sliderAlphaPathsPost->setRange(_sliderMin , _sliderMax);
+  _sliderAlphaPathsPost->setRange( SLIDER_MIN , SLIDER_MAX );
 
   _sliderAlphaSynapsesMap = new QSlider( Qt::Horizontal );
-  _sliderAlphaSynapsesMap->setRange(_sliderMin , _sliderMax);
-
-  _labelTransSynPre = new QLabel( );
-  _labelTransSynPost = new QLabel( );
-  _labelTransPathPre = new QLabel( );
-  _labelTransPathPost = new QLabel( );
-  _labelTransSynMap = new QLabel( );
+  _sliderAlphaSynapsesMap->setRange( SLIDER_MIN , SLIDER_MAX );
 
   _spinBoxSizeSynapsesPre = new QDoubleSpinBox( );
   _spinBoxSizeSynapsesPre->setValue( 3.0f );
@@ -480,13 +442,13 @@ void MainWindow::initColorDock( void )
   auto checkMapSynapses = new QCheckBox( tr( "Map attribute to color" ));
   _comboSynapseMapAttrib = new QComboBox( );
 
-  QStringList optionList = { "Delay",
-                             "Conductance",
-                             "Utilization",
-                             "Depression",
-                             "Facilitation",
-                             "Decay",
-                             "Efficacy",
+  QStringList optionList = { "Delay" ,
+                             "Conductance" ,
+                             "Utilization" ,
+                             "Depression" ,
+                             "Facilitation" ,
+                             "Decay" ,
+                             "Efficacy" ,
                              "Synapse type" };
 
   _comboSynapseMapAttrib->addItems( optionList );
@@ -495,189 +457,177 @@ void MainWindow::initColorDock( void )
   line->setFrameShape( QFrame::HLine );
   line->setFrameShadow( QFrame::Sunken );
 
-  row = 0;
+  int row = 0;
+  int col = 0;
+
+  auto lay = new QGridLayout( );
+  _checkSynapsesPre->setLayout( lay );
+  lay->addWidget( _frameColorSynapsesPre , 0 , 0 , 1 , 1 );
+  lay->addWidget( _spinBoxSizeSynapsesPre , 0 , 1 , 1 , 1 );
+  lay->addWidget( _sliderAlphaSynapsesPre , 0 , 2 , 1 , 2 );
+
+  lay = new QGridLayout( );
+  _checkSynapsesPost->setLayout( lay );
+  lay->addWidget( _frameColorSynapsesPost , 0 , 0 , 1 , 1 );
+  lay->addWidget( _spinBoxSizeSynapsesPost , 0 , 1 , 1 , 1 );
+  lay->addWidget( _sliderAlphaSynapsesPost , 0 , 2 , 1 , 2 );
+
+
+  synLayout->addWidget( _checkSynapsesPre , 0 , 0 , 2 , 4 );
+  synLayout->addWidget( _checkSynapsesPost , 2 , 0 , 2 , 4 );
+
+  row = 4;
   col = 0;
 
-  synLayout->addWidget( _frameColorSynapsesPre, row, col++, 1, 1 );
-  synLayout->addWidget( _checkSynapsesPre, row, col++, 1, 2 );
+  synLayout->addWidget( line , row , col , 1 , 4 );
 
-  ++col;
-  synLayout->addWidget( _spinBoxSizeSynapsesPre, row, col++, 1, 1 );
-  synLayout->addWidget( _sliderAlphaSynapsesPre, row, col, 1, 2 );
+  ++row;
+  synLayout->addWidget( checkMapSynapses , row , 0 , 1 , 2 );
+  synLayout->addWidget( _comboSynapseMapAttrib , row , 2 , 1 , 2 );
 
   ++row;
   col = 0;
 
-  synLayout->addWidget( _frameColorSynapsesPost, row, col++, 1, 1 );
-  synLayout->addWidget( _checkSynapsesPost, row, col++, 1, 2 );
-
-  ++col;
-  synLayout->addWidget( _spinBoxSizeSynapsesPost, row, col++, 1, 1 );
-  synLayout->addWidget( _sliderAlphaSynapsesPost, row, col, 1, 2 );
+  synLayout->addWidget( _spinBoxSizeSynapsesMap , row , col++ , 1 , 1 );
+  synLayout->addWidget( _sliderAlphaSynapsesMap , row , col , 1 , 3 );
 
   ++row;
   col = 0;
 
-  synLayout->addWidget( line, row, col, 1, 6 );
-
-  ++row;
-  synLayout->addWidget( checkMapSynapses, row, col++, 1, 4 );
-  ++col;
-  ++col;
-  ++col;
-  synLayout->addWidget( _comboSynapseMapAttrib, row, col, 1, 2 );
-
-  ++row;
-  col = 0;
-
-  synLayout->addWidget( _spinBoxSizeSynapsesMap, row, col++, 1, 2 );
-  ++col;
-  synLayout->addWidget( _sliderAlphaSynapsesMap, row, col, 1, 2 );
-
-  ++row;
-  col = 0;
-
-  synLayout->addWidget( _colorMapWidget, row, col, 4, 6 );
+  synLayout->addWidget( _colorMapWidget , row , col , 4 , 4 );
 
   // Paths
   row = 0;
   col = 0;
 
-  pathLayout->addWidget( _frameColorPathsPre, row, col++, 1, 1 );
-  pathLayout->addWidget( _checkPathsPre, row, col++, 1, 2 );
+  lay = new QGridLayout( );
+  lay->addWidget( _frameColorPathsPre , 0 , 0 , 1 , 1 );
+  lay->addWidget( _spinBoxSizePathsPre , 0 , 1 , 1 , 1 );
+  lay->addWidget( _sliderAlphaPathsPre , 0 , 2 , 1 , 2 );
+  _checkPathsPre->setLayout( lay );
 
-  ++col;
-  pathLayout->addWidget( _spinBoxSizePathsPre, row, col++, 1, 1 );
-  pathLayout->addWidget( _sliderAlphaPathsPre, row, col, 1, 2 );
+  lay = new QGridLayout( );
+  lay->addWidget( _frameColorPathsPost , 0 , 0 , 1 , 1 );
+  lay->addWidget( _spinBoxSizePathsPost , 0 , 1 , 1 , 1 );
+  lay->addWidget( _sliderAlphaPathsPost , 0 , 2 , 1 , 2 );
+  _checkPathsPost->setLayout( lay );
 
-  ++row;
-  col = 0;
+  pathLayout->addWidget( _checkPathsPre , 0 , 0 , 2 , 4 );
+  pathLayout->addWidget( _checkPathsPost , 2 , 0 , 2 , 4 );
 
-  pathLayout->addWidget( _frameColorPathsPost, row, col++, 1, 1 );
-  pathLayout->addWidget( _checkPathsPost, row, col++, 1, 2 );
+  _frameColorDynamicPre = new QPushButton( );
+  _frameColorDynamicPre->setFixedSize( 20 , 20 );
+  _frameColorDynamicPre->setStyleSheet( "background-color: #FFFFFFFF" );
 
-  ++col;
-  pathLayout->addWidget( _spinBoxSizePathsPost, row, col++, 1, 1 );
-  pathLayout->addWidget( _sliderAlphaPathsPost, row, col, 1, 2 );
+  _frameColorDynamicPost = new QPushButton( );
+  _frameColorDynamicPost->setFixedSize( 20 , 20 );
+  _frameColorDynamicPost->setStyleSheet( "background-color: #FFFFFFFF" );
 
   _buttonDynamicStart = new QPushButton( "Start" );
   _buttonDynamicStop = new QPushButton( "Stop" );
-  layoutDynamic->addWidget( _buttonDynamicStart, 0, 0, 1, 1 );
-  layoutDynamic->addWidget( _buttonDynamicStop, 0, 1, 1, 1 );
+
+  layoutDynamic->addWidget( _frameColorDynamicPre , 0 , 0 , 1 , 1 );
+  layoutDynamic->addWidget( new QLabel( "Presynaptic" ) , 0 , 1 , 1 , 1 );
+
+  layoutDynamic->addWidget( _frameColorDynamicPost , 1 , 0 , 1 , 1 );
+  layoutDynamic->addWidget( new QLabel( "Postsynaptic" ) , 1 , 1 , 1 , 1 );
+
+  layoutDynamic->addWidget( _buttonDynamicStart , 0 , 2 , 1 , 1 );
+  layoutDynamic->addWidget( _buttonDynamicStop , 1 , 2 , 1 , 1 );
 
   auto tabsWidget = new QTabWidget( );
   tabsWidget->setTabPosition( QTabWidget::West );
-  tabsWidget->addTab( containerGeneral, "General" );
-  tabsWidget->addTab( containerMorpho, "Morphologies" );
-  tabsWidget->addTab( containerSynapses, "Synapses" );
-  tabsWidget->addTab( containerPaths, "Paths" );
+  tabsWidget->addTab( containerGeneral , "General" );
+  tabsWidget->addTab( containerSynapses , "Synapses" );
+  tabsWidget->addTab( containerPaths , "Paths" );
 
   scrollArea->setWidget( container );
   scrollArea->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
 
   _dockColor->setWidget( tabsWidget );
-  addDockWidget( Qt::RightDockWidgetArea, _dockColor );
+  addDockWidget( Qt::RightDockWidgetArea , _dockColor );
 
   // SLOTS
-  connect( _radioAlphaModeNormal, SIGNAL( toggled( bool )),
-           this, SLOT( alphaModeChanged( bool )));
+  connect( _radioAlphaModeNormal , SIGNAL( toggled( bool )) ,
+           this , SLOT( alphaModeChanged( bool )));
 
-  connect( _buttonDynamicStart, SIGNAL( clicked( )), this, SLOT( dynamicStart( )));
-  connect( _buttonDynamicStop, SIGNAL( clicked( )), this, SLOT( dynamicStop( )));
+  connect( _buttonDynamicStart , SIGNAL( clicked( )) , this ,
+           SLOT( dynamicStart( )));
+  connect( _buttonDynamicStop , SIGNAL( clicked( )) , this ,
+           SLOT( dynamicStop( )));
 
-  connect( _frameColorMorphoPre, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorSynapsesPre , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorMorphoPost, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorSynapsesPost , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorMorphoContext, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorPathsPre , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorMorphoOther, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorPathsPost , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorSynapsesPre, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorDynamicPre , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorSynapsesPost, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _frameColorDynamicPost , SIGNAL( clicked( )) ,
+           this , SLOT( colorSelectionClicked( )));
 
-  connect( _frameColorPathsPre, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
 
-  connect( _frameColorPathsPost, SIGNAL( clicked( )),
-           this, SLOT( colorSelectionClicked()));
+  connect( _checkSynapsesPre , SIGNAL( toggled( bool )) ,
+           _openGLWidget , SLOT( showSynapsesPre( bool )));
+  connect( _checkSynapsesPost , SIGNAL( toggled( bool )) ,
+           _openGLWidget , SLOT( showSynapsesPost( bool )));
+  connect( _checkPathsPre , SIGNAL( toggled( bool )) ,
+           _openGLWidget , SLOT( showPathsPre( bool )));
+  connect( _checkPathsPost , SIGNAL( toggled( bool )) ,
+           _openGLWidget , SLOT( showPathsPost( bool )));
 
-  connect(  _checkShowMorphoPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSelectedPre( int )));
-  connect(  _checkShowMorphoPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSelectedPost( int )));
-  connect(  _checkShowMorphoContext, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showRelated( int )));
-  connect(  _checkShowMorphoOther, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showContext( int )));
-  connect(  _checkSynapsesPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSynapsesPre( int )));
-  connect(  _checkSynapsesPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showSynapsesPost( int )));
-  connect(  _checkPathsPre, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showPathsPre( int )));
-  connect(  _checkPathsPost, SIGNAL( stateChanged( int )),
-           _openGLWidget, SLOT( showPathsPost( int )));
+  connect( _sliderAlphaSynapsesPre , SIGNAL( valueChanged( int )) ,
+           this , SLOT( transparencySliderMoved( int )));
+  connect( _sliderAlphaSynapsesPost , SIGNAL( valueChanged( int )) ,
+           this , SLOT( transparencySliderMoved( int )));
+  connect( _sliderAlphaPathsPre , SIGNAL( valueChanged( int )) ,
+           this , SLOT( transparencySliderMoved( int )));
+  connect( _sliderAlphaPathsPost , SIGNAL( valueChanged( int )) ,
+           this , SLOT( transparencySliderMoved( int )));
+  connect( _sliderAlphaSynapsesMap , SIGNAL( valueChanged( int )) ,
+           this , SLOT( transparencySliderMoved( int )));
 
-  connect( _buttonShowFullMorphoPre, SIGNAL( toggled( bool )),
-           this, SLOT( showFullMorphologyChecked( bool )));
-  connect( _buttonShowFullMorphoPost, SIGNAL( toggled( bool )),
-             this, SLOT( showFullMorphologyChecked( bool )));
-  connect( _buttonShowFullMorphoContext, SIGNAL( toggled( bool )),
-             this, SLOT( showFullMorphologyChecked( bool )));
-  connect( _buttonShowFullMorphoOther, SIGNAL( toggled( bool )),
-             this, SLOT( showFullMorphologyChecked( bool )));
-
-  connect( _sliderAlphaSynapsesPre, SIGNAL( valueChanged( int )),
-           this, SLOT( transparencySliderMoved( int )));
-  connect( _sliderAlphaSynapsesPost, SIGNAL( valueChanged( int )),
-           this, SLOT( transparencySliderMoved( int )));
-  connect( _sliderAlphaPathsPre, SIGNAL( valueChanged( int )),
-           this, SLOT( transparencySliderMoved( int )));
-  connect( _sliderAlphaPathsPost, SIGNAL( valueChanged( int )),
-           this, SLOT( transparencySliderMoved( int )));
-  connect( _sliderAlphaSynapsesMap, SIGNAL( valueChanged( int )),
-           this, SLOT( transparencySliderMoved( int )));
-
-  connect( _spinBoxSizeSynapsesPre, SIGNAL( valueChanged( double )),
-           this, SLOT( sizeSpinBoxChanged( double )));
-  connect( _spinBoxSizeSynapsesPost, SIGNAL( valueChanged( double )),
-           this, SLOT( sizeSpinBoxChanged( double )));
-  connect( _spinBoxSizePathsPre, SIGNAL( valueChanged( double )),
-           this, SLOT( sizeSpinBoxChanged( double )));
-  connect( _spinBoxSizePathsPost, SIGNAL( valueChanged( double )),
-           this, SLOT( sizeSpinBoxChanged( double )));
-  connect( _spinBoxSizeSynapsesMap, SIGNAL( valueChanged( double )),
-           this, SLOT( sizeSpinBoxChanged( double )));
+  connect( _spinBoxSizeSynapsesPre , SIGNAL( valueChanged( double )) ,
+           this , SLOT( sizeSpinBoxChanged( double )));
+  connect( _spinBoxSizeSynapsesPost , SIGNAL( valueChanged( double )) ,
+           this , SLOT( sizeSpinBoxChanged( double )));
+  connect( _spinBoxSizePathsPre , SIGNAL( valueChanged( double )) ,
+           this , SLOT( sizeSpinBoxChanged( double )));
+  connect( _spinBoxSizePathsPost , SIGNAL( valueChanged( double )) ,
+           this , SLOT( sizeSpinBoxChanged( double )));
+  connect( _spinBoxSizeSynapsesMap , SIGNAL( valueChanged( double )) ,
+           this , SLOT( sizeSpinBoxChanged( double )));
 
   checkMapSynapses->setChecked( true );
-  connect( checkMapSynapses, SIGNAL( stateChanged( int )),
-           this, SLOT( setSynapseMappingState( int )));
+  connect( checkMapSynapses , SIGNAL( stateChanged( int )) ,
+           this , SLOT( setSynapseMappingState( int )));
 
-  connect( _comboSynapseMapAttrib, SIGNAL( currentIndexChanged( int )),
-           this, SLOT( setSynapseMappingAttribute( int )));
+  connect( _comboSynapseMapAttrib , SIGNAL( currentIndexChanged( int )) ,
+           this , SLOT( setSynapseMappingAttribute( int )));
 
   _radioAlphaModeNormal->setChecked( true );
 
   checkMapSynapses->setChecked( false );
 
-  _buttonShowFullMorphoPre->setChecked( true );
-  _buttonShowFullMorphoPost->setChecked( true );
-  _buttonShowFullMorphoContext->setChecked( false );
-  _buttonShowFullMorphoOther->setChecked( false );
+  auto action = _dockColor->toggleViewAction( );
+  action->setIcon( QIcon( ":/icons/colorpicker.svg" ));
+  action->setToolTip( tr( "Toggle colors panel visibility" ));
+  _ui->menuPanels->addAction( action );
+  _ui->toolBar->addAction( action );
 }
 
 void MainWindow::initInfoDock( void )
 {
   _dockInfo = new QDockWidget( tr( "Information" ));
-  _dockInfo->setMinimumHeight(100);
+  _dockInfo->setMinimumHeight( 400 );
 
   auto container = new QWidget( );
 
@@ -692,28 +642,34 @@ void MainWindow::initInfoDock( void )
 
   _dockInfo->setWidget( scrollInfo );
 
-  addDockWidget( Qt::RightDockWidgetArea, _dockInfo );
+  addDockWidget( Qt::RightDockWidgetArea , _dockInfo );
+
+  auto action = _dockInfo->toggleViewAction( );
+  action->setIcon( QIcon( ":/icons/information.svg" ));
+  action->setToolTip( tr( "Toggle information panel visibility" ));
+  _ui->menuPanels->addAction( action );
+  _ui->toolBar->addAction( action );
 }
 
-void MainWindow::onDataLoaded()
+void MainWindow::onDataLoaded( )
 {
-  _ui->statusbar->clearMessage();
+  _ui->statusbar->clearMessage( );
 
-  if(m_thread)
+  if ( m_thread )
   {
-    const auto errors = m_thread->errors();
-    if(!errors.empty())
+    const auto errors = m_thread->errors( );
+    if ( !errors.empty( ))
     {
-      QApplication::restoreOverrideCursor();
-      _ui->toolBar->setEnabled(true);
+      QApplication::restoreOverrideCursor( );
+      _ui->toolBar->setEnabled( true );
 
       m_thread = nullptr;
 
-      QMessageBox msgBox(this);
-      msgBox.setWindowTitle(tr("Error loading data"));
-      msgBox.setIcon(QMessageBox::Icon::Critical);
-      msgBox.setText(QString::fromStdString(errors));
-      msgBox.exec();
+      QMessageBox msgBox( this );
+      msgBox.setWindowTitle( tr( "Error loading data" ));
+      msgBox.setIcon( QMessageBox::Icon::Critical );
+      msgBox.setText( QString::fromStdString( errors ));
+      msgBox.exec( );
 
       return;
     }
@@ -725,35 +681,38 @@ void MainWindow::onDataLoaded()
 
   disableInterface( false );
 
+  // Refresh view data clearing the selection.
+  clear( );
+
   m_thread = nullptr;
 }
 
 void MainWindow::_loadDefaultValues( void )
 {
-  const int range = _sliderMax - _sliderMin;
+  const int range = SLIDER_MAX - SLIDER_MIN;
 
-  int value = _openGLWidget->alphaSynapsesPre( ) * range + _sliderMin;
-  value = std::min( _sliderMax, std::max( _sliderMin, value ));
+  int value = _openGLWidget->alphaSynapsesPre( ) * range + SLIDER_MIN;
+  value = std::min( SLIDER_MAX , std::max( SLIDER_MIN , value ));
 
   _sliderAlphaSynapsesPre->setSliderPosition( value );
 
-  value = _openGLWidget->alphaSynapsesPost( ) * range + _sliderMin;
-  value = std::min( _sliderMax, std::max( _sliderMin, value ));
+  value = _openGLWidget->alphaSynapsesPost( ) * range + SLIDER_MIN;
+  value = std::min( SLIDER_MAX , std::max( SLIDER_MIN , value ));
 
   _sliderAlphaSynapsesPost->setSliderPosition( value );
 
-  value = _openGLWidget->alphaPathsPre( ) * range + _sliderMin;
-  value = std::min( _sliderMax, std::max( _sliderMin, value ));
+  value = _openGLWidget->alphaPathsPre( ) * range + SLIDER_MIN;
+  value = std::min( SLIDER_MAX , std::max( SLIDER_MIN , value ));
 
   _sliderAlphaPathsPre->setSliderPosition( value );
 
-  value = _openGLWidget->alphaPathsPost( ) * range + _sliderMin;
-  value = std::min( _sliderMax, std::max( _sliderMin, value ));
+  value = _openGLWidget->alphaPathsPost( ) * range + SLIDER_MIN;
+  value = std::min( SLIDER_MAX , std::max( SLIDER_MIN , value ));
 
   _sliderAlphaPathsPost->setSliderPosition( value );
 
-  value = _openGLWidget->alphaSynapsesMap( ) * range + _sliderMin;
-  value = std::min( _sliderMax, std::max( _sliderMin, value ));
+  value = _openGLWidget->alphaSynapsesMap( ) * range + SLIDER_MIN;
+  value = std::min( SLIDER_MAX , std::max( SLIDER_MIN , value ));
 
   _sliderAlphaSynapsesMap->setSliderPosition( value );
 
@@ -767,8 +726,8 @@ void MainWindow::_loadDefaultValues( void )
 
 }
 
-static bool sortAscending ( const std::pair< unsigned int, unsigned int >& lhs,
-                     const std::pair< unsigned int, unsigned int >& rhs)
+static bool sortAscending( const std::pair< unsigned int , unsigned int >& lhs ,
+                           const std::pair< unsigned int , unsigned int >& rhs )
 {
   return lhs.first < rhs.first;
 }
@@ -779,59 +738,59 @@ void MainWindow::updateInfoDock( void )
 
   const auto& synapses = _openGLWidget->currentSynapses( );
 
-  std::unordered_map< unsigned int, unsigned int > presentSynapsesPre;
-  std::unordered_map< unsigned int, unsigned int > presentSynapsesPost;
+  std::unordered_map< unsigned int , unsigned int > presentSynapsesPre;
+  std::unordered_map< unsigned int , unsigned int > presentSynapsesPost;
 
-  std::vector< std::pair< unsigned int, unsigned int >> vecSynPre;
-  std::vector< std::pair< unsigned int, unsigned int >> vecSynPost;
+  std::vector< std::pair< unsigned int , unsigned int >> vecSynPre;
+  std::vector< std::pair< unsigned int , unsigned int >> vecSynPost;
 
-  for( auto syn : synapses )
+  for ( auto syn: synapses )
   {
     const unsigned int gidPre = syn->preSynapticNeuron( );
     const unsigned int gidPost = syn->postSynapticNeuron( );
 
     auto synapseNumberPre = presentSynapsesPre.find( gidPre );
-    if( synapseNumberPre == presentSynapsesPre.end( ))
+    if ( synapseNumberPre == presentSynapsesPre.end( ))
     {
       synapseNumberPre =
-          presentSynapsesPre.insert(
-              std::make_pair( gidPre, vecSynPre.size( ))).first;
+        presentSynapsesPre.insert(
+          std::make_pair( gidPre , vecSynPre.size( ))).first;
 
-      vecSynPre.push_back( std::make_pair( gidPre, 0 ));
+      vecSynPre.push_back( std::make_pair( gidPre , 0 ));
     }
 
     vecSynPre[ synapseNumberPre->second ].second++;
 
     auto synapseNumberPost = presentSynapsesPost.find( gidPost );
-    if( synapseNumberPost == presentSynapsesPost.end( ))
+    if ( synapseNumberPost == presentSynapsesPost.end( ))
     {
       synapseNumberPost =
-          presentSynapsesPost.insert(
-              std::make_pair( gidPost, vecSynPost.size( ) )).first;
+        presentSynapsesPost.insert(
+          std::make_pair( gidPost , vecSynPost.size( ))).first;
 
-      vecSynPost.push_back( std::make_pair( gidPost, 0 ));
+      vecSynPost.push_back( std::make_pair( gidPost , 0 ));
     }
 
     vecSynPost[ synapseNumberPost->second ].second++;
   }
 
-  std::sort( vecSynPre.begin( ), vecSynPre.end( ), sortAscending );
-  std::sort( vecSynPost.begin( ), vecSynPost.end( ), sortAscending );
+  std::sort( vecSynPre.begin( ) , vecSynPre.end( ) , sortAscending );
+  std::sort( vecSynPost.begin( ) , vecSynPost.end( ) , sortAscending );
 
-  for( unsigned int i = 0; i < 2; ++i )
+  for ( unsigned int i = 0; i < 2; ++i )
   {
-    QWidget *widget = nullptr;
-    std::vector< std::pair< unsigned int, unsigned int >>* presentSynapses = nullptr;
+    QWidget* widget = nullptr;
+    std::vector< std::pair< unsigned int , unsigned int >>* presentSynapses = nullptr;
 
-    if( i == 0 )
+    if ( i == 0 )
     {
-      _widgetInfoPre = new QGroupBox( tr( "Presynaptic neurons:") );
+      _widgetInfoPre = new QGroupBox( tr( "Presynaptic neurons:" ));
       widget = _widgetInfoPre;
       presentSynapses = &vecSynPre;
     }
     else
     {
-      _widgetInfoPost = new QGroupBox( tr( "Postsynaptic neurons:") );
+      _widgetInfoPost = new QGroupBox( tr( "Postsynaptic neurons:" ));
       widget = _widgetInfoPost;
       presentSynapses = &vecSynPost;
     }
@@ -856,38 +815,42 @@ void MainWindow::updateInfoDock( void )
     line->setFrameShape( QFrame::VLine );
     line->setFrameShadow( QFrame::Sunken );
 
-    upperLayout->addWidget( new QLabel( "  GID" ), 0, currentColumn++, 1, 1 );
-    upperLayout->addWidget( line, 0, currentColumn++, 1, 1 );
-    upperLayout->addWidget( new QLabel( "# synapses" ), 0, currentColumn, 1, 1 );
-    upperLayout->addWidget( scroll, 1, 0, 1, maxColumns );
+    upperLayout->addWidget( new QLabel( "  GID" ) , 0 , currentColumn++ , 1 ,
+                            1 );
+    upperLayout->addWidget( line , 0 , currentColumn++ , 1 , 1 );
+    upperLayout->addWidget( new QLabel( "# synapses" ) , 0 , currentColumn , 1 ,
+                            1 );
+    upperLayout->addWidget( scroll , 1 , 0 , 1 , maxColumns );
 
     currentColumn = 0;
 
-    if(presentSynapses != nullptr)
+    if ( presentSynapses != nullptr )
     {
-      for( const auto &syn : *presentSynapses )
+      for ( const auto& syn: *presentSynapses )
       {
         currentColumn = 0;
 
-        const auto gidLabel = new QLabel(QString::number( syn.first ));
+        const auto gidLabel = new QLabel( QString::number( syn.first ));
 
-        layoutWidget->addWidget(gidLabel, currentRow, currentColumn++, 1, 1 );
+        layoutWidget->addWidget( gidLabel , currentRow , currentColumn++ , 1 ,
+                                 1 );
 
         auto vline = new QFrame( );
         vline->setFrameShape( QFrame::VLine );
         vline->setFrameShadow( QFrame::Sunken );
 
-        layoutWidget->addWidget(vline, currentRow, currentColumn++, 1, 1);
+        layoutWidget->addWidget( vline , currentRow , currentColumn++ , 1 , 1 );
 
-        const auto usedLabel = new QLabel(QString::number( syn.second ));
+        const auto usedLabel = new QLabel( QString::number( syn.second ));
 
-        layoutWidget->addWidget(usedLabel, currentRow, currentColumn, 1, 1 );
+        layoutWidget->addWidget( usedLabel , currentRow , currentColumn , 1 ,
+                                 1 );
 
         ++currentRow;
       }
     }
 
-    _layoutInfo->addWidget( widget, widget == _widgetInfoPre ? 0:1);
+    _layoutInfo->addWidget( widget , widget == _widgetInfoPre ? 0 : 1 );
   }
 
   update( );
@@ -895,60 +858,66 @@ void MainWindow::updateInfoDock( void )
 
 void MainWindow::clearInfoDock( void )
 {
-  std::function<void(QLayout*)> clearLayout = [&clearLayout](QLayout *layout)
+  std::function< void( QLayout* ) > clearLayout = [ &clearLayout ](
+    QLayout* layout )
   {
-    while(layout->count() > 0)
+    while ( layout->count( ) > 0 )
     {
-      auto child = layout->takeAt(0);
-      if(child->layout() != 0)
+      auto child = layout->takeAt( 0 );
+      if ( child->layout( ) != 0 )
       {
-        clearLayout(child->layout());
+        clearLayout( child->layout( ));
       }
-      else if(child->widget() != 0)
+      else if ( child->widget( ) != 0 )
       {
-        delete child->widget();
+        delete child->widget( );
       }
 
       delete child;
     }
   };
 
-  clearLayout(_layoutInfo);
+  clearLayout( _layoutInfo );
   _widgetInfoPre = nullptr;
   _widgetInfoPost = nullptr;
 }
 
-void MainWindow::loadData( const std::string& dataset,
+void MainWindow::loadData( const std::string& dataset ,
                            const std::string& target )
 {
-  if(m_thread)
+  if ( m_thread )
   {
-    QMessageBox msgBox{this};
-    msgBox.setWindowTitle(tr("Data loading"));
-    msgBox.setIcon(QMessageBox::Icon::Information);
-    msgBox.setText(tr("A dataset is already loading. Cannot load: %1, target %2")
-                         .arg(QString::fromStdString(dataset)
-                         .arg(QString::fromStdString(target))));
-    msgBox.exec();
+    QMessageBox msgBox{ this };
+    msgBox.setWindowTitle( tr( "Data loading" ));
+    msgBox.setIcon( QMessageBox::Icon::Information );
+    msgBox.setText(
+      tr( "A dataset is already loading. Cannot load: %1, target %2" )
+        .arg( QString::fromStdString( dataset )
+                .arg( QString::fromStdString( target ))));
+    msgBox.exec( );
   }
 
-  disableInterface(true);
-  _ui->statusbar->showMessage(tr("Loading %1").arg(QString::fromStdString(dataset)) );
+  disableInterface( true );
+  _ui->statusbar->showMessage(
+    tr( "Loading %1" ).arg( QString::fromStdString( dataset )));
 
-  m_thread = std::make_shared<LoadingThread>(dataset, target, this);
-  auto dialog = new LoadingDialog{this};
+  m_thread = std::make_shared< LoadingThread >( dataset , target , this );
+  auto dialog = new LoadingDialog{ this };
 
-  connect(m_thread.get(), SIGNAL(finished()),
-          this,           SLOT(onDataLoaded()), Qt::QueuedConnection);
-  connect(m_thread.get(), SIGNAL(destroyed(QObject *)),
-          dialog,         SLOT(closeDialog()));
-  connect(m_thread.get(), SIGNAL(progress(const QString &, const unsigned int)),
-          dialog,         SLOT(progress(const QString &, const unsigned int)));
+  connect( m_thread.get( ) , SIGNAL( finished( )) ,
+           this , SLOT( onDataLoaded( )) , Qt::QueuedConnection );
+  connect( m_thread.get( ) , SIGNAL( destroyed( QObject * )) ,
+           dialog , SLOT( closeDialog( )) );
+  connect( m_thread.get( ) ,
+           SIGNAL( progress(
+                     const QString & , const unsigned int)) ,
+           dialog , SLOT( progress(
+                            const QString & , const unsigned int)) );
 
-  dialog->show();
-  _openGLWidget->doneCurrent();
+  dialog->show( );
+  _openGLWidget->doneCurrent( );
 
-  m_thread->start();
+  m_thread->start( );
 }
 
 void MainWindow::loadPresynapticList( void )
@@ -957,17 +926,17 @@ void MainWindow::loadPresynapticList( void )
 
   _modelListPre->clear( );
 
-  QList<QStandardItem*> items;
-  for( const auto &neuron : nsolData->neurons( ))
+  QList< QStandardItem* > items;
+  for ( const auto& neuron: nsolData->neurons( ))
   {
     auto item = new QStandardItem( );
-    item->setData( neuron.first, Qt::DisplayRole );
+    item->setData( neuron.first , Qt::DisplayRole );
 
     items << item;
   }
 
   _modelListPre->appendColumn( items );
-  _modelListPre->sort( 0, Qt::AscendingOrder );
+  _modelListPre->sort( 0 , Qt::AscendingOrder );
 
   update( );
 }
@@ -979,19 +948,20 @@ void MainWindow::loadPostsynapticList( unsigned int gid )
   _modelListPost->clear( );
 
   std::set< unsigned int > selection = { gid };
-  const auto synapses = nsolData->circuit( ).synapses( selection, nsol::Circuit::PRESYNAPTICCONNECTIONS );
+  const auto synapses = nsolData->circuit( ).synapses( selection ,
+                                                       nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
   selection.clear( );
 
-  QList<QStandardItem*> items;
-  for(const auto &syn : synapses )
+  QList< QStandardItem* > items;
+  for ( const auto& syn: synapses )
   {
     unsigned int postGid = syn->postSynapticNeuron( );
-    if( selection.find( postGid ) != selection.end( ))
+    if ( selection.find( postGid ) != selection.end( ))
       continue;
 
     auto item = new QStandardItem( );
-    item->setData( postGid, Qt::DisplayRole );
+    item->setData( postGid , Qt::DisplayRole );
 
     items << item;
 
@@ -1014,9 +984,8 @@ void MainWindow::openBlueConfigThroughDialog( void )
 
   if ( !filename.isEmpty( ))
   {
-
     bool ok;
-    QString target = QInputDialog::getText(
+    const QString target = QInputDialog::getText(
       this , tr( "Select the target" ) ,
       tr( "Target:" ) , QLineEdit::Normal , QString( ) , &ok );
 
@@ -1029,18 +998,21 @@ void MainWindow::openBlueConfigThroughDialog( void )
 
 void MainWindow::exportDataDialog( void )
 {
-
   const QString xml = QFileDialog::getSaveFileName(
     this , tr( "Save scene..." ) , tr( "scene.xml" ) ,
     tr( "Extensible Markup Language (*.xml)" ) ,
     nullptr , QFileDialog::DontUseNativeDialog );
+
+  if ( xml.isEmpty( )) return;
 
   const QString csv = QFileDialog::getSaveFileName(
     this , tr( "Save synapses..." ) , tr( "synapses.csv" ) ,
     tr( "Comma Separated Values (*.csv)" ) ,
     nullptr , QFileDialog::DontUseNativeDialog );
 
-  QStringList list{ "Compact" , "Matrix" };
+  if ( csv.isEmpty( )) return;
+
+  const QStringList list{ "Aggregate" , "Compact" , "Matrix" };
 
   const QString option =
     csv.isEmpty( ) ?
@@ -1049,139 +1021,62 @@ void MainWindow::exportDataDialog( void )
                            "CSV type:" , list , 0 , false );
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
+
+  const auto dataset = _openGLWidget->dataset( );
+
   if ( !xml.isEmpty( ))
   {
-    exportXML( xml );
+    std::ofstream file;
+    file.open( xml.toStdString( ) , std::ofstream::out );
+
+    if ( file.good( ))
+    {
+      syncopa::toXML( dataset , file );
+    }
+    file.close( );
   }
 
   if ( !csv.isEmpty( ))
   {
+
     if ( !option.isEmpty( ))
     {
-      if ( option == "Matrix" )
+      std::ofstream file;
+      file.open( csv.toStdString( ) , std::ofstream::out );
+      if ( file.good( ))
       {
-        exportMatrixCSV( csv );
+        if ( option == "Matrix" )
+        {
+          toMatrixCSV( dataset , file );
+        }
+        else if ( option == "Aggregate" )
+        {
+          toAggregateCSV( dataset , file );
+        }
+        else
+        {
+          toCompactCSV( dataset , file );
+        }
       }
-      else
-      {
-        exportCompactCSV( csv );
-      }
+      file.close( );
     }
   }
   QApplication::restoreOverrideCursor( );
 }
 
-void MainWindow::exportMatrixCSV( const QString& filename ) const
+void MainWindow::syncScene( )
 {
-  const auto* nsolData = _openGLWidget->dataset( );
-  const auto& neurons = nsolData->neurons( );
+  std::stringstream xml;
+  const auto dataset = _openGLWidget->dataset( );
 
-  const auto minmax = std::minmax_element(
-    neurons.begin( ) , neurons.end( ) ,
-    [ ]( std::pair< const unsigned int , nsol::Neuron* > a ,
-         std::pair< const unsigned int , nsol::Neuron* > b )
-    {
-      return a.first < b.first;
-    } );
+  toXML( dataset , xml );
+  auto xmlResult = QString::fromStdString( xml.str( ));
 
-  const auto min = minmax.first;
-  const auto max = minmax.second;
+  std::stringstream csv;
+  toAggregateCSV( dataset , csv );
+  auto csvResult = QString::fromStdString( csv.str( ));
 
-  QFile file( filename );
-  file.open( QFile::WriteOnly );
-
-  file.write( "Pre gid \\ Post gid" );
-
-  for ( unsigned int i = min->first; i <= max->first; i++ )
-  {
-    file.write( tr( ";%1" ).arg( i ).toUtf8( ));
-  }
-
-  std::map< unsigned int , unsigned int > synapsesMap;
-  for ( const auto& pre: nsolData->neurons( ))
-  {
-    const auto synapses = nsolData->circuit( ).synapses(
-      pre.first , nsol::Circuit::PRESYNAPTICCONNECTIONS
-    );
-
-    for ( const auto& syn: synapses )
-    {
-      const unsigned int post = syn->postSynapticNeuron( );
-      synapsesMap[ post ] = synapsesMap[ post ] + 1;
-    }
-
-    file.write( tr( "\n%1" ).arg( pre.first ).toUtf8( ));
-    for ( unsigned int i = min->first; i <= max->first; i++ )
-    {
-      file.write( tr( ";%1" ).arg( synapsesMap[ i ] ).toUtf8( ));
-    }
-    synapsesMap.clear( );
-  }
-  file.close( );
-}
-
-void MainWindow::exportCompactCSV( const QString& filename ) const
-{
-  const auto* nsolData = _openGLWidget->dataset( );
-
-  QFile file( filename );
-  file.open( QFile::WriteOnly );
-
-  const brain::Circuit brainCircuit( *_openGLWidget->dataset( )->blueConfig( ));
-  const brion::GIDSet gidSetBrain = brainCircuit.getGIDs(
-    _openGLWidget->dataset( )->blueConfigTarget( ));
-
-  const brain::Synapses& brainSynapses =
-    brainCircuit.getAfferentSynapses( gidSetBrain ,
-                                      brain::SynapsePrefetch::attributes );
-
-  file.write( "SynId;PreNeuronId;PostNeuronId;Delay;Conductance;"
-              "Utilization;Depression;Facilitation;Efficacy" );
-
-  for ( const auto& pre: nsolData->neurons( ))
-  {
-    const auto synapses = nsolData->circuit( ).synapses(
-      pre.first , nsol::Circuit::PRESYNAPTICCONNECTIONS
-    );
-    for ( const auto& syn: synapses )
-    {
-      auto morphSyn = dynamic_cast<nsol::MorphologySynapse*>(syn);
-      if ( morphSyn )
-      {
-        auto brainSyn = brainSynapses[ morphSyn->gid( ) ];
-        file.write( tr( "\n%1;%2;%3;%4;%5;%6;%7;%8;%9" )
-                      .arg( morphSyn->gid( ))
-                      .arg( morphSyn->preSynapticNeuron( ))
-                      .arg( morphSyn->postSynapticNeuron( ))
-                      .arg( brainSyn.getDelay( ))
-                      .arg( brainSyn.getConductance( ))
-                      .arg( brainSyn.getUtilization( ))
-                      .arg( brainSyn.getDepression( ))
-                      .arg( brainSyn.getFacilitation( ))
-                      .arg( brainSyn.getEfficacy( ))
-                      .toUtf8( ));
-      }
-    }
-  }
-  file.close( );
-}
-
-void MainWindow::exportXML( const QString& filename ) const
-{
-  const auto* nsolData = _openGLWidget->dataset( );
-
-  QFile file( filename );
-  file.open( QFile::WriteOnly );
-
-  nsol::XmlSceneWriter::writeToXml(
-    filename.toStdString( ) ,
-    nsolData->columns( ) ,
-    std::map< std::string , nsol::NeuronMorphologyPtr >( ) ,
-    false
-  );
-
-
-  file.close( );
+  emit _web_api.onSceneSync( xmlResult , csvResult );
 }
 
 void MainWindow::presynapticNeuronClicked( )
@@ -1195,74 +1090,189 @@ void MainWindow::presynapticNeuronClicked( )
       Qt::DisplayRole ).value< unsigned int >( ));
   }
 
-  if( _openGLWidget->mode( ) == syncopa::PATHS )
+  if ( _openGLWidget->mode( ) == syncopa::PATHS )
   {
-    if(selection.size() > 1)
+    if ( selection.size( ) > 1 )
     {
-      _openGLWidget->selectPresynapticNeuron( selection );
-      _modelListPost->clear();
+      _modelListPost->clear( );
     }
     else
     {
-      const auto gid = selection.front();
-      _openGLWidget->selectPresynapticNeuron( gid );
+      const auto gid = selection.front( );
       loadPostsynapticList( gid );
     }
   }
-  else
+
+  // Generate cluster
+  std::map< QString , std::unordered_set< unsigned int>> selections;
+
+  std::unordered_set< unsigned int > pre( selection.begin( ) ,
+                                          selection.end( ));
+  auto connected = _openGLWidget->getDomainManager( )->connectedTo(
+    selection.front( ));
+
+  auto other = _openGLWidget->getGidsAll( );
+
+  for ( const auto& item: pre )
   {
-    _openGLWidget->selectPresynapticNeuron( selection );
+    connected.erase( item );
+    other.erase( item );
   }
 
-  _groupBoxDynamic->setEnabled( false );
+  for ( const auto& item: connected )
+  {
+    other.erase( item );
+  }
+
+  selections[ "Presynaptic" ] = pre;
+  selections[ "Postsynaptic" ] = { };
+  selections[ "Connected" ] = connected;
+  selections[ "Other" ] = other;
+
+  auto& metadata = _neuronClusterManager->getMetadata( "Main Group" );
+  metadata.focusedSelection = "";
+
+  auto& preMeta = metadata.selection[ "Presynaptic" ];
+  preMeta.enabled = true;
+  preMeta.synapsesVisibility = syncopa::SynapsesVisibility::ALL;
+  preMeta.pathsVisibility = syncopa::PathsVisibility::ALL;
+  preMeta.pathTypes = syncopa::PathTypes::ALL;
+
+  auto& postMeta = metadata.selection[ "Postsynaptic" ];
+  postMeta.enabled = true;
+  postMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  postMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& connectedMeta = metadata.selection[ "Connected" ];
+  connectedMeta.enabled = true;
+  connectedMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  connectedMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& otherMeta = metadata.selection[ "Other" ];
+  otherMeta.enabled = true;
+  otherMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  otherMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  _neuronClusterManager->addCluster(
+    NeuronCluster( "Main Group" , selections ));
+
+  //
+  _groupBoxDynamic->setEnabled( _openGLWidget->mode( ) == syncopa::PATHS );
   dynamicStop( );
 
   updateInfoDock( );
 
-  if ( m_socket )
+  _openGLWidget->home();
+
+  if ( _web_socket )
   {
     if ( _openGLWidget->mode( ) == syncopa::SYNAPSES || selection.empty( ))
     {
-      m_socket->sendMessage( SynapsesModeSelection( selection ).toJSON( ));
+      QJsonArray array;
+      for ( const auto& item: selection )
+      {
+        array.push_back( QJsonValue( static_cast<int>(item)));
+      }
+      emit
+      _web_api.onSynapsesModeSelection( array );
     }
     else
     {
-      throw std::runtime_error( "PATATA" );
-      m_socket->sendMessage( PathsModeSelection(
-        selection.at( 0 ) , std::vector< unsigned int >( ))
-                               .toJSON( ));
+      emit
+      _web_api.onPathsModeSelection( selection.at( 0 ) , QJsonArray( ));
     }
   }
 }
 
-void MainWindow::postsynapticNeuronClicked()
+void MainWindow::postsynapticNeuronClicked( )
 {
   std::vector< unsigned int > selection;
-  for( auto item : _listPostsynaptic->selectionModel( )->selectedIndexes( ))
+  for ( auto item: _listPostsynaptic->selectionModel( )->selectedIndexes( ))
   {
     selection.push_back( _modelListPost->itemFromIndex( item )->data(
       Qt::DisplayRole ).value< unsigned int >( ));
   }
 
-  _openGLWidget->selectPostsynapticNeuron( selection );
-
   _groupBoxDynamic->setEnabled( true );
   dynamicStop( );
-
-//  std::cout << "Selected post: ";
-//  std::for_each( selection.cbegin( ) , selection.cend( ) ,
-//                 [ ]( unsigned int gid )
-//                 { std::cout << gid << " "; } );
-//  std::cout << std::endl;
-
   updateInfoDock( );
 
-  if ( m_socket )
+  // Generate cluster
+
+  std::map< QString , std::unordered_set< unsigned int>> selections;
+
+  auto pre = _listPresynaptic->selectionModel( )->selection( )
+    .first( ).indexes( ).first( ).data( ).value< unsigned int >( );
+
+  std::unordered_set< unsigned int > post( selection.begin( ) ,
+                                           selection.end( ));
+
+  auto connected = selection.empty( )
+                   ? std::unordered_set< unsigned int >( )
+                   : _openGLWidget->getDomainManager( )->connectedTo(
+      selection.front( ));
+
+  auto other = _openGLWidget->getGidsAll( );
+
+  post.erase( pre );
+  connected.erase( pre );
+  other.erase( pre );
+
+  for ( const auto& item: post )
   {
-    auto pre = _listPresynaptic->selectionModel( )->selection( )
-      .first( ).indexes( ).first( ).data( ).value< unsigned int >( );
-    auto message = PathsModeSelection( pre , selection );
-    m_socket->sendMessage( message.toJSON( ));
+    connected.erase( item );
+    other.erase( item );
+  }
+
+  for ( const auto& item: connected )
+  {
+    other.erase( item );
+  }
+
+  selections[ "Presynaptic" ] = { pre };
+  selections[ "Postsynaptic" ] = post;
+  selections[ "Connected" ] = connected;
+  selections[ "Other" ] = other;
+
+  auto& metadata = _neuronClusterManager->getMetadata( "Main Group" );
+  metadata.focusedSelection = "";
+
+  auto& preMeta = metadata.selection[ "Presynaptic" ];
+  preMeta.enabled = true;
+  preMeta.synapsesVisibility = syncopa::SynapsesVisibility::CONNECTED_ONLY;
+  preMeta.pathsVisibility = syncopa::PathsVisibility::CONNECTED_ONLY;
+  preMeta.pathTypes = syncopa::PathTypes::PRE_ONLY;
+
+  auto& postMeta = metadata.selection[ "Postsynaptic" ];
+  postMeta.enabled = true;
+  postMeta.synapsesVisibility = syncopa::SynapsesVisibility::CONNECTED_ONLY;
+  postMeta.pathsVisibility = syncopa::PathsVisibility::CONNECTED_ONLY;
+  postMeta.pathTypes = syncopa::PathTypes::POST_ONLY;
+
+  auto& connectedMeta = metadata.selection[ "Connected" ];
+  connectedMeta.enabled = false;
+  connectedMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  connectedMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& otherMeta = metadata.selection[ "Other" ];
+  otherMeta.enabled = false;
+  otherMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  otherMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  _neuronClusterManager->addCluster(
+    NeuronCluster( "Main Group" , selections ));
+
+  _openGLWidget->home( );
+
+  if ( _web_socket )
+  {
+    QJsonArray array;
+    for ( const auto& item: selection )
+    {
+      array.push_back( QJsonValue( static_cast<int>(item)));
+    }
+    emit
+    _web_api.onPathsModeSelection( pre , array );
   }
 }
 
@@ -1286,9 +1296,11 @@ void MainWindow::setSynapseMappingState( int state )
 
   auto rangeBounds = _openGLWidget->rangeBounds( );
 
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ),
-                            rangeBounds.first,
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ) ,
+                            rangeBounds.first ,
                             rangeBounds.second );
+
+  if ( state ) colorSynapseMapAccepted( );
 }
 
 void MainWindow::setSynapseMappingAttribute( int attrib )
@@ -1297,31 +1309,67 @@ void MainWindow::setSynapseMappingAttribute( int attrib )
 
   auto rangeBounds = _openGLWidget->rangeBounds( );
 
-  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ),
-                            rangeBounds.first,
+  _colorMapWidget->setPlot( _openGLWidget->getSynapseMappingPlot( ) ,
+                            rangeBounds.first ,
                             rangeBounds.second );
 }
 
 void MainWindow::clear( void )
 {
-  _openGLWidget->clearSelection( );
+  std::map< QString , std::unordered_set< unsigned int>> selections;
+  selections[ "Presynaptic" ] = { };
+  selections[ "Postsynaptic" ] = { };
+  selections[ "Connected" ] = { };
+  selections[ "Other" ] = _openGLWidget->getGidsAll( );
+
+  auto& metadata = _neuronClusterManager->getMetadata( "Main Group" );
+  metadata.focusedSelection = "";
+
+  auto& preMeta = metadata.selection[ "Presynaptic" ];
+  preMeta.enabled = true;
+  preMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  preMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& postMeta = metadata.selection[ "Postsynaptic" ];
+  postMeta.enabled = true;
+  postMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  postMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& connectedMeta = metadata.selection[ "Connected" ];
+  connectedMeta.enabled = true;
+  connectedMeta.synapsesVisibility = syncopa::SynapsesVisibility::HIDDEN;
+  connectedMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  auto& otherMeta = metadata.selection[ "Other" ];
+  otherMeta.enabled = true;
+  otherMeta.synapsesVisibility = syncopa::SynapsesVisibility::ALL;
+  otherMeta.pathsVisibility = syncopa::PathsVisibility::HIDDEN;
+
+  _listPresynaptic->blockSignals( true );
+  _listPostsynaptic->blockSignals( true );
 
   _listPresynaptic->selectionModel( )->clearSelection( );
-
-  if( _modelListPost )
+  if ( _modelListPost )
     _modelListPost->clear( );
+  _listPresynaptic->blockSignals( false );
+  _listPostsynaptic->blockSignals( false );
+
+  _neuronClusterManager->addCluster(
+    NeuronCluster( "Main Group" , selections ));
 
   updateInfoDock( );
+
+  _openGLWidget->home( false );
 }
 
-bool MainWindow::showDialog( QColor& current, const QString& message )
+bool MainWindow::showDialog( QColor& current , const QString& message )
 {
-  const QColor result = QColorDialog::getColor( current, this,
-                                                QString( message ),
-                                                QColorDialog::DontUseNativeDialog);
+  const QColor result = QColorDialog::getColor( current , this ,
+                                                QString( message ) ,
+                                                QColorDialog::DontUseNativeDialog );
 
-  const auto valid = result.isValid();
-  if( valid )
+  const auto valid = result.isValid( );
+  if ( valid )
   {
     current = result;
   }
@@ -1332,51 +1380,44 @@ bool MainWindow::showDialog( QColor& current, const QString& message )
 void MainWindow::colorSelectionClicked( void )
 {
   auto frame = qobject_cast< QPushButton* >( sender( ));
-  if( frame )
+  if ( frame )
   {
     QColor color;
     QString message;
 
-    if( frame == _frameColorMorphoPre )
-      color = colorEigenToQt( _openGLWidget->colorSelectedPre( ));
-    else if( frame == _frameColorMorphoPost )
-      color = colorEigenToQt( _openGLWidget->colorSelectedPost( ));
-    else if( frame == _frameColorMorphoContext )
-      color = colorEigenToQt( _openGLWidget->colorRelated( ));
-    else if( frame == _frameColorMorphoOther )
-      color = colorEigenToQt( _openGLWidget->colorContext( ));
-    else if( frame == _frameColorSynapsesPre )
+    if ( frame == _frameColorSynapsesPre )
       color = colorEigenToQt( _openGLWidget->colorSynapsesPre( ));
-    else if( frame == _frameColorSynapsesPost )
+    else if ( frame == _frameColorSynapsesPost )
       color = colorEigenToQt( _openGLWidget->colorSynapsesPost( ));
-    else if( frame == _frameColorPathsPre )
+    else if ( frame == _frameColorPathsPre )
       color = colorEigenToQt( _openGLWidget->colorPathsPre( ));
-    else if( frame == _frameColorPathsPost )
+    else if ( frame == _frameColorPathsPost )
       color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
+    else if ( frame == _frameColorDynamicPre )
+      color = _openGLWidget->getPsManager( )->getPreDynamicColor( );
+    else if ( frame == _frameColorDynamicPost )
+      color = _openGLWidget->getPsManager( )->getPostDynamicColor( );
     else
     {
-      std::cout << "Warning: Frame " << frame << " clicked not connected." << std::endl;
+      std::cout << "Warning: Frame " << frame << " clicked not connected."
+                << std::endl;
       return;
     }
 
-    if( showDialog( color, message ))
+    if ( showDialog( color , message ))
     {
-      if( frame == _frameColorMorphoPre )
-        _openGLWidget->colorSelectedPre( colorQtToEigen( color ));
-      else if( frame == _frameColorMorphoPost )
-        _openGLWidget->colorSelectedPost( colorQtToEigen( color ));
-      else if( frame == _frameColorMorphoContext )
-        _openGLWidget->colorRelated( colorQtToEigen( color ));
-      else if( frame == _frameColorMorphoOther )
-        _openGLWidget->colorContext( colorQtToEigen( color ));
-      else if( frame == _frameColorSynapsesPre )
+      if ( frame == _frameColorSynapsesPre )
         _openGLWidget->colorSynapsesPre( colorQtToEigen( color ));
-      else if( frame == _frameColorSynapsesPost )
+      else if ( frame == _frameColorSynapsesPost )
         _openGLWidget->colorSynapsesPost( colorQtToEigen( color ));
-      else if( frame == _frameColorPathsPre )
-        _openGLWidget->colorPathsPre ( colorQtToEigen( color ));
-      else if( frame == _frameColorPathsPost )
+      else if ( frame == _frameColorPathsPre )
+        _openGLWidget->colorPathsPre( colorQtToEigen( color ));
+      else if ( frame == _frameColorPathsPost )
         _openGLWidget->colorPathsPost( colorQtToEigen( color ));
+      else if ( frame == _frameColorDynamicPre )
+        _openGLWidget->getPsManager( )->setPreDynamicColor( color );
+      else if ( frame == _frameColorDynamicPost )
+        _openGLWidget->getPsManager( )->setPostDynamicColor( color );
     }
 
     frame->setStyleSheet( "background-color: " + color.name( ));
@@ -1387,20 +1428,21 @@ void MainWindow::transparencySliderMoved( int position )
 {
   auto source = qobject_cast< QSlider* >( sender( ));
 
-  const float normValue = ( position - _sliderMin) * _invRangeSliders;
+  const float normValue = ( position - SLIDER_MIN ) * INV_RANGE_SLIDERS;
 
-  if( source )
+  if ( source )
   {
-    if( source == _sliderAlphaSynapsesPre )
+    if ( source == _sliderAlphaSynapsesPre )
       _openGLWidget->alphaSynapsesPre( normValue );
-    else if( source == _sliderAlphaSynapsesPost )
+    else if ( source == _sliderAlphaSynapsesPost )
       _openGLWidget->alphaSynapsesPost( normValue );
-    else if( source == _sliderAlphaPathsPre )
+    else if ( source == _sliderAlphaPathsPre )
       _openGLWidget->alphaPathsPre( normValue );
-    else if( source == _sliderAlphaPathsPost )
+    else if ( source == _sliderAlphaPathsPost )
       _openGLWidget->alphaPathsPost( normValue );
-    else if( source == _sliderAlphaSynapsesMap )
-      _openGLWidget->alphaSynapseMap( _colorMapWidget->getColors( ), normValue );
+    else if ( source == _sliderAlphaSynapsesMap )
+      _openGLWidget->alphaSynapseMap( _colorMapWidget->getColors( ) ,
+                                      normValue );
   }
 }
 
@@ -1408,35 +1450,18 @@ void MainWindow::sizeSpinBoxChanged( double value )
 {
   auto source = qobject_cast< QDoubleSpinBox* >( sender( ));
 
-  if( source )
+  if ( source )
   {
-    if( source == _spinBoxSizeSynapsesPre )
+    if ( source == _spinBoxSizeSynapsesPre )
       _openGLWidget->sizeSynapsesPre( value );
-    else if( source == _spinBoxSizeSynapsesPost )
+    else if ( source == _spinBoxSizeSynapsesPost )
       _openGLWidget->sizeSynapsesPost( value );
-    else if( source == _spinBoxSizePathsPre )
+    else if ( source == _spinBoxSizePathsPre )
       _openGLWidget->sizePathsPre( value );
-    else if( source == _spinBoxSizePathsPost )
+    else if ( source == _spinBoxSizePathsPost )
       _openGLWidget->sizePathsPost( value );
-    else if( source == _spinBoxSizeSynapsesMap )
+    else if ( source == _spinBoxSizeSynapsesMap )
       _openGLWidget->sizeSynapseMap( value );
-  }
-}
-
-void MainWindow::showFullMorphologyChecked( bool value )
-{
-  auto source = qobject_cast< QPushButton* >( sender( ));
-
-  if( source )
-  {
-    if( source == _buttonShowFullMorphoPre )
-      _openGLWidget->showFullMorphologiesPre( value );
-    else if( source == _buttonShowFullMorphoPost )
-      _openGLWidget->showFullMorphologiesPost( value );
-    else if( source == _buttonShowFullMorphoContext )
-      _openGLWidget->showFullMorphologiesContext( value );
-    else if( source == _buttonShowFullMorphoOther )
-      _openGLWidget->showFullMorphologiesOther( value );
   }
 }
 
@@ -1445,13 +1470,9 @@ void MainWindow::colorSynapseMapAccepted( void )
   _openGLWidget->colorSynapseMap( _colorMapWidget->getColors( ));
 }
 
-void MainWindow::colorSynapseMapCancelled( void )
-{
-}
-
 void MainWindow::dynamicStart( void )
 {
-  if( !_openGLWidget->dynamicActive( ))
+  if ( !_openGLWidget->dynamicActive( ))
   {
     _buttonDynamicStart->setText( "Pause" );
     _buttonDynamicStop->setEnabled( true );
@@ -1470,7 +1491,7 @@ void MainWindow::dynamicPause( void )
 
 void MainWindow::dynamicStop( void )
 {
-  _buttonDynamicStop->setEnabled( false  );
+  _buttonDynamicStop->setEnabled( false );
   _buttonDynamicStart->setText( "Start" );
 
   _openGLWidget->stopDynamic( );
@@ -1484,24 +1505,28 @@ void MainWindow::filteringStateChanged( void )
 void MainWindow::filteringBoundsChanged( void )
 {
   auto bounds = _colorMapWidget->filterBounds( );
-  _openGLWidget->filteringBounds( bounds.first, bounds.second );
+  _openGLWidget->filteringBounds( bounds.first , bounds.second );
 }
 
 void MainWindow::modeChanged( bool selectedModeSynapses )
 {
   const TMode mode = selectedModeSynapses ? syncopa::SYNAPSES : syncopa::PATHS;
-  if(_listPresynaptic->selectionModel())
-  {
-    const auto selectedPre = _listPresynaptic->selectionModel()->selectedIndexes();
 
-    if( selectedPre.size( ) != 1 )
+  _openGLWidget->mode( mode );
+
+  if ( _listPresynaptic->selectionModel( ))
+  {
+    const auto selectedPre = _listPresynaptic->selectionModel( )->selectedIndexes( );
+
+    if ( selectedPre.size( ) != 1 )
     {
       _listPresynaptic->clearSelection( );
     }
     else if ( !selectedModeSynapses )
     {
-      const auto item = _modelListPre->itemFromIndex(selectedPre.front( ));
-      const unsigned int idx = item->data( Qt::DisplayRole ).value< unsigned int >( );
+      const auto item = _modelListPre->itemFromIndex( selectedPre.front( ));
+      const unsigned int idx = item->data(
+        Qt::DisplayRole ).value< unsigned int >( );
 
       loadPostsynapticList( idx );
     }
@@ -1511,58 +1536,9 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
     }
   }
 
-  if( mode == syncopa::SYNAPSES )
-  {
-    _checkShowMorphoPre->setChecked( false );
-    _checkShowMorphoPost->setChecked( false );
-    _checkShowMorphoContext->setChecked( false );
-    _checkShowMorphoOther->setChecked( false );
+  _groupBoxDynamic->setEnabled( !selectedModeSynapses );
 
-    _checkShowMorphoPre->setEnabled( true );
-    _checkShowMorphoPost->setEnabled( false );
-    _checkShowMorphoContext->setEnabled( false );
-    _checkShowMorphoOther->setEnabled( false );
-
-    _frameColorMorphoPre->setEnabled( true );
-    _frameColorMorphoPost->setEnabled( false );
-    _frameColorMorphoContext->setEnabled( false );
-    _frameColorMorphoOther->setEnabled( false );
-
-    _buttonShowFullMorphoPre->setEnabled( true );
-    _buttonShowFullMorphoPost->setEnabled( false );
-    _buttonShowFullMorphoContext->setEnabled( false );
-    _buttonShowFullMorphoOther->setEnabled( false );
-  }
-  else
-  {
-    _checkShowMorphoPre->setEnabled( true );
-    _checkShowMorphoPost->setEnabled( true );
-    _checkShowMorphoContext->setEnabled( true );
-    _checkShowMorphoOther->setEnabled( true );
-
-    _checkShowMorphoPre->setChecked( true );
-    _checkShowMorphoPost->setChecked( true );
-    _checkShowMorphoContext->setChecked( true );
-    _checkShowMorphoOther->setChecked( true );
-
-    _frameColorMorphoPre->setEnabled( true );
-    _frameColorMorphoPost->setEnabled( true );
-    _frameColorMorphoContext->setEnabled( true );
-    _frameColorMorphoOther->setEnabled( true );
-    _frameColorMorphoOther->setEnabled( true );
-
-    _buttonShowFullMorphoPre->setEnabled( true );
-    _buttonShowFullMorphoPost->setEnabled( true );
-    _buttonShowFullMorphoContext->setEnabled( true );
-    _buttonShowFullMorphoOther->setEnabled( true );
-
-    _buttonShowFullMorphoContext->setChecked( false );
-    _buttonShowFullMorphoOther->setChecked( false );
-  }
-
-  _groupBoxDynamic->setEnabled( false );
-
-  if( selectedModeSynapses && _modelListPost )
+  if ( selectedModeSynapses && _modelListPost )
     _modelListPost->clear( );
 
   _listPostsynaptic->setEnabled( !selectedModeSynapses );
@@ -1573,8 +1549,7 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
                                       QAbstractItemView::ExtendedSelection :
                                       QAbstractItemView::SingleSelection );
 
-  _openGLWidget->mode( mode );
-  updateInfoDock();
+  updateInfoDock( );
 }
 
 void MainWindow::alphaModeChanged( bool state )
@@ -1582,229 +1557,229 @@ void MainWindow::alphaModeChanged( bool state )
   _openGLWidget->alphaMode( !state );
 }
 
-void MainWindow::aboutDialog()
+void MainWindow::neuronClusterManagerStructureRefresh( )
+{
+  while ( auto* item = _sceneLayout->takeAt( 0 ))
+  {
+    if ( auto* widget = item->widget( ))
+    {
+      widget->deleteLater( );
+    }
+  }
+
+  for ( const auto& item: _neuronClusterManager->getClusters( ))
+  {
+    auto& metadata = _neuronClusterManager->getMetadata( item.getName( ));
+    _sceneLayout->addWidget(
+      new NeuronClusterView( _neuronClusterManager , item , metadata ));
+  }
+
+  _openGLWidget->updateMorphologyModel( _neuronClusterManager );
+  _openGLWidget->updateSynapsesModel( _neuronClusterManager );
+  _openGLWidget->updatePathsModel( _neuronClusterManager );
+}
+
+void MainWindow::neuronClusterManagerMetadataRefresh( )
+{
+  _openGLWidget->updateMorphologyModel( _neuronClusterManager );
+  _openGLWidget->updateSynapsesModel( _neuronClusterManager );
+  _openGLWidget->updatePathsModel( _neuronClusterManager );
+}
+
+void MainWindow::aboutDialog( )
 {
   QString message =
-        QString( "<h2>Syncopa" ) + "<br>" +
-        tr( "Version " ) + syncopa::Version::getString( ).c_str( ) +
-        tr( " rev (%1)<br>" ).arg( syncopa::Version::getRevision( ) ) + "</h2><br>"
-        "<a href='https://vg-lab.es/'>https://vg-lab.es/</a>" +
-        "<h4>" + tr( "Build info:" ) + "</h4>" +
-        "<ul><li>Qt " + QT_VERSION_STR +
+    QString( "<h2>Syncopa" ) + "<br>" +
+    tr( "Version " ) + syncopa::Version::getString( ).c_str( ) +
+    tr( " rev (%1)<br>" ).arg( syncopa::Version::getRevision( )) + "</h2><br>"
+                                                                   "<a href='https://vg-lab.es/'>https://vg-lab.es/</a>" +
+    "<h4>" + tr( "Build info:" ) + "</h4>" +
+    "<ul><li>Qt " + QT_VERSION_STR +
 
-  #ifdef SYNCOPA_USE_RETO
-        "</li><li>ReTo " + RETO_REV_STRING +
-  #else
-        "</li><li>ReTo " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_RETO
+    "</li><li>ReTo " + RETO_REV_STRING +
+    #else
+    "</li><li>ReTo " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_GMRVLEX
-  "</li><li>GmrvLex " + GMRVLEX_REV_STRING +
-  #else
-  "</li><li>GmrvLex " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_GMRVLEX
+    "</li><li>GmrvLex " + GMRVLEX_REV_STRING +
+    #else
+    "</li><li>GmrvLex " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_PREFR
-        "</li><li>prefr " + PREFR_REV_STRING +
-  #else
-        "</li><li>prefr " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_PREFR
+    "</li><li>prefr " + PREFR_REV_STRING +
+    #else
+    "</li><li>prefr " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_SCOOP
-        "</li><li>Scoop " + SCOOP_REV_STRING +
-  #else
-        "</li><li>Scoop " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_SCOOP
+    "</li><li>Scoop " + SCOOP_REV_STRING +
+    #else
+    "</li><li>Scoop " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_NEUROLOTS
-        "</li><li>NeuroLOTs " + NLGENERATOR_REV_STRING +
-  #else
-        "</li><li>NeuroLOTs " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_NEUROLOTS
+    "</li><li>NeuroLOTs " + NLGENERATOR_REV_STRING +
+    #else
+    "</li><li>NeuroLOTs " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_NSOL
-        "</li><li>nsol " + NSOL_REV_STRING +
-  #else
-        "</li><li>nsol " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_NSOL
+    "</li><li>nsol " + NSOL_REV_STRING +
+    #else
+    "</li><li>nsol " + tr( "support not built." ) +
+    #endif
 
-  #ifdef SYNCOPA_USE_BRION
-        "</li><li>Brion " + BRION_REV_STRING +
-  #else
-        "</li><li>Brion " + tr( "support not built." ) +
-  #endif
+    #ifdef SYNCOPA_USE_BRION
+    "</li><li>Brion " + BRION_REV_STRING +
+    #else
+    "</li><li>Brion " + tr( "support not built." ) +
+    #endif
 
-        "</li></ul>" + "<h4>" + tr( "Developed by:" ) + "</h4>" +
-        "VG-Lab / URJC / UPM"
-        "<br><a href='https://vg-lab.es/'>https://vg-lab.es/</a>"
-        "<br>(C) 2015-" + QString::number(QDateTime::currentDateTime().date().year()) + "<br><br>"
-        "<a href='https://vg-lab.es'><img src=':/icons/logoVGLab.png'/></a>"
-        "&nbsp;&nbsp;&nbsp;&nbsp;"
-        "<a href='https://www.urjc.es'><img src=':/icons/logoURJC.png' /></a>"
-        "&nbsp;&nbsp;&nbsp;&nbsp;"
-        "<a href='https://www.upm.es'><img src=':/icons/logoUPM.png' /></a>";
+    "</li></ul>" + "<h4>" + tr( "Developed by:" ) + "</h4>" +
+    "VG-Lab / URJC / UPM"
+    "<br><a href='https://vg-lab.es/'>https://vg-lab.es/</a>"
+    "<br>(C) 2015-" +
+    QString::number( QDateTime::currentDateTime( ).date( ).year( )) + "<br><br>"
+                                                                      "<a href='https://vg-lab.es'><img src=':/icons/logoVGLab.png'/></a>"
+                                                                      "&nbsp;&nbsp;&nbsp;&nbsp;"
+                                                                      "<a href='https://www.urjc.es'><img src=':/icons/logoURJC.png' /></a>"
+                                                                      "&nbsp;&nbsp;&nbsp;&nbsp;"
+                                                                      "<a href='https://www.upm.es'><img src=':/icons/logoUPM.png' /></a>";
 
-  QMessageBox::about( this, tr( "About Syncopa" ), message );
+  QMessageBox::about( this , tr( "About Syncopa" ) , message );
 }
 
-void MainWindow::onConnectionButtonTriggered(bool value)
+void MainWindow::onConnectionButtonTriggered( bool value )
 {
-  auto action = qobject_cast<QAction *>(sender());
-  if(action)
-  {
-    action->setEnabled(false);
-  }
-  else
-  {
-    return;
-  }
+  auto action = qobject_cast< QAction* >( sender( ));
 
-  if(value)
+  if ( value )
   {
-    if(m_socket) return;
+    if ( _web_socket ) return;
 
     bool ok = false;
-    const auto title = tr("Network connection");
-    const auto label = tr("hostname:port");
-    auto addr = QInputDialog::getText(this, title, label, QLineEdit::Normal, "", &ok);
-    if(!ok || addr.isEmpty()) return;
-
-    if(!addr.startsWith("ws://", Qt::CaseInsensitive))
-      addr = QString("ws://%1").arg(addr);
-
-    const auto url = QUrl(addr);
-    if(!url.isValid())
+    const auto title = tr( "Network connection" );
+    const auto label = tr( "Port:" );
+    const auto port = QInputDialog::getInt( this , title , label , 3000 , 0 ,
+                                            65535 ,
+                                            1 , &ok );
+    if ( ok )
     {
-      QMessageBox::critical(this, title, tr("Invalid url: %1").arg(addr), QMessageBox::Ok);
-      return;
+      action->setIcon( QIcon( ":/icons/disconnect.svg" ));
+
+      _web_socket = std::make_shared< wcw::WebClientManager >( port );
+      _web_socket->registerAPI( "syncopa" , &_web_api );
+
+      connect( this , &QObject::destroyed , [ this ]( )
+      {
+        _web_socket = nullptr;
+      } );
+
+      _web_socket->start( );
+      _ui->actionSyncScene->setEnabled( true );
     }
-
-    action->setIcon(QIcon(":/icons/disconnect.svg"));
-
-    m_socket = new WebSocketThread( QUrl( addr ) , this );
-
-    connect(m_socket, SIGNAL(connected()),       this, SLOT(onConnectionStateChanged()));
-    connect(m_socket, SIGNAL(disconnected()),    this, SLOT(onConnectionStateChanged()));
-    connect(m_socket, SIGNAL(messageReceived()), this, SLOT(onMessageReceived()));
-    connect(m_socket, SIGNAL(error()),           this, SLOT(onConnectionError()));
-    connect(m_socket, SIGNAL(finished()),        this, SLOT(onConnectionThreadTerminated()));
-    
-    connect(this, &QObject::destroyed, m_socket, [this]() {
-        m_socket->stop( );
-        m_socket->wait( );
-    });
-
-    m_socket->start();
+    else
+    {
+      action->blockSignals( true );
+      action->setChecked( false );
+      action->blockSignals( false );
+    }
   }
   else
   {
-    if(!m_socket) return;
-    m_socket->stop();
-  }
-}
-
-void MainWindow::onMessageReceived()
-{
-  if(m_socket)
-  {
-    auto message = m_socket->getMessage( );
-    switch ( message.id )
+    if ( _web_socket )
     {
-      // SELECT
-      case 0:
-      {
-        auto selectionData = std::dynamic_pointer_cast< SynapsesModeSelection >(
-          message.data );
-        parseSelectionJSON( selectionData );
-      }
-        break;
-      case 1:
-      {
-        auto selectionData = std::dynamic_pointer_cast< PathsModeSelection >(
-          message.data );
-        parseSelectionJSON( selectionData );
-      }
-        break;
+      onConnectionThreadTerminated( );
     }
   }
 }
 
-void MainWindow::onConnectionThreadTerminated()
+void MainWindow::onConnectionThreadTerminated( )
 {
-  m_socket->deleteLater();
-  m_socket = nullptr;
-  _ui->actionNetworkConnection->blockSignals(true);
-  _ui->actionNetworkConnection->setChecked(false);
-  _ui->actionNetworkConnection->setEnabled(true);
-  _ui->actionNetworkConnection->setIcon(QIcon(":/icons/connect.svg"));
-  _ui->actionNetworkConnection->blockSignals(false);
+  _web_socket = nullptr;
+  _ui->actionNetworkConnection->blockSignals( true );
+  _ui->actionNetworkConnection->setChecked( false );
+  _ui->actionNetworkConnection->setEnabled( true );
+  _ui->actionNetworkConnection->setIcon( QIcon( ":/icons/connect.svg" ));
+  _ui->actionNetworkConnection->blockSignals( false );
+  _ui->actionSyncScene->setEnabled( false );
 }
 
-void MainWindow::disableInterface(bool value)
+void MainWindow::disableInterface( bool value )
 {
   static bool current = false;
 
-  if(value == current) return;
+  if ( value == current ) return;
 
   current = value;
 
-  _dockColor->setEnabled(!value);
-  _dockInfo->setEnabled(!value);
-  _dockList->setEnabled(!value);
-  _ui->toolBar->setEnabled(!value);
-  _ui->menubar->setEnabled(!value);
+  _dockColor->setEnabled( !value );
+  _dockInfo->setEnabled( !value );
+  _dockList->setEnabled( !value );
+  _ui->toolBar->setEnabled( !value );
+  _ui->menubar->setEnabled( !value );
 
-  if(value)
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+  if ( value )
+    QApplication::setOverrideCursor( Qt::WaitCursor );
   else
-    QApplication::restoreOverrideCursor();
+    QApplication::restoreOverrideCursor( );
 }
 
-void LoadingThread::run()
+void LoadingThread::run( )
 {
   try
   {
-    if(m_parent)
+    if ( m_parent )
     {
-      emit progress(tr("Loading data"), 0);
+      emit progress( tr( "Loading data" ) , 0 );
 
-      connect(m_parent->_openGLWidget, SIGNAL(progress(const QString &, const unsigned int)),
-              this,                    SIGNAL(progress(const QString &, const unsigned int)));
+      connect( m_parent->_openGLWidget ,
+               SIGNAL( progress(
+                         const QString & , const unsigned int)) ,
+               this , SIGNAL( progress(
+                                const QString & , const unsigned int)) );
 
-      m_parent->_openGLWidget->loadBlueConfig(m_blueconfig,m_target);
+      m_parent->_openGLWidget->loadBlueConfig( m_blueconfig , m_target );
     }
   }
-  catch(const std::exception &e)
+  catch ( const std::exception& e )
   {
-    m_errors = std::string(e.what());
-    m_errors += std::string("\n") + __FILE__ + " " + std::to_string(__LINE__);
+    m_errors = std::string( e.what( ));
+    m_errors +=
+      std::string( "\n" ) + __FILE__ + " " + std::to_string( __LINE__ );
   }
-  catch(...)
+  catch ( ... )
   {
-    m_errors = std::string("Unspecified exception.");
-    m_errors += std::string("\n") + __FILE__ + " " + std::to_string(__LINE__);
+    m_errors = std::string( "Unspecified exception." );
+    m_errors +=
+      std::string( "\n" ) + __FILE__ + " " + std::to_string( __LINE__ );
   }
 
-  emit progress(tr("Finished"), 100);
+  emit progress( tr( "Finished" ) , 100 );
 }
 
-LoadingDialog::LoadingDialog(QWidget *p)
-: QDialog(p, Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint)
+LoadingDialog::LoadingDialog( QWidget* p )
+  : QDialog( p , Qt::Dialog | Qt::CustomizeWindowHint | Qt::WindowTitleHint )
 {
-  setWindowIcon(QIcon{":/neurotessmessh.png"});
+  setWindowIcon( QIcon{ ":/neurotessmessh.png" } );
 
-  auto layout = new QVBoxLayout();
-  m_progress = new QProgressBar(this);
-  m_progress->setMinimumWidth(590);
-  layout->addWidget(m_progress, 1, Qt::AlignHCenter|Qt::AlignVCenter);
-  layout->setMargin(4);
-  setLayout(layout);
+  auto layout = new QVBoxLayout( );
+  m_progress = new QProgressBar( this );
+  m_progress->setMinimumWidth( 590 );
+  layout->addWidget( m_progress , 1 , Qt::AlignHCenter | Qt::AlignVCenter );
+  layout->setMargin( 4 );
+  setLayout( layout );
 
-  setSizePolicy(QSizePolicy::MinimumExpanding,QSizePolicy::MinimumExpanding);
-  setFixedSize(600, sizeHint().height());
+  setSizePolicy( QSizePolicy::MinimumExpanding ,
+                 QSizePolicy::MinimumExpanding );
+  setFixedSize( 600 , sizeHint( ).height( ));
 }
 
-void LoadingDialog::progress(const QString &message, const unsigned int value)
+void
+LoadingDialog::progress( const QString& message , const unsigned int value )
 {
   // NOTE: adjusted to the number of loading steps.
   constexpr float STEP_WEIGHT = 33.33;
@@ -1812,54 +1787,43 @@ void LoadingDialog::progress(const QString &message, const unsigned int value)
   static float steps = 0;
   static unsigned int lastValue = 0;
 
-  if(lastValue > value) ++steps;
+  if ( lastValue > value ) ++steps;
   lastValue = value;
 
-  const int progressValue = std::nearbyint((steps + static_cast<float>(value)/100) * STEP_WEIGHT);
+  const int progressValue = std::nearbyint(
+    ( steps + static_cast<float>(value) / 100 ) * STEP_WEIGHT );
 
-  m_progress->setValue(progressValue);
-  if(!message.isEmpty())
-    m_progress->setFormat(tr("%1 - %p%").arg(message));
+  m_progress->setValue( progressValue );
+  if ( !message.isEmpty( ))
+    m_progress->setFormat( tr( "%1 - %p%" ).arg( message ));
 }
 
-void LoadingDialog::closeDialog()
+void LoadingDialog::closeDialog( )
 {
-  close();
-  deleteLater();
+  close( );
+  deleteLater( );
 }
 
-void MainWindow::onConnectionStateChanged()
+void MainWindow::onConnectionError( )
 {
-  _ui->actionNetworkConnection->setEnabled(true);
-}
-
-void MainWindow::onConnectionError()
-{
-  if ( m_socket )
+  if ( _web_socket )
   {
-    const auto errorMessage = m_socket->errorMessage( );
     const auto title = tr( "Network error" );
-    QMessageBox::critical( this , title , errorMessage , QMessageBox::Ok );
+    QMessageBox::critical( this , title , title , QMessageBox::Ok );
 
-    m_socket->stop( );
+    _web_socket = nullptr;
   }
 }
 
-void MainWindow::parseSelectionJSON(
-  std::shared_ptr< SynapsesModeSelection > selection )
+void MainWindow::manageSelectionEvent(
+  const std::vector< unsigned int >& selection )
 {
-  if ( _openGLWidget->dataset( ) == nullptr ) return;
-  if ( _openGLWidget->mode( ) != syncopa::SYNAPSES )
-  {
-    _radioModeSynapses->setChecked( true );
-  }
-
   std::vector< unsigned int > finalSelection;
   const int rows = _modelListPre->rowCount( );
   QItemSelection selectionSet;
 
-  auto start = selection->selection.cbegin( );
-  auto end = selection->selection.cend( );
+  auto start = selection.cbegin( );
+  auto end = selection.cend( );
 
   for ( int i = 0; i < rows; i++ )
   {
@@ -1881,14 +1845,26 @@ void MainWindow::parseSelectionJSON(
   );
   _listPresynaptic->blockSignals( false );
 
-  _openGLWidget->selectPresynapticNeuron( finalSelection );
   _groupBoxDynamic->setEnabled( false );
   dynamicStop( );
   updateInfoDock( );
 }
 
-void MainWindow::parseSelectionJSON(
-  std::shared_ptr< PathsModeSelection > selection )
+void MainWindow::manageSynapsesSelectionEvent(
+  const std::vector< unsigned int >& selection )
+{
+  if ( _openGLWidget->dataset( ) == nullptr ) return;
+  if ( _openGLWidget->mode( ) != syncopa::SYNAPSES )
+  {
+    _radioModeSynapses->setChecked( true );
+  }
+
+  manageSelectionEvent( selection );
+}
+
+void MainWindow::managePathsSelectionEvent(
+  unsigned int preSelection ,
+  const std::vector< unsigned int >& postSelection )
 {
   if ( _openGLWidget->dataset( ) == nullptr ) return;
   if ( _openGLWidget->mode( ) != syncopa::PATHS )
@@ -1896,12 +1872,11 @@ void MainWindow::parseSelectionJSON(
     _radioModePaths->setChecked( true );
   }
 
-  auto preSelection = static_cast<unsigned int>(selection->preSelection);
   std::vector< unsigned int > finalSelection;
   const int rows = _modelListPre->rowCount( );
   QItemSelection pre;
-  auto start = selection->postSelection.cbegin( );
-  auto end = selection->postSelection.cend( );
+  auto start = postSelection.cbegin( );
+  auto end = postSelection.cend( );
 
   for ( int i = 0; i < rows; i++ )
   {
@@ -1913,14 +1888,13 @@ void MainWindow::parseSelectionJSON(
     }
   }
 
-  _listPresynaptic->selectionModel()->blockSignals( true );
-  _listPostsynaptic->selectionModel()->blockSignals( true );
+  _listPresynaptic->selectionModel( )->blockSignals( true );
+  _listPostsynaptic->selectionModel( )->blockSignals( true );
   _listPresynaptic->selectionModel( )->select(
     pre ,
     QItemSelectionModel::ClearAndSelect
   );
 
-  _openGLWidget->selectPresynapticNeuron( preSelection );
   loadPostsynapticList( preSelection );
 
   QItemSelection post;
@@ -1942,12 +1916,25 @@ void MainWindow::parseSelectionJSON(
     QItemSelectionModel::ClearAndSelect
   );
 
-  _listPresynaptic->selectionModel()->blockSignals( false );
-  _listPostsynaptic->selectionModel()->blockSignals( false );
+  _listPresynaptic->selectionModel( )->blockSignals( false );
+  _listPostsynaptic->selectionModel( )->blockSignals( false );
 
-  _openGLWidget->selectPostsynapticNeuron( finalSelection );
-  _groupBoxDynamic->setEnabled( false );
+  _groupBoxDynamic->setEnabled( true );
 
   dynamicStop( );
   updateInfoDock( );
+}
+
+const std::shared_ptr< syncopa::NeuronClusterManager >&
+MainWindow::getNeuronClusterManager( ) const
+{
+  return _neuronClusterManager;
+}
+
+void MainWindow::filteringPaletteChanged( void )
+{
+  const float normValue =
+    ( _sliderAlphaSynapsesMap->value( ) - SLIDER_MIN ) * INV_RANGE_SLIDERS;
+  _openGLWidget->alphaSynapseMap( _colorMapWidget->getColors( ) ,
+                                  normValue );
 }
