@@ -19,24 +19,25 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#define PREFR_SKIP_GLEW_INCLUDE 1
+#define PLAB_SKIP_GLEW_INCLUDE 1
+
 #define NEUROLOTS_SKIP_GLEW_INCLUDE 1
 
 #define SIM_SLIDER_UPDATE_PERIOD 0.5f
 
 #include <nlrender/nlrender.h>
-#include <prefr/prefr.h>
 #include <reto/reto.h>
 #include <nsol/nsol.h>
 
 #include "NeuronScene.h"
-#include "PSManager.h"
+#include "ParticleManager.h"
 #include "PathFinder.h"
-#include "DynamicPathManager.h"
 #include "DomainManager.h"
 #include "NeuronClusterManager.h"
+#include "DynamicPathGenerator.h"
 
-class Camera;
+#include <plab/reto/RetoCamera.h>
+#include <QOpenGLDebugMessage>
 
 class ShaderProgram;
 
@@ -52,9 +53,9 @@ public:
                 Qt::WindowFlags windowFlags = Qt::WindowFlags( )
               );
 
-  ~OpenGLWidget( void );
+  ~OpenGLWidget( );
 
-  void createParticleSystem( void );
+  void createParticleSystem( );
 
   void loadBlueConfig( const std::string& blueConfigFilePath ,
                        const std::string& target );
@@ -70,19 +71,17 @@ public:
 
   void showFps( bool showFps_ = true );
 
-  nsol::DataSet* dataset( void );
+  nsol::DataSet* dataset( );
 
   void alphaMode( bool alphaAccumulative = false );
 
   void mode( syncopa::TMode mode_ );
 
-  syncopa::TMode mode( void ) const;
+  syncopa::TMode mode( ) const;
 
-  bool dynamicActive( void ) const;
+  bool dynamicActive( ) const;
 
   syncopa::DomainManager* getDomainManager( ) const;
-
-  syncopa::PSManager* getPsManager( ) const;
 
   const syncopa::gidUSet& getGidsAll( ) const;
 
@@ -92,13 +91,13 @@ signals:
 
 public slots:
 
-  void changeClearColor( void );
+  void changeClearColor( );
 
-  void toggleUpdateOnIdle( void );
+  void toggleUpdateOnIdle( );
 
-  void toggleShowFPS( void );
+  void toggleShowFPS( );
 
-  const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( void );
+  const std::vector< nsol::MorphologySynapsePtr >& currentSynapses( );
 
   void colorSynapsesPre( const syncopa::vec3& color );
 
@@ -108,19 +107,25 @@ public slots:
 
   void colorPathsPost( const syncopa::vec3& color );
 
+  void colorDynamicPre( const syncopa::vec3& color );
+
+  void colorDynamicPost( const syncopa::vec3& color );
+
   void colorSynapseMap( const tQColorVec& colors );
 
-  const syncopa::vec3& colorSynapsesPre( void ) const;
+  const syncopa::vec3 colorSynapsesPre( ) const;
 
-  const syncopa::vec3& colorSynapsesPost( void ) const;
+  const syncopa::vec3 colorSynapsesPost( ) const;
 
-  const syncopa::vec3& colorPathsPre( ) const;
+  const syncopa::vec3 colorPathsPre( ) const;
 
-  const syncopa::vec3& colorPathsPost( void ) const;
+  const syncopa::vec3 colorPathsPost( ) const;
 
-  const syncopa::vec3& colorSynapseMapPre( void ) const;
+  const syncopa::vec3 colorDynamicPre( ) const;
 
-  std::vector< std::pair< float , QColor >> colorSynapseMap( void ) const;
+  const syncopa::vec3 colorDynamicPost( ) const;
+
+  std::vector< std::pair< float , QColor >> colorSynapseMap( ) const;
 
   void alphaSynapsesPre( float transparency );
 
@@ -132,15 +137,15 @@ public slots:
 
   void alphaSynapseMap( const tQColorVec& colors , float transparency );
 
-  float alphaSynapsesPre( void ) const;
+  float alphaSynapsesPre( ) const;
 
-  float alphaSynapsesPost( void ) const;
+  float alphaSynapsesPost( ) const;
 
-  float alphaPathsPre( void ) const;
+  float alphaPathsPre( ) const;
 
-  float alphaPathsPost( void ) const;
+  float alphaPathsPost( ) const;
 
-  float alphaSynapsesMap( void ) const;
+  float alphaSynapsesMap( ) const;
 
   void sizeSynapsesPre( float );
 
@@ -154,17 +159,17 @@ public slots:
 
   void sizeDynamic( float );
 
-  float sizeSynapsesPre( void ) const;
+  float sizeSynapsesPre( ) const;
 
-  float sizeSynapsesPost( void ) const;
+  float sizeSynapsesPost( ) const;
 
-  float sizePathsPre( void ) const;
+  float sizePathsPre( ) const;
 
-  float sizePathsPost( void ) const;
+  float sizePathsPost( ) const;
 
-  float sizeSynapseMap( void ) const;
+  float sizeSynapseMap( ) const;
 
-  float sizeDynamic( void ) const;
+  float sizeDynamic( ) const;
 
   void showSynapsesPre( bool state );
 
@@ -180,23 +185,19 @@ public slots:
 
   void setSynapseMappingState( bool state );
 
-  void startDynamic( void );
+  void startDynamic( );
 
-  void toggleDynamicMovement( void );
+  bool toggleDynamicMovement( );
 
-  void stopDynamic( void );
+  void stopDynamic( );
 
-  void updatePathsVisibility( void );
-
-  void updateSynapsesVisibility( void );
-
-  const QPolygonF& getSynapseMappingPlot( void ) const;
+  const QPolygonF& getSynapseMappingPlot( ) const;
 
   void filteringState( bool state );
 
   void filteringBounds( float min , float max );
 
-  std::pair< float , float > rangeBounds( void ) const;
+  std::pair< float , float > rangeBounds( ) const;
 
   void updateMorphologyModel(
     std::shared_ptr< syncopa::NeuronClusterManager > manager );
@@ -209,9 +210,9 @@ public slots:
 
 protected:
 
-  virtual void initializeGL( void );
+  virtual void initializeGL( );
 
-  virtual void paintGL( void );
+  virtual void paintGL( );
 
   virtual void resizeGL( int w , int h );
 
@@ -227,24 +228,24 @@ protected:
 
   virtual void keyPressEvent( QKeyEvent* event );
 
-  void setupSynapses( void );
+  void setupSynapses( );
 
-  void setupPaths( void );
+  void setupPaths( );
 
-  void paintParticles( void );
+  void paintParticles( );
 
-  void paintMorphologies( void );
+  void paintMorphologies( );
 
-  void initRenderToTexture( void );
+  void initRenderToTexture( );
 
   void generateDepthTexture( int width_ , int height_ );
 
-  void performMSAA( void );
+  void performMSAA( );
 
   QLabel _fpsLabel;
   bool _showFps;
 
-  Camera* _camera;
+  std::shared_ptr< plab::RetoCamera > _camera;
   reto::CameraAnimation* _animation;
   glm::vec3 _lastCameraPosition;
 
@@ -262,14 +263,12 @@ protected:
   std::chrono::time_point< std::chrono::system_clock > _then;
   std::chrono::time_point< std::chrono::system_clock > _lastFrame;
 
-  ShaderProgram* _particlesShader;
   nlrender::Renderer* _nlrenderer;
 
   nsol::DataSet* _dataset;
+  syncopa::ParticleManager _particleManager;
+  syncopa::PathFinder _pathFinder;
   syncopa::NeuronScene* _neuronScene;
-  syncopa::PSManager* _psManager;
-  syncopa::PathFinder* _pathFinder;
-  syncopa::DynamicPathManager* _dynPathManager;
   syncopa::DomainManager* _domainManager;
 
   syncopa::TMode _mode;
@@ -287,27 +286,8 @@ protected:
 
   syncopa::gidUSet _gidsAll;
 
-  syncopa::vec3 _colorSynapsesPre;
-  syncopa::vec3 _colorSynapsesPost;
-  syncopa::vec3 _colorPathsPre;
-  syncopa::vec3 _colorPathsPost;
-
-  syncopa::vec3 _colorSynMapPre;
-  syncopa::vec3 _colorSynMapPost;
-
   tQColorVec _colorSynMap;
-
-  float _alphaSynapsesPre;
-  float _alphaSynapsesPost;
-  float _alphaPathsPre;
-  float _alphaPathsPost;
-
   float _alphaSynapsesMap;
-
-  bool _showSynapsesPre;
-  bool _showSynapsesPost;
-  bool _showPathsPre;
-  bool _showPathsPost;
 
   bool _dynamicActive;
   bool _dynamicMovement;

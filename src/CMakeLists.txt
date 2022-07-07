@@ -6,6 +6,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 add_definitions(-DSYNCOPA_SKIP_GLEW_INCLUDE )
+add_definitions(-DPLAB_SKIP_GLEW_INCLUDE )
 
 set(PROJECT_VERSION_ABI ${${PROJECT_NAME}_VERSION_ABI})
 
@@ -33,12 +34,13 @@ set(SYNCOPA_SOURCES
   PaletteColorWidget.cpp
   GradientWidget.cpp
   DomainManager.cpp
-  
+
   NeuronScene.cpp
-  PSManager.cpp
+  ParticleManager.cpp
   PathFinder.cpp
+  DynamicPathGenerator.cpp
   ConnectivityTree.cpp
-  DynamicPathManager.cpp
+  #DynamicPathManager.cpp
   SynCoPaWebAPI.cpp
 
   NeuronCluster.cpp
@@ -51,13 +53,12 @@ set(SYNCOPA_SOURCES
 
   DataExport.cpp
 
-  prefr/Camera.cpp
-  prefr/ShaderProgram.cpp
-  prefr/SourceMultiPosition.cpp
-  prefr/UpdaterStaticPosition.cpp
-  prefr/UpdaterMappedValue.cpp
-  prefr/MobilePolylineSource.cpp
-  
+  particlelab/StaticModel.cpp
+  particlelab/StaticGradientModel.cpp
+  particlelab/DynamicModel.cpp
+  particlelab/SynapseParticle.cpp
+  particlelab/DynamicPathParticle.cpp
+
   ext/ctkrangeslider.cpp
 
   CMakeSetup.rc
@@ -74,10 +75,11 @@ set(SYNCOPA_HEADERS
   DomainManager.h
 
   NeuronScene.h
-  PSManager.h
+  ParticleManager.h
   PathFinder.h
+  DynamicPathGenerator.h
   ConnectivityTree.h
-  DynamicPathManager.h
+  #DynamicPathManager.h
   SynCoPaWebAPI.h
 
   NeuronCluster.h
@@ -90,16 +92,14 @@ set(SYNCOPA_HEADERS
 
   DataExport.h
 
-  prefr/Camera.h
-  prefr/ShaderProgram.h
-  prefr/SourceMultiPosition.h
-  prefr/UpdaterStaticPosition.h
-  prefr/UpdaterMappedValue.h
-  prefr/MobilePolylineSource.h
-  
-  ext/ctkrangeslider.h
+  particlelab/ParticleLabShaders.h
+  particlelab/StaticModel.h
+  particlelab/StaticGradientModel.h
+  particlelab/DynamicModel.h
+  particlelab/SynapseParticle.h
+  particlelab/DynamicPathParticle.h
 
-  prefr/PrefrShaders.h
+  ext/ctkrangeslider.h
 )
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -112,7 +112,7 @@ set(SYNCOPA_LINK_LIBRARIES
   Qt5::WebSockets
   Qt5::WebChannel
   ReTo
-  prefr
+  plab
   nsol
   Brion
   Brain
@@ -131,7 +131,7 @@ if ( NOT DEFAULT_CONTEXT_OPENGL_MAJOR )
   set( DEFAULT_CONTEXT_OPENGL_MAJOR 4 )
 endif( )
 if ( NOT DEFAULT_CONTEXT_OPENGL_MINOR )
-  set( DEFAULT_CONTEXT_OPENGL_MINOR 0 )
+  set( DEFAULT_CONTEXT_OPENGL_MINOR 4 )
 endif( )
 
 add_definitions( "-DDEFAULT_CONTEXT_OPENGL_MAJOR=${DEFAULT_CONTEXT_OPENGL_MAJOR}" )

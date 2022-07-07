@@ -103,9 +103,9 @@ namespace syncopa
       return TRenderMorpho( );
 
     std::vector< unsigned int > gids;
-    std::vector <nlgeometry::MeshPtr> meshes;
-    std::vector <mat4> matrices;
-    std::vector <vec3> colors;
+    std::vector< nlgeometry::MeshPtr > meshes;
+    std::vector< mat4 > matrices;
+    std::vector< vec3 > colors;
 
     unsigned int totalMeshes = gids_.size( );
 
@@ -124,13 +124,19 @@ namespace syncopa
       {
         gids.push_back( gid );
         const auto meshIt = _neuronMeshes.find( morphology->second );
-        assert( meshIt != _neuronMeshes.end( ));
-        meshes.push_back( meshIt->second );
-        const auto matrix = neuron->second->transform( );
-        matrices.push_back( matrix );
+        if ( meshIt != _neuronMeshes.end( ))
+        {
+          meshes.push_back( meshIt->second );
+          const auto matrix = neuron->second->transform( );
+          matrices.push_back( matrix );
+        }
+        else
+        {
+          std::cerr << "Couldn't find mesh for " << gid << std::endl;
+        }
       }
       else
-        std::cout << "Could not find " << gid << " morphology " << std::endl;
+        std::cerr << "Could not find " << gid << " morphology " << std::endl;
     }
 
     return std::make_tuple( gids , meshes , matrices , colors , true , true );
@@ -138,9 +144,9 @@ namespace syncopa
 
   void NeuronScene::computeBoundingBox( const gidVec& indices_ )
   {
-    if(indices_.empty())
+    if ( indices_.empty( ))
     {
-      computeBoundingBox();
+      computeBoundingBox( );
       return;
     }
 

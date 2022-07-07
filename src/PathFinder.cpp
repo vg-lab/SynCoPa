@@ -784,7 +784,7 @@ namespace syncopa
     auto it = _pathsPost.find( synapse );
     if ( it == _pathsPost.end( ))
     {
-      return utils::EventPolylineInterpolation( );
+      return { };
     }
 
     return it->second;

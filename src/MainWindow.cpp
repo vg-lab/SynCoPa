@@ -387,10 +387,10 @@ void MainWindow::initColorDock( void )
   _frameColorPathsPost->setStyleSheet( "background-color: " + color.name( ));
 
   QIcon neuronIcon;
-  neuronIcon.addFile( QStringLiteral( ":/icons/neurotessmesh.png" ) , QSize( ) ,
-                      QIcon::Normal , QIcon::On );
-  neuronIcon.addFile( QStringLiteral( ":/icons/neurolots.png" ) , QSize( ) ,
-                      QIcon::Normal , QIcon::Off );
+  neuronIcon.addFile(QStringLiteral( ":/icons/neurotessmesh.png" ) , QSize( ) ,
+                     QIcon::Normal , QIcon::On );
+  neuronIcon.addFile(QStringLiteral( ":/icons/neurolots.png" ) , QSize( ) ,
+                     QIcon::Normal , QIcon::Off );
 
   // General controls
   generalLayout->addWidget( _radioAlphaModeNormal );
@@ -401,13 +401,13 @@ void MainWindow::initColorDock( void )
   _colorMapWidget->init( false );
 
   connect( _colorMapWidget , SIGNAL( filterStateChanged( void )) ,
-           this , SLOT( filteringStateChanged( void )));
+           this , SLOT( filteringStateChanged( void )) );
 
   connect( _colorMapWidget , SIGNAL( filterPaletteChanged( void )) ,
-           this , SLOT( filteringPaletteChanged( void )));
+           this , SLOT( filteringPaletteChanged( void )) );
 
   connect( _colorMapWidget , SIGNAL( filterBoundsChanged( void )) ,
-           this , SLOT( filteringBoundsChanged( void )));
+           this , SLOT( filteringBoundsChanged( void )) );
 
   _sliderAlphaSynapsesPre = new QSlider( Qt::Horizontal );
   _sliderAlphaSynapsesPre->setRange( SLIDER_MIN , SLIDER_MAX );
@@ -549,69 +549,69 @@ void MainWindow::initColorDock( void )
 
   // SLOTS
   connect( _radioAlphaModeNormal , SIGNAL( toggled( bool )) ,
-           this , SLOT( alphaModeChanged( bool )));
+           this , SLOT( alphaModeChanged( bool )) );
 
   connect( _buttonDynamicStart , SIGNAL( clicked( )) , this ,
-           SLOT( dynamicStart( )));
+           SLOT( dynamicStart( )) );
   connect( _buttonDynamicStop , SIGNAL( clicked( )) , this ,
-           SLOT( dynamicStop( )));
+           SLOT( dynamicStop( )) );
 
   connect( _frameColorSynapsesPre , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
   connect( _frameColorSynapsesPost , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
   connect( _frameColorPathsPre , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
   connect( _frameColorPathsPost , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
   connect( _frameColorDynamicPre , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
   connect( _frameColorDynamicPost , SIGNAL( clicked( )) ,
-           this , SLOT( colorSelectionClicked( )));
+           this , SLOT( colorSelectionClicked( )) );
 
 
   connect( _checkSynapsesPre , SIGNAL( toggled( bool )) ,
-           _openGLWidget , SLOT( showSynapsesPre( bool )));
+           _openGLWidget , SLOT( showSynapsesPre( bool )) );
   connect( _checkSynapsesPost , SIGNAL( toggled( bool )) ,
-           _openGLWidget , SLOT( showSynapsesPost( bool )));
+           _openGLWidget , SLOT( showSynapsesPost( bool )) );
   connect( _checkPathsPre , SIGNAL( toggled( bool )) ,
-           _openGLWidget , SLOT( showPathsPre( bool )));
+           _openGLWidget , SLOT( showPathsPre( bool )) );
   connect( _checkPathsPost , SIGNAL( toggled( bool )) ,
-           _openGLWidget , SLOT( showPathsPost( bool )));
+           _openGLWidget , SLOT( showPathsPost( bool )) );
 
   connect( _sliderAlphaSynapsesPre , SIGNAL( valueChanged( int )) ,
-           this , SLOT( transparencySliderMoved( int )));
+           this , SLOT( transparencySliderMoved( int )) );
   connect( _sliderAlphaSynapsesPost , SIGNAL( valueChanged( int )) ,
-           this , SLOT( transparencySliderMoved( int )));
+           this , SLOT( transparencySliderMoved( int )) );
   connect( _sliderAlphaPathsPre , SIGNAL( valueChanged( int )) ,
-           this , SLOT( transparencySliderMoved( int )));
+           this , SLOT( transparencySliderMoved( int )) );
   connect( _sliderAlphaPathsPost , SIGNAL( valueChanged( int )) ,
-           this , SLOT( transparencySliderMoved( int )));
+           this , SLOT( transparencySliderMoved( int )) );
   connect( _sliderAlphaSynapsesMap , SIGNAL( valueChanged( int )) ,
-           this , SLOT( transparencySliderMoved( int )));
+           this , SLOT( transparencySliderMoved( int )) );
 
   connect( _spinBoxSizeSynapsesPre , SIGNAL( valueChanged( double )) ,
-           this , SLOT( sizeSpinBoxChanged( double )));
+           this , SLOT( sizeSpinBoxChanged( double )) );
   connect( _spinBoxSizeSynapsesPost , SIGNAL( valueChanged( double )) ,
-           this , SLOT( sizeSpinBoxChanged( double )));
+           this , SLOT( sizeSpinBoxChanged( double )) );
   connect( _spinBoxSizePathsPre , SIGNAL( valueChanged( double )) ,
-           this , SLOT( sizeSpinBoxChanged( double )));
+           this , SLOT( sizeSpinBoxChanged( double )) );
   connect( _spinBoxSizePathsPost , SIGNAL( valueChanged( double )) ,
-           this , SLOT( sizeSpinBoxChanged( double )));
+           this , SLOT( sizeSpinBoxChanged( double )) );
   connect( _spinBoxSizeSynapsesMap , SIGNAL( valueChanged( double )) ,
-           this , SLOT( sizeSpinBoxChanged( double )));
+           this , SLOT( sizeSpinBoxChanged( double )) );
 
   checkMapSynapses->setChecked( true );
   connect( checkMapSynapses , SIGNAL( stateChanged( int )) ,
-           this , SLOT( setSynapseMappingState( int )));
+           this , SLOT( setSynapseMappingState( int )) );
 
   connect( _comboSynapseMapAttrib , SIGNAL( currentIndexChanged( int )) ,
-           this , SLOT( setSynapseMappingAttribute( int )));
+           this , SLOT( setSynapseMappingAttribute( int )) );
 
   _radioAlphaModeNormal->setChecked( true );
 
@@ -1162,7 +1162,7 @@ void MainWindow::presynapticNeuronClicked( )
 
   updateInfoDock( );
 
-  _openGLWidget->home();
+  _openGLWidget->home( );
 
   if ( _web_socket )
   {
@@ -1358,6 +1358,7 @@ void MainWindow::clear( void )
     NeuronCluster( "Main Group" , selections ));
 
   updateInfoDock( );
+  dynamicStop();
 
   _openGLWidget->home( false );
 }
@@ -1394,9 +1395,9 @@ void MainWindow::colorSelectionClicked( void )
     else if ( frame == _frameColorPathsPost )
       color = colorEigenToQt( _openGLWidget->colorPathsPost( ));
     else if ( frame == _frameColorDynamicPre )
-      color = _openGLWidget->getPsManager( )->getPreDynamicColor( );
+      color = colorEigenToQt( _openGLWidget->colorDynamicPre( ));
     else if ( frame == _frameColorDynamicPost )
-      color = _openGLWidget->getPsManager( )->getPostDynamicColor( );
+      color = colorEigenToQt( _openGLWidget->colorDynamicPost( ));
     else
     {
       std::cout << "Warning: Frame " << frame << " clicked not connected."
@@ -1415,9 +1416,9 @@ void MainWindow::colorSelectionClicked( void )
       else if ( frame == _frameColorPathsPost )
         _openGLWidget->colorPathsPost( colorQtToEigen( color ));
       else if ( frame == _frameColorDynamicPre )
-        _openGLWidget->getPsManager( )->setPreDynamicColor( color );
+        _openGLWidget->colorDynamicPre( colorQtToEigen( color ));
       else if ( frame == _frameColorDynamicPost )
-        _openGLWidget->getPsManager( )->setPostDynamicColor( color );
+        _openGLWidget->colorDynamicPost( colorQtToEigen( color ));
     }
 
     frame->setStyleSheet( "background-color: " + color.name( ));
@@ -1486,15 +1487,21 @@ void MainWindow::dynamicStart( void )
 
 void MainWindow::dynamicPause( void )
 {
-  _openGLWidget->toggleDynamicMovement( );
+  const auto state = _openGLWidget->toggleDynamicMovement( );
+
+  const auto buttonText = state ? "Pause":"Paused";
+  _buttonDynamicStart->setText( buttonText );
 }
 
 void MainWindow::dynamicStop( void )
 {
-  _buttonDynamicStop->setEnabled( false );
-  _buttonDynamicStart->setText( "Start" );
+  if ( _openGLWidget->dynamicActive( ))
+  {
+    _buttonDynamicStop->setEnabled( false );
+    _buttonDynamicStart->setText( "Start" );
 
-  _openGLWidget->stopDynamic( );
+    _openGLWidget->stopDynamic( );
+  }
 }
 
 void MainWindow::filteringStateChanged( void )
