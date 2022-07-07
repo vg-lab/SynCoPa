@@ -9,7 +9,7 @@
 cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
 
 # syncopa project and version
-project( syncopa VERSION 0.3.0 )
+project( syncopa VERSION 0.3.1 )
 set( syncopa_VERSION_ABI 1 )
 set( SYNCOPA_LICENSE "GPL")
 
@@ -57,14 +57,14 @@ common_find_package( Eigen3 REQUIRED SYSTEM)
 common_find_package( neurolots REQUIRED )
 common_find_package( ReTo REQUIRED )
 common_find_package( nsol REQUIRED )
-common_find_package( prefr REQUIRED )
+common_find_package( plab REQUIRED )
 common_find_package( Brion REQUIRED )
 common_find_package( OpenMP )
 common_find_package( scoop REQUIRED )
 common_find_package( wcw REQUIRED )
 
 list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
-  prefr
+  plab
   ReTo
   neurolots
   nsol
@@ -111,7 +111,6 @@ endif( )
 common_find_package_post()
 
 add_subdirectory( src )
-add_subdirectory( src/prefr )
 
 include( CPackConfig )
 include( DoxygenRule )
