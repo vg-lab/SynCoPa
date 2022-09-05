@@ -228,6 +228,8 @@ protected slots:
    */
   void onConnectionButtonTriggered( bool value );
 
+  void onConnectionSynchronizationTriggered( bool value );
+
   void onConnectionError( );
 
   void onConnectionThreadTerminated( );

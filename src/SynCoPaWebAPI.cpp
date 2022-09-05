@@ -11,11 +11,13 @@
 SynCoPaWebAPI::SynCoPaWebAPI( MainWindow* window , QObject* parent )
   : QObject( parent )
   , _window( window )
+  , _synchronized( false )
 {
 }
 
 void SynCoPaWebAPI::selection( const QJsonArray& array )
 {
+  if ( !_synchronized ) return;
   std::vector< unsigned int > selection;
   for ( const auto& item: array )
   {
@@ -31,6 +33,7 @@ void SynCoPaWebAPI::selection( const QJsonArray& array )
 
 void SynCoPaWebAPI::synapsesModeSelection( const QJsonArray& array )
 {
+  if ( !_synchronized ) return;
   std::vector< unsigned int > selection;
   for ( const auto& item: array )
   {
@@ -48,6 +51,7 @@ void
 SynCoPaWebAPI::pathsModeSelection( const unsigned int pre ,
                                    const QJsonArray& post )
 {
+  if ( !_synchronized ) return;
   std::vector< unsigned int > selection;
   for ( const auto& item: post )
   {
@@ -63,7 +67,7 @@ SynCoPaWebAPI::pathsModeSelection( const unsigned int pre ,
 
 void SynCoPaWebAPI::neuronCluster( const QJsonObject& object )
 {
-
+  if ( !_synchronized ) return;
   const QJsonValue nameRaw = object[ "name" ];
   if ( !nameRaw.isString( ))
   {
@@ -204,5 +208,31 @@ void SynCoPaWebAPI::neuronCluster( const QJsonObject& object )
       }
     }
   }
+}
 
+bool SynCoPaWebAPI::isSynchronizedMode( )
+{
+  return _synchronized;
+}
+
+void SynCoPaWebAPI::setSynchronizedMode( bool synchronized )
+{
+  _synchronized = synchronized;
+}
+
+void SynCoPaWebAPI::callSynapsesModeSelectionEvent( const QJsonArray& array )
+{
+  if ( _synchronized ) emit onSynapsesModeSelection( array );
+}
+
+void SynCoPaWebAPI::callPathsModeSelectionEvent( unsigned int pre ,
+                                                 const QJsonArray& post )
+{
+  if ( _synchronized ) emit onPathsModeSelection( pre , post );
+}
+
+void SynCoPaWebAPI::callSceneSyncEvent( const QString& hierarchy ,
+                                        const QString& connections )
+{
+  if ( _synchronized ) emit onSceneSync( hierarchy , connections );
 }
