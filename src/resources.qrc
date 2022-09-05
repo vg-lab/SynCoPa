@@ -27,5 +27,7 @@
     <file>icons/paths_pre_post.svg</file>
     <file>icons/information.svg</file>
     <file>icons/colorpicker.svg</file>
+    <file>icons/sync.svg</file>
+    <file>icons/sync_off.svg</file>
   </qresource>
 </RCC>

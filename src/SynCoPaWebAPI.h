@@ -29,6 +29,17 @@ public:
 
   Q_INVOKABLE void neuronCluster( const QJsonObject& object );
 
+  bool isSynchronizedMode( );
+
+  void setSynchronizedMode( bool synchronized );
+
+  void callSynapsesModeSelectionEvent( const QJsonArray& array );
+
+  void callPathsModeSelectionEvent( unsigned int pre , const QJsonArray& post );
+
+  void
+  callSceneSyncEvent( const QString& hierarchy , const QString& connections );
+
 signals:
 
   void onSynapsesModeSelection(
@@ -41,6 +52,7 @@ signals:
 
 private:
   MainWindow* _window;
+  bool _synchronized;
 };
 
 

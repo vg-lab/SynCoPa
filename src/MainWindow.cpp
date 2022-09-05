@@ -127,6 +127,9 @@ MainWindow::MainWindow(
   connect( _ui->actionNetworkConnection , SIGNAL( triggered( bool )) ,
            this , SLOT( onConnectionButtonTriggered( bool )) );
 
+  connect( _ui->actionNetworkSynchronization , SIGNAL( triggered( bool )) ,
+           this , SLOT( onConnectionSynchronizationTriggered( bool )) );
+
   _openGLWidget = new OpenGLWidget( nullptr , Qt::WindowFlags( ));
   setCentralWidget( _openGLWidget );
 
@@ -1076,7 +1079,7 @@ void MainWindow::syncScene( )
   toAggregateCSV( dataset , csv );
   auto csvResult = QString::fromStdString( csv.str( ));
 
-  emit _web_api.onSceneSync( xmlResult , csvResult );
+  _web_api.callSceneSyncEvent( xmlResult , csvResult );
 }
 
 void MainWindow::presynapticNeuronClicked( )
@@ -1173,13 +1176,12 @@ void MainWindow::presynapticNeuronClicked( )
       {
         array.push_back( QJsonValue( static_cast<int>(item)));
       }
-      emit
-      _web_api.onSynapsesModeSelection( array );
+
+      _web_api.callSynapsesModeSelectionEvent( array );
     }
     else
     {
-      emit
-      _web_api.onPathsModeSelection( selection.at( 0 ) , QJsonArray( ));
+      _web_api.callPathsModeSelectionEvent( selection.at( 0 ) , QJsonArray( ));
     }
   }
 }
@@ -1271,8 +1273,7 @@ void MainWindow::postsynapticNeuronClicked( )
     {
       array.push_back( QJsonValue( static_cast<int>(item)));
     }
-    emit
-    _web_api.onPathsModeSelection( pre , array );
+    _web_api.callPathsModeSelectionEvent( pre , array );
   }
 }
 
@@ -1358,7 +1359,7 @@ void MainWindow::clear( void )
     NeuronCluster( "Main Group" , selections ));
 
   updateInfoDock( );
-  dynamicStop();
+  dynamicStop( );
 
   _openGLWidget->home( false );
 }
@@ -1489,7 +1490,7 @@ void MainWindow::dynamicPause( void )
 {
   const auto state = _openGLWidget->toggleDynamicMovement( );
 
-  const auto buttonText = state ? "Pause":"Paused";
+  const auto buttonText = state ? "Pause" : "Paused";
   _buttonDynamicStart->setText( buttonText );
 }
 
@@ -1687,6 +1688,8 @@ void MainWindow::onConnectionButtonTriggered( bool value )
 
       _web_socket->start( );
       _ui->actionSyncScene->setEnabled( true );
+      _ui->actionNetworkSynchronization->setVisible( true );
+      _ui->actionNetworkSynchronization->setChecked( false );
     }
     else
     {
@@ -1704,6 +1707,13 @@ void MainWindow::onConnectionButtonTriggered( bool value )
   }
 }
 
+void MainWindow::onConnectionSynchronizationTriggered( bool value )
+{
+  _web_api.setSynchronizedMode( value );
+  auto icon = QIcon( value ? ":/icons/sync.svg" : ":/icons/sync_off.svg" );
+  _ui->actionNetworkSynchronization->setIcon( icon );
+}
+
 void MainWindow::onConnectionThreadTerminated( )
 {
   _web_socket = nullptr;
@@ -1713,6 +1723,7 @@ void MainWindow::onConnectionThreadTerminated( )
   _ui->actionNetworkConnection->setIcon( QIcon( ":/icons/connect.svg" ));
   _ui->actionNetworkConnection->blockSignals( false );
   _ui->actionSyncScene->setEnabled( false );
+  _ui->actionNetworkSynchronization->setVisible( false );
 }
 
 void MainWindow::disableInterface( bool value )

@@ -181,6 +181,7 @@ void OpenGLWidget::initializeGL( void )
   _then = _lastFrame = std::chrono::system_clock::now( );
 
   QOpenGLWidget::initializeGL( );
+
   nlrender::Config::init( );
   _nlrenderer = new nlrender::Renderer( );
   _nlrenderer->tessCriteria( nlrender::Renderer::LINEAR );
