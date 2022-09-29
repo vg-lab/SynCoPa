@@ -15,6 +15,8 @@
 
 #include <nlgenerator/nlgenerator.h>
 #include <nlgeometry/nlgeometry.h>
+#include <boost/thread.hpp>
+#include <boost/thread/concurrent_queues/sync_bounded_queue.hpp>
 
 namespace syncopa
 {
@@ -31,8 +33,8 @@ namespace syncopa
     ID = 0 ,
     MESH ,
     MATRIX ,
-    COLOR,
-    SHOW_SOMA,
+    COLOR ,
+    SHOW_SOMA ,
     SHOW_MORPHOLOGIES
   };
 
@@ -65,7 +67,7 @@ namespace syncopa
 
     void generateMeshes( void );
 
-    void uploadMeshes( );
+    void flushMeshesOnCPU( );
 
     TRenderMorpho getRender( const gidUSet& gids ) const;
 
@@ -91,6 +93,7 @@ namespace syncopa
 
     std::unordered_map< nsol::NeuronMorphologyPtr , nlgeometry::MeshPtr > _neuronMeshes;
     std::unordered_map< unsigned int , nsol::NeuronMorphologyPtr > _neuronMorphologies;
+    boost::sync_bounded_queue< nlgeometry::MeshPtr > _meshesOnCPU;
 
     vec3 _colorPre;
     vec3 _colorPost;

@@ -27,9 +27,18 @@ namespace syncopa
     reto::ShaderProgram _staticProgram;
     reto::ShaderProgram _staticGradientProgram;
     reto::ShaderProgram _dynamicProgram;
+
+    reto::ShaderProgram _staticAccProgram;
+    reto::ShaderProgram _staticAccGradientProgram;
+    reto::ShaderProgram _dynamicAccProgram;
+
     std::shared_ptr< plab::Renderer > _staticRenderer;
     std::shared_ptr< plab::Renderer > _staticGradientRenderer;
     std::shared_ptr< plab::Renderer > _dynamicRenderer;
+
+    std::shared_ptr< plab::Renderer > _staticAccRenderer;
+    std::shared_ptr< plab::Renderer > _staticAccGradientRenderer;
+    std::shared_ptr< plab::Renderer > _dynamicAccRenderer;
 
     // SYNAPSES
     std::shared_ptr< plab::Cluster< SynapseParticle >> _synapseCluster;
@@ -45,6 +54,9 @@ namespace syncopa
     // DYNAMIC
     std::shared_ptr< plab::Cluster< DynamicPathParticle>> _dynamicCluster;
     std::shared_ptr< DynamicModel > _dynamicModel;
+
+    // OTHER
+    bool _gradientMode;
 
     void recalculateParticlesBoundingBox( );
 
@@ -64,6 +76,8 @@ namespace syncopa
     const std::shared_ptr< StaticModel >& getPathModel( ) const;
 
     const std::shared_ptr< DynamicModel >& getDynamicModel( ) const;
+
+    bool isAccumulativeMode( ) const;
 
     void setAccumulativeMode( bool accumulativeMode );
 
@@ -89,7 +103,7 @@ namespace syncopa
 
     void clearDynamic( );
 
-    void draw( bool drawPaths, bool drawDynamic  ) const;
+    void draw( bool drawPaths , bool drawDynamic ) const;
 
   };
 
