@@ -238,9 +238,7 @@ protected:
 
   void initRenderToTexture( );
 
-  void generateDepthTexture( int width_ , int height_ );
-
-  void performMSAA( );
+  void recalculateTextureDimensions( int width_ , int height_ );
 
   QLabel _fpsLabel;
   bool _showFps;
@@ -282,7 +280,6 @@ protected:
   float _renderPeriod;
   float _elapsedTimeRenderAcc;
   float _renderPeriodMicroseconds;
-  bool _alphaBlendingAccumulative;
 
   syncopa::gidUSet _gidsAll;
 
@@ -299,16 +296,14 @@ protected:
 
   reto::ShaderProgram* _screenPlaneShader;
 
-  unsigned int _screenPlaneVao;
+  unsigned int _quadVAO;
+  unsigned int _opaqueFrameBuffer;
+  unsigned int _weightFrameBuffer;
 
-  unsigned int _depthFrameBuffer;
-  unsigned int _textureColor;
-  unsigned int _textureDepth;
-
-  unsigned int _msaaSamples;
-  unsigned int _msaaFrameBuffer;
-  unsigned int _msaaTextureColor;
-  unsigned int _msaaTextureDepth;
+  unsigned int _opaqueColorTexture;
+  unsigned int _opaqueDepthTexture;
+  unsigned int _accumulationTexture;
+  unsigned int _revealTexture;
 
   int _currentWidth;
   int _currentHeight;

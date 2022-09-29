@@ -13,11 +13,17 @@
 
 #include <unordered_set>
 #include <GL/glew.h>
+#include <QDebug>
+
+constexpr int MAX_MESH_ON_CPU_QUEUE_SIZE = 500;
+constexpr int MAX_LOADED_MESHES_PER_FRAME = 20;
+
 
 namespace syncopa
 {
   NeuronScene::NeuronScene( nsol::DataSet* dataset )
     : _dataset( dataset )
+    , _meshesOnCPU( MAX_MESH_ON_CPU_QUEUE_SIZE )
   {
     _attribsFormat.resize( 3 );
     _attribsFormat[ 0 ] = nlgeometry::TAttribType::POSITION;
@@ -87,6 +93,7 @@ namespace syncopa
 
       auto mesh = nlgenerator::MeshGenerator::generateMesh( morphology );
       _neuronMeshes[ morphology ] = mesh;
+      _meshesOnCPU.push( mesh );
 
 #pragma omp atomic
       ++count;
@@ -218,28 +225,16 @@ namespace syncopa
     }
   }
 
-  void NeuronScene::uploadMeshes( )
+  void NeuronScene::flushMeshesOnCPU( )
   {
-    const auto total = _neuronMeshes.size( );
-    unsigned int count = 0;
-
-    auto emitProgress = [ this ]( const unsigned int p )
+    nlgeometry::MeshPtr current = nullptr;
+    int amount = 0;
+    while ( _meshesOnCPU.try_pull( current ) &&
+            amount < MAX_LOADED_MESHES_PER_FRAME )
     {
-      static unsigned int oldProgress = 0;
-      if ( oldProgress < p )
-      {
-        oldProgress = p;
-        emit progress( "Uploading meshes to GPU" , oldProgress );
-      }
-    };
-
-    for ( auto& mesh: _neuronMeshes )
-    {
-      mesh.second->uploadGPU( _attribsFormat , nlgeometry::Facet::PATCHES );
-      mesh.second->clearCPUData( );
-
-      ++count;
-      emitProgress(( count * 100 ) / total );
+      current->uploadGPU( _attribsFormat , nlgeometry::Facet::PATCHES );
+      current->clearCPUData( );
+      amount++;
     }
   }
 }

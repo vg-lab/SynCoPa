@@ -24,49 +24,13 @@
 #include <plab/reto/RetoCamera.h>
 #include <QOpenGLDebugLogger>
 
+#include "particlelab/ParticleLabShaders.h"
+
 #include "MainWindow.h"
 
 using namespace syncopa;
 
 constexpr float CAMERA_ANIMATION_DURATION = 0.75; /** camera animation duration in seconds. */
-
-constexpr int SUPER_SAMPLING_SCALE = 2;
-
-const static std::string vertexShaderCode = R"(#version 400
-in vec2 inPosition;
-out vec2 uv;
-
-void main( void )
-{
-  uv = (inPosition + vec2( 1.0, 1.0 )) * 0.5;
-  gl_Position = vec4( inPosition,  0.1, 1.0 );
-})";
-
-const static std::string screenFragment = R"(#version 400
-out vec3 FragColor;
-
-in vec2 uv;
-
-uniform sampler2D screenTexture;
-uniform sampler2D depthTexture;
-
-uniform float zNear;
-uniform float zFar;
-
-float LinearizeDepth(float depth)
-{
-  float z = depth * 2.0 - 1.0;
-  return (2.0 * zNear * zFar) / (zFar + zNear - z * (zFar - zNear));
-}
-
-void main( void )
-{
-  //float depthValue = LinearizeDepth( texture( screenTexture, uv ).r ) / zFar;
-  //FragColor = vec3( depthValue, depthValue, depthValue );
-  FragColor = texture(screenTexture, uv).rgb;
-  gl_FragDepth = texture( depthTexture, uv ).r;
-  //FragColor = vec3(vec3(1.0), 1.0);
-})";
 
 OpenGLWidget::OpenGLWidget(
   QWidget* parent ,
@@ -94,20 +58,15 @@ OpenGLWidget::OpenGLWidget(
   , _mode( UNDEFINED )
   , _particleSizeThreshold( 0.45 )
   , _elapsedTimeRenderAcc( 0.0f )
-  , _alphaBlendingAccumulative( false )
   , _alphaSynapsesMap( 0.55 )
   , _dynamicActive( false )
   , _dynamicMovement( true )
   , _oglFunctions( nullptr )
   , _screenPlaneShader( nullptr )
-  , _screenPlaneVao( 0 )
-  , _depthFrameBuffer( 0 )
-  , _textureColor( 0 )
-  , _textureDepth( 0 )
-  , _msaaSamples( 4 )
-  , _msaaFrameBuffer( 0 )
-  , _msaaTextureColor( 0 )
-  , _msaaTextureDepth( 0 )
+  , _quadVAO( 0 )
+  , _weightFrameBuffer( 0 )
+  , _accumulationTexture( 0 )
+  , _revealTexture( 0 )
   , _currentWidth( 0 )
   , _currentHeight( 0 )
   , _mapSynapseValues( false )
@@ -568,144 +527,135 @@ void OpenGLWidget::initRenderToTexture( void )
   glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
 
   _screenPlaneShader = new reto::ShaderProgram( );
-  _screenPlaneShader->loadVertexShaderFromText( vertexShaderCode );
-  _screenPlaneShader->loadFragmentShaderFromText( screenFragment );
+  _screenPlaneShader->loadVertexShaderFromText( SHADER_SCREEN_VERTEX );
+  _screenPlaneShader->loadFragmentShaderFromText( SHADER_SCREEN_FRAGMENT );
   _screenPlaneShader->create( );
   _screenPlaneShader->link( );
   _screenPlaneShader->autocatching( true );
+  _screenPlaneShader->use( );
+  _screenPlaneShader->sendUniformi( "accumulation" , 0 );
+  _screenPlaneShader->sendUniformi( "reveal" , 1 );
+  _screenPlaneShader->sendUniformi( "opaque" , 2 );
 
-  // Create MSAA framebuffer and textures
-  glGenFramebuffers( 1 , &_msaaFrameBuffer );
-  glBindFramebuffer( GL_FRAMEBUFFER , _msaaFrameBuffer );
+  // Generate the opaque framebuffer
 
-  glGenTextures( 1 , &_msaaTextureColor );
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureColor );
-  _oglFunctions->glTexImage2DMultisample(
-    GL_TEXTURE_2D_MULTISAMPLE , _msaaSamples , GL_RGB ,
-    width( ) * SUPER_SAMPLING_SCALE ,
-    height( ) * SUPER_SAMPLING_SCALE ,
-    GL_TRUE );
+  _oglFunctions->glGenFramebuffers( 1 , &_opaqueFrameBuffer );
+  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER , _opaqueFrameBuffer );
 
-  glGenTextures( 1 , &_msaaTextureDepth );
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureDepth );
-  _oglFunctions->glTexImage2DMultisample(
-    GL_TEXTURE_2D_MULTISAMPLE , _msaaSamples , GL_DEPTH_COMPONENT ,
-    width( ) * SUPER_SAMPLING_SCALE ,
-    height( ) * SUPER_SAMPLING_SCALE , GL_TRUE );
+  glGenTextures( 1 , &_opaqueColorTexture );
+  glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA16F , width( ) , height( ) , 0 ,
+                GL_RGBA , GL_HALF_FLOAT , NULL );
+  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
+  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
+  glBindTexture( GL_TEXTURE_2D , 0 );
 
+  glGenTextures( 1 , &_opaqueDepthTexture );
+  glBindTexture( GL_TEXTURE_2D , _opaqueDepthTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT , width( ) , height( ) ,
+                0 , GL_DEPTH_COMPONENT , GL_FLOAT , NULL );
+  glBindTexture( GL_TEXTURE_2D , 0 );
 
-  // Bind Multisample textures to MSAA framebuffer
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , 0 );
-  glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
-                          GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureColor , 0 );
-  glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT ,
-                          GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureDepth , 0 );
+  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
+                                         GL_TEXTURE_2D , _opaqueColorTexture ,
+                                         0 );
+  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT ,
+                                         GL_TEXTURE_2D , _opaqueDepthTexture ,
+                                         0 );
 
-  if ( glCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
-  {
-    std::cerr << "Error: creating MSAA FrameBuffer" << std::endl;
-  }
+  if ( _oglFunctions->glCheckFramebufferStatus( GL_FRAMEBUFFER ) !=
+       GL_FRAMEBUFFER_COMPLETE )
+    std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
+              << std::endl;
 
-  glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
+  // Generate the OIR framebuffer
 
+  _oglFunctions->glGenFramebuffers( 1 , &_weightFrameBuffer );
+  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER , _weightFrameBuffer );
 
-  // Create intermediate framebuffer and color and depth textures
-  glActiveTexture( GL_TEXTURE0 );
-  glGenTextures( 1 , &_textureColor );
-  glBindTexture( GL_TEXTURE_2D , _textureColor );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGB , width( ) * SUPER_SAMPLING_SCALE ,
-                height( ) * SUPER_SAMPLING_SCALE , 0 ,
-                GL_RGB ,
-                GL_UNSIGNED_BYTE , 0 );
+  glGenTextures( 1 , &_accumulationTexture );
+  glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA32F , width( ) , height( ) , 0 ,
+                GL_RGBA , GL_FLOAT , nullptr );
   glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
   glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
 
-  glGenTextures( 1 , &_textureDepth );
-  glBindTexture( GL_TEXTURE_2D , _textureDepth );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT ,
-                width( ) * SUPER_SAMPLING_SCALE ,
-                height( ) * SUPER_SAMPLING_SCALE , 0 , GL_DEPTH_COMPONENT ,
-                GL_FLOAT ,
-                NULL );
+  glGenTextures( 1 , &_revealTexture );
+  glBindTexture( GL_TEXTURE_2D , _revealTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_R8 , width( ) , height( ) , 0 ,
+                GL_RED , GL_FLOAT , nullptr );
+  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
+  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
 
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_NEAREST );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_NEAREST );
+  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
+                                         GL_TEXTURE_2D , _accumulationTexture ,
+                                         0 );
+  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT1 ,
+                                         GL_TEXTURE_2D , _revealTexture , 0 );
 
-  glGenFramebuffers( 1 , &_depthFrameBuffer );
-  glBindFramebuffer( GL_FRAMEBUFFER , _depthFrameBuffer );
+  // We must include the opaque depth texture!
+  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT ,
+                                         GL_TEXTURE_2D , _opaqueDepthTexture ,
+                                         0 );
 
-  glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
-                          GL_TEXTURE_2D ,
-                          _textureColor , 0 );
+  const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 ,
+                                            GL_COLOR_ATTACHMENT1 };
+  _oglFunctions->glDrawBuffers( 2 , transparentDrawBuffers );
 
-  glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT , GL_TEXTURE_2D ,
-                          _textureDepth , 0 );
+  if ( _oglFunctions->glCheckFramebufferStatus( GL_FRAMEBUFFER ) !=
+       GL_FRAMEBUFFER_COMPLETE )
+    std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
+              << std::endl;
 
-  if ( glCheckFramebufferStatus( GL_FRAMEBUFFER ) != GL_FRAMEBUFFER_COMPLETE )
-  {
-    std::cerr << "Error: creating intermediate FrameBuffer" << std::endl;
-  }
+  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER ,
+                                    defaultFramebufferObject( ));
 
-  glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
+  float quadVertices[] = {
+    // positions
+    -1.0f , -1.0f , 0.0f ,
+    1.0f , -1.0f , 0.0f ,
+    1.0f , 1.0f , 0.0f ,
 
-  static const float quadBufferData[] =
-    {
-      -1.0f , 1.0f ,
-      -1.0f , -1.0f ,
-      1.0f , -1.0f ,
-      1.0f , 1.0f ,
-    };
+    1.0f , 1.0f , 0.0f ,
+    -1.0f , 1.0f , 0.0f ,
+    -1.0f , -1.0f , 0.0f
+  };
 
-  static const unsigned int quadIndices[] =
-    {
-      0 , 1 , 2 ,
-      0 , 2 , 3 ,
-    };
-
-  _oglFunctions->glGenVertexArrays( 1 , &_screenPlaneVao );
-  _oglFunctions->glBindVertexArray( _screenPlaneVao );
-
-  unsigned int vbo[2];
-  glGenBuffers( 2 , vbo );
-  glBindBuffer( GL_ARRAY_BUFFER , vbo[ 0 ] );
-  glBufferData( GL_ARRAY_BUFFER , sizeof( quadBufferData ) , quadBufferData ,
-                GL_STATIC_DRAW );
-  glVertexAttribPointer( 0 , 2 , GL_FLOAT , GL_FALSE , 0 , 0 );
-  glEnableVertexAttribArray( 0 );
-  glBindBuffer( GL_ELEMENT_ARRAY_BUFFER , vbo[ 1 ] );
-  glBufferData( GL_ELEMENT_ARRAY_BUFFER , sizeof( quadIndices ) , quadIndices ,
-                GL_STATIC_DRAW );
+  // quad VAO
+  unsigned int quadVBO;
+  _oglFunctions->glGenVertexArrays( 1 , &_quadVAO );
+  _oglFunctions->glGenBuffers( 1 , &quadVBO );
+  _oglFunctions->glBindVertexArray( _quadVAO );
+  _oglFunctions->glBindBuffer( GL_ARRAY_BUFFER , quadVBO );
+  _oglFunctions->glBufferData( GL_ARRAY_BUFFER , sizeof( quadVertices ) ,
+                               quadVertices ,
+                               GL_STATIC_DRAW );
+  _oglFunctions->glEnableVertexAttribArray( 0 );
+  _oglFunctions->glVertexAttribPointer( 0 , 3 , GL_FLOAT , GL_FALSE ,
+                                        3 * sizeof( float ) ,
+                                        ( void* ) 0 );
+  _oglFunctions->glBindVertexArray( 0 );
 }
 
-void OpenGLWidget::generateDepthTexture( int width_ , int height_ )
+void OpenGLWidget::recalculateTextureDimensions( int width_ , int height_ )
 {
-  glBindTexture( GL_TEXTURE_2D , _textureColor );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGB , width_ * SUPER_SAMPLING_SCALE ,
-                height_ * SUPER_SAMPLING_SCALE , 0 ,
-                GL_RGB , GL_UNSIGNED_BYTE , 0 );
+  glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA16F , width_ , height_ , 0 ,
+                GL_RGBA , GL_HALF_FLOAT , nullptr );
 
-  glBindTexture( GL_TEXTURE_2D , _textureDepth );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT ,
-                width_ * SUPER_SAMPLING_SCALE , height_ * SUPER_SAMPLING_SCALE ,
-                0 , GL_DEPTH_COMPONENT , GL_FLOAT ,
-                0 );
+  glBindTexture( GL_TEXTURE_2D , _opaqueDepthTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT , width_ , height_ , 0 ,
+                GL_DEPTH_COMPONENT , GL_FLOAT , 0 );
+
+  glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA32F , width_ , height_ , 0 ,
+                GL_RGBA , GL_FLOAT , nullptr );
+
+  glBindTexture( GL_TEXTURE_2D , _revealTexture );
+  glTexImage2D( GL_TEXTURE_2D , 0 , GL_R8 , width_ , height_ , 0 ,
+                GL_RED , GL_FLOAT , nullptr );
 
   glBindTexture( GL_TEXTURE_2D , 0 );
-
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureColor );
-  _oglFunctions->glTexImage2DMultisample(
-    GL_TEXTURE_2D_MULTISAMPLE , _msaaSamples , GL_RGB ,
-    width( ) * SUPER_SAMPLING_SCALE ,
-    height( ) * SUPER_SAMPLING_SCALE ,
-    GL_TRUE );
-
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , _msaaTextureDepth );
-  _oglFunctions->glTexImage2DMultisample(
-    GL_TEXTURE_2D_MULTISAMPLE , _msaaSamples , GL_DEPTH_COMPONENT ,
-    width( ) * SUPER_SAMPLING_SCALE ,
-    height( ) * SUPER_SAMPLING_SCALE , GL_TRUE );
-
-  glBindTexture( GL_TEXTURE_2D_MULTISAMPLE , 0 );
 }
 
 void OpenGLWidget::paintMorphologies( void )
@@ -726,24 +676,10 @@ void OpenGLWidget::paintMorphologies( void )
     _nlrenderer->render( std::get< syncopa::MESH >( model ) ,
                          std::get< syncopa::MATRIX >( model ) ,
                          std::get< syncopa::COLOR >( model ) ,
-                         false,
+                         false ,
                          std::get< syncopa::SHOW_SOMA >( model ) ,
                          std::get< syncopa::SHOW_MORPHOLOGIES >( model ));
   }
-}
-
-
-void OpenGLWidget::performMSAA( void )
-{
-  glBindFramebuffer( GL_READ_FRAMEBUFFER , _msaaFrameBuffer );
-  glBindFramebuffer( GL_DRAW_FRAMEBUFFER , _depthFrameBuffer );
-  _oglFunctions->glBlitFramebuffer( 0 , 0 , width( ) * SUPER_SAMPLING_SCALE ,
-                                    height( ) * SUPER_SAMPLING_SCALE , 0 ,
-                                    0 ,
-                                    width( ) * SUPER_SAMPLING_SCALE ,
-                                    height( ) * SUPER_SAMPLING_SCALE ,
-                                    GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ,
-                                    GL_NEAREST );
 }
 
 void OpenGLWidget::paintParticles( void )
@@ -757,6 +693,12 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
+  // First, let's flush the loaded meshes.
+  if ( _neuronScene != nullptr )
+  {
+    _neuronScene->flushMeshesOnCPU( );
+  }
+
   std::chrono::time_point< std::chrono::system_clock > now =
     std::chrono::system_clock::now( );
 
@@ -771,11 +713,6 @@ void OpenGLWidget::paintGL( void )
   _elapsedTimeRenderAcc += elapsedMicroseconds;
 
   _frameCount++;
-  glDepthMask( GL_TRUE );
-  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-  glDisable( GL_BLEND );
-  glEnable( GL_DEPTH_TEST );
-  glEnable( GL_CULL_FACE );
 
   if ( _paint )
   {
@@ -794,49 +731,72 @@ void OpenGLWidget::paintGL( void )
         _elapsedTimeRenderAcc = 0.0f;
       }
 
-      glBindFramebuffer( GL_FRAMEBUFFER , _msaaFrameBuffer );
-      glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-      glViewport( 0 , 0 , size( ).width( ) * SUPER_SAMPLING_SCALE ,
-                  size( ).height( ) * SUPER_SAMPLING_SCALE );
+      // DRAW
 
-      paintMorphologies( );
-      paintParticles( );
-      performMSAA( );
-
-      glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
-      glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
       glViewport( 0 , 0 , width( ) , height( ));
-      glDisable( GL_DEPTH_TEST );
-      glDisable( GL_BLEND );
-      glClear( GL_COLOR_BUFFER_BIT );
 
-      _screenPlaneShader->use( );
-      glActiveTexture( GL_TEXTURE0 );
-      glBindTexture( GL_TEXTURE_2D , _textureColor );
+      if ( _particleManager.isAccumulativeMode( ))
+      {
+        glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        glDisable( GL_DEPTH_TEST );
+        glEnable( GL_BLEND );
+        glBlendFunc( GL_SRC_ALPHA , GL_ONE_MINUS_CONSTANT_ALPHA );
+        glBlendEquation( GL_FUNC_ADD );
+        paintMorphologies( );
+        paintParticles( );
+      }
+      else
+      {
+        // First, we draw the opaque elements (the morphologies)
+        // in the default frame buffer object.
+        glEnable( GL_DEPTH_TEST );
+        glDepthFunc( GL_LESS );
+        glDisable( GL_BLEND );
+        glDepthMask( GL_TRUE );
 
-      GLuint texID = glGetUniformLocation( _screenPlaneShader->program( ) ,
-                                           "screenTexture" );
-      glUniform1i( texID , 0 );
+        glBindFramebuffer( GL_FRAMEBUFFER , _opaqueFrameBuffer );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        paintMorphologies( );
 
-      glActiveTexture( GL_TEXTURE1 );
-      glBindTexture( GL_TEXTURE_2D , _textureColor );
+        // Then, we draw the transparent elements (the synapses)
+        // in the weighted frame buffer object.
+        glDepthMask( GL_FALSE );
+        glEnable( GL_BLEND );
 
-      GLint depthID = glGetUniformLocation( _screenPlaneShader->program( ) ,
-                                            "depthTexture" );
-      GLint nearID = glGetUniformLocation( _screenPlaneShader->program( ) ,
-                                           "zNear" );
-      GLint farID = glGetUniformLocation( _screenPlaneShader->program( ) ,
-                                          "zFar" );
+        glBindFramebuffer( GL_FRAMEBUFFER , _weightFrameBuffer );
+        // Keep the depth text, avoiding new writes to the depth texture.
+        _oglFunctions->glBlendFunci( 0 , GL_ONE , GL_ONE );
+        _oglFunctions->glBlendFunci( 1 , GL_ZERO , GL_ONE_MINUS_SRC_COLOR );
+        glBlendEquation( GL_FUNC_ADD );
 
-      glUniform1i( depthID , 1 );
-      glUniform1f( nearID , _camera->camera( )->nearPlane( ));
-      glUniform1f( farID , _camera->camera( )->farPlane( ));
+        // Clear textures. We mustn't clear the depth texture.
+        glm::vec4 zeroFillerVec( 0.0f );
+        glm::vec4 oneFillerVec( 1.0f );
+        _oglFunctions->glClearBufferfv( GL_COLOR , 0 , &zeroFillerVec[ 0 ] );
+        _oglFunctions->glClearBufferfv( GL_COLOR , 1 , &oneFillerVec[ 0 ] );
 
-      _oglFunctions->glBindVertexArray( _screenPlaneVao );
+        paintParticles( );
 
-      glDrawElements( GL_TRIANGLES , 6 , GL_UNSIGNED_INT , 0 );
+        // Now, we paint the transparent part over the opaque part.
+        // We can use the default frame buffer object directly for this part.
+        glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        glDisable( GL_DEPTH_TEST );
+        glDisable( GL_BLEND );
 
-      update( );
+        _screenPlaneShader->use( );
+        _oglFunctions->glActiveTexture( GL_TEXTURE0 );
+        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
+        _oglFunctions->glActiveTexture( GL_TEXTURE1 );
+        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _revealTexture );
+        _oglFunctions->glActiveTexture( GL_TEXTURE2 );
+        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
+
+        _oglFunctions->glBindVertexArray( _quadVAO );
+        glDrawArrays( GL_TRIANGLES , 0 , 6 );
+        update( );
+      }
     }
 
     glUseProgram( 0 );
@@ -906,7 +866,7 @@ void OpenGLWidget::resizeGL( int w , int h )
   _camera->windowSize( w , h );
   glViewport( 0 , 0 , w , h );
 
-  generateDepthTexture( w , h );
+  recalculateTextureDimensions( w , h );
 }
 
 void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
@@ -1340,30 +1300,17 @@ std::pair< float , float > OpenGLWidget::rangeBounds( void ) const
 
 void OpenGLWidget::alphaMode( bool alphaAccumulative )
 {
-  _alphaBlendingAccumulative = alphaAccumulative;
   _particleManager.setAccumulativeMode( alphaAccumulative );
+
+  // This update is required to refresh the interface.
+  update( );
 }
 
 void OpenGLWidget::mode( TMode mode_ )
 {
   _mode = mode_;
-
-  //_dynPathManager->clear( );
-
-  switch ( _mode )
-  {
-    default:
-    case SYNAPSES:
-      _alphaBlendingAccumulative = false;
-      break;
-    case PATHS:
-      _alphaBlendingAccumulative = true;
-      break;
-  }
-
   setupSynapses( );
   setupPaths( );
-
   home( );
 }
 
@@ -1438,7 +1385,6 @@ void OpenGLWidget::loadPostprocess( )
 {
   makeCurrent( );
 
-  _neuronScene->uploadMeshes( );
   _neuronScene->color( vec3( 1 , 1 , 1 ) , PRESYNAPTIC );
   _neuronScene->color( vec3( 0 , 1 , 1 ) , POSTSYNAPTIC );
 

@@ -9,7 +9,7 @@
 cmake_minimum_required( VERSION 3.1 FATAL_ERROR )
 
 # syncopa project and version
-project( syncopa VERSION 0.3.2 )
+project( syncopa VERSION 0.4.1 )
 set( syncopa_VERSION_ABI 1 )
 set( SYNCOPA_LICENSE "GPL")
 

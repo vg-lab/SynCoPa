@@ -6,7 +6,7 @@
 
 #include "particlelab/ParticleLabShaders.h"
 
-#include <plab/gl/CoverageRenderer.h>
+#include <plab/gl/SimpleRenderer.h>
 
 #include <QDebug>
 
@@ -26,6 +26,7 @@ namespace syncopa
     , _pathCluster( nullptr )
     , _pathModel( nullptr )
     , _pathBB( )
+    , _gradientMode( false )
   {
   }
 
@@ -43,14 +44,35 @@ namespace syncopa
                                   PARTICLE_FRAGMENT_SHADER );
     _dynamicProgram.compileAndLink( );
 
-    _staticRenderer = std::make_shared< plab::CoverageRenderer >(
+    _staticAccProgram.loadFromText( STATIC_VERTEX_SHADER ,
+                                    PARTICLE_ACC_FRAGMENT_SHADER );
+    _staticAccProgram.compileAndLink( );
+
+    _staticAccGradientProgram.loadFromText( STATIC_GRADIENT_VERTEX_SHADER ,
+                                            PARTICLE_ACC_FRAGMENT_SHADER );
+    _staticAccGradientProgram.compileAndLink( );
+
+    _dynamicAccProgram.loadFromText( DYNAMIC_VERTEX_SHADER ,
+                                     PARTICLE_ACC_FRAGMENT_SHADER );
+    _dynamicAccProgram.compileAndLink( );
+
+    _staticRenderer = std::make_shared< plab::SimpleRenderer >(
       _staticProgram.program( ));
 
-    _staticGradientRenderer = std::make_shared< plab::CoverageRenderer >(
+    _staticGradientRenderer = std::make_shared< plab::SimpleRenderer >(
       _staticGradientProgram.program( ));
 
-    _dynamicRenderer = std::make_shared< plab::CoverageRenderer >(
+    _dynamicRenderer = std::make_shared< plab::SimpleRenderer >(
       _dynamicProgram.program( ));
+
+    _staticAccRenderer = std::make_shared< plab::SimpleRenderer >(
+      _staticAccProgram.program( ));
+
+    _staticAccGradientRenderer = std::make_shared< plab::SimpleRenderer >(
+      _staticAccGradientProgram.program( ));
+
+    _dynamicAccRenderer = std::make_shared< plab::SimpleRenderer >(
+      _dynamicAccProgram.program( ));
 
     // SYNAPSES
     _synapseCluster = std::make_shared< plab::Cluster< SynapseParticle >>( );
@@ -112,7 +134,8 @@ namespace syncopa
     return _synapseBB;
   }
 
-  const nlgeometry::AxisAlignedBoundingBox& ParticleManager::getPathBoundingBox( ) const
+  const nlgeometry::AxisAlignedBoundingBox&
+  ParticleManager::getPathBoundingBox( ) const
   {
     return _pathBB;
   }
@@ -123,12 +146,32 @@ namespace syncopa
     return _particlesBoundingBox;
   }
 
+  bool ParticleManager::isAccumulativeMode( ) const
+  {
+    return _synapseModel->isAccumulativeMode( );
+  }
+
   void ParticleManager::setAccumulativeMode( bool accumulativeMode )
   {
     _synapseModel->setAccumulativeMode( accumulativeMode );
     _synapseGradientModel->setAccumulativeMode( accumulativeMode );
     _pathModel->setAccumulativeMode( accumulativeMode );
     _dynamicModel->setAccumulativeMode( accumulativeMode );
+
+    if ( accumulativeMode )
+    {
+      _pathCluster->setRenderer( _staticAccRenderer );
+      _dynamicCluster->setRenderer( _dynamicAccRenderer );
+      _synapseCluster->setRenderer(
+        _gradientMode ? _staticAccGradientRenderer : _staticAccRenderer );
+    }
+    else
+    {
+      _pathCluster->setRenderer( _staticRenderer );
+      _dynamicCluster->setRenderer( _dynamicRenderer );
+      _synapseCluster->setRenderer(
+        _gradientMode ? _staticGradientRenderer : _staticRenderer );
+    }
   }
 
   void ParticleManager::setSynapses( const tsynapseVec& synapses )
@@ -165,7 +208,9 @@ namespace syncopa
 
     _synapseCluster->setParticles( particles );
     _synapseCluster->setModel( _synapseModel );
-    _synapseCluster->setRenderer( _staticRenderer );
+    _synapseCluster->setRenderer(
+      isAccumulativeMode( ) ? _staticAccRenderer : _staticRenderer );
+    _gradientMode = false;
   }
 
   void ParticleManager::setMappedSynapses( const tsynapseVec& synapses ,
@@ -205,7 +250,10 @@ namespace syncopa
 
     _synapseCluster->setParticles( particles );
     _synapseCluster->setModel( _synapseGradientModel );
-    _synapseCluster->setRenderer( _staticGradientRenderer );
+    _synapseCluster->setRenderer(
+      isAccumulativeMode( ) ? _staticAccGradientRenderer
+                            : _staticGradientRenderer );
+    _gradientMode = false;
   }
 
   void ParticleManager::setPaths(

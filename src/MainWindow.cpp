@@ -1800,7 +1800,7 @@ void
 LoadingDialog::progress( const QString& message , const unsigned int value )
 {
   // NOTE: adjusted to the number of loading steps.
-  constexpr float STEP_WEIGHT = 33.33;
+  constexpr float STEP_WEIGHT = 50.00f;
 
   static float steps = 0;
   static unsigned int lastValue = 0;

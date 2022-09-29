@@ -121,6 +121,7 @@ set(SYNCOPA_LINK_LIBRARIES
   nlgenerator
   scoop
   wcw
+  boost_thread
 )
 
 if ( GMRVLEX_FOUND )
