@@ -53,40 +53,23 @@ uniform vec3 cameraRight;
 uniform float particlePreSize;
 uniform float particlePostSize;
 
-uniform int gradientSize;
-uniform float gradientTimes[256];
 uniform vec4 gradientColors[256];
 
 uniform float particlePreVisibility;
 uniform float particlePostVisibility;
 
-layout(location = 0) in vec3 vertex;
-layout(location = 1) in vec3 position;
-layout(location = 2) in float isPostsynaptic;
-layout(location = 3) in float value;
+layout (location = 0) in vec3 vertex;
+layout (location = 1) in vec3 position;
+layout (location = 2) in float isPostsynaptic;
+layout (location = 3) in float value;
 
 flat out vec4 color;
 out vec2 uvCoord;
 out float size;
 
-vec4 gradient (float t) {
-    if (gradientSize == 0) return vec4(1.0f, 0.0f, 1.0f, 1.0f);
-    int first = gradientSize - 1;
-    for (int i = 0; i < gradientSize; i++) {
-        if (gradientTimes[i] > t) {
-            first = i - 1;
-            break;
-        }
-    }
-
-    if(first == -1) return gradientColors[0];
-    if (first == gradientSize - 1) return gradientColors[first];
-
-    float start = gradientTimes[first];
-    float end = gradientTimes[first + 1];
-    float normalizedT = (t - start) / (end - start);
-
-    return mix(gradientColors[first], gradientColors[first + 1], normalizedT);
+vec4 gradient(float t) {
+    int index = clamp(int(floor(t * 255.0f)), 0, 255);
+    return gradientColors[index];
 }
 
 void main()
@@ -97,9 +80,9 @@ void main()
 
     gl_Position = viewProjectionMatrix
     * vec4(
-    (vertex.x * pSize * cameraRight)
-    + (vertex.y * pSize * cameraUp)
-    + position, 1.0f) - vec4(0.0f, 0.0f, 0.1f, 0.0f);
+        (vertex.x * pSize * cameraRight)
+        + (vertex.y * pSize * cameraUp)
+        + position, 1.0f) - vec4(0.0f, 0.0f, 0.1f, 0.0f);
 
     uvCoord = vertex.rg + vec2(0.5f, 0.5f);
     size = pSize;

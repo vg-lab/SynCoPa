@@ -14,11 +14,14 @@
 class StaticGradientModel : public plab::CameraModel
 {
 
+  static const int MAX_COLORS = 256;
+
   float _particlePreSize;
   float _particlePostSize;
   tColorVec _gradient;
   bool _particlePreVisibility;
   bool _particlePostVisibility;
+  glm::vec4 _colors[MAX_COLORS];
 
 public:
 
