@@ -5,8 +5,8 @@ Ubuntu-Optional-Deps:
  stage: build
  script:
   - export APP_VERSION="dev"
-  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
-  - export APPIMAGE_ICON="src/icons/syncopa.png"
+#  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
+#  - export APPIMAGE_ICON="src/icons/syncopa.png"
   - export CMAKE_EXTRA_TARGETS="install"
   - export BUILD_OPTIONALS_SUBPROJECTS=1
   - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON"
@@ -22,9 +22,9 @@ Ubuntu-Optional-Deps:
 Ubuntu-Optional-Deps-master-tags:
  stage: build
  script:
-  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
-  - export APPIMAGE_ICON="src/icons/syncopa.png"
-  - export DOCKER_REPO="gitlabci@gmrv.es:apps.private"
+#  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
+#  - export APPIMAGE_ICON="src/icons/syncopa.png"
+#  - export DOCKER_REPO="gitlabci@gmrv.es:apps.private"
   - export CMAKE_EXTRA_TARGETS="install"
   - export BUILD_OPTIONALS_SUBPROJECTS=1
   - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON -DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DNEUROSCHEME_NSOL_ENABLED=ON"
@@ -42,9 +42,9 @@ Ubuntu-Optional-Deps-master:
  stage: build
  script:
   - export APP_VERSION="git-master"
-  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
-  - export APPIMAGE_ICON="src/icons/syncopa.png"
-  - export DOCKER_REPO="gitlabci@gmrv.es:apps.private"
+#  - export APPIMAGE_REPO="gitlabci@vg-lab.es:apps.private"
+#  - export APPIMAGE_ICON="src/icons/syncopa.png"
+#  - export DOCKER_REPO="gitlabci@gmrv.es:apps.private"
   - export CMAKE_EXTRA_TARGETS="install"
   - export BUILD_OPTIONALS_SUBPROJECTS=1
   - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON -DNEUROSCHEME_OPTIONALS_AS_REQUIRED=ON -DNEUROSCHEME_NSOL_ENABLED=ON"
