@@ -75,6 +75,7 @@ Ubuntu-Subproject-master:
  script:
   - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON"
   - export BUILD_GENERATOR="Ninja"
+  - export GITHUB_MIRROR_URL="git@github.com:vg-lab/Syncopa"  
   - module load Qt-5.15.2
   - bash .gitlab-ci.sh
  only:
