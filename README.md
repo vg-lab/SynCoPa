@@ -10,16 +10,16 @@ SynCoPa is a tool designed for bridging gaps among neuronal graphical representa
 ## Dependencies
 When building Syncopa from the sources it depends on the following libraries:  
 
-[EyeScale CMake Modules](https://github.com/Eyescale/CMake)
-[ZeroEQ](https://github.com/HBPVIS/ZeroEQ)
-[Lexis](https://github.com/HBPVIS/Lexis)
-[gmrvlex](https://github.com/vg-lab/gmrvlex)
-[ReTo](https://github.com/vg-lab/ReTo)
-[plab](https://github.com/vg-lab/particlelab)
-[Brion](https://github.com/BlueBrain/Brion))
-[nsol](https://github.com/vg-lab/nsol)
-[neurolots](https://github.com/vg-lab/neurolots)
-[scoop](https://github.com/vg-lab/scoop)
+* [EyeScale CMake Modules](https://github.com/Eyescale/CMake)
+* [ZeroEQ](https://github.com/HBPVIS/ZeroEQ)
+* [Lexis](https://github.com/HBPVIS/Lexis)
+* [gmrvlex](https://github.com/vg-lab/gmrvlex)
+* [ReTo](https://github.com/vg-lab/ReTo)
+* [plab](https://github.com/vg-lab/particlelab)
+* [Brion](https://github.com/BlueBrain/Brion))
+* [nsol](https://github.com/vg-lab/nsol)
+* [neurolots](https://github.com/vg-lab/neurolots)
+* [scoop](https://github.com/vg-lab/scoop)
 
 Depending on the the CMake configuration some libraries won't be needed. In order to connect applications one another, it is necessary to compile the project with ZeroEQ and its vocabulary libraries.
 
@@ -27,8 +27,8 @@ Depending on the the CMake configuration some libraries won't be needed. In orde
 Syncopa has been succesfully built and used on Ubuntu 14.04/16.04/22.04, Mac OSX Yosemite and Windows 7/8 (Visual Studio 2013 Win64). The following steps should be enough to build it:
 
 ```bash
-git clone https://gitlab.gmrv.es/nsviz/syncopa.git syncopa
+git clone https://github.com/vg-lab/SynCoPa.git syncopa
 mkdir syncopa/build && cd syncopa/build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCLONE_SUBPROJECTS=ON
 make
 ```
