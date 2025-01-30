@@ -30,6 +30,7 @@
 #include <gmrvlex/gmrvlex.h>
 #endif
 
+#include <QJsonObject>
 #include <thread>
 
 #define INITIAL_EGO_NETWORK_DISTANCES 5
@@ -944,13 +945,14 @@ void MainWindow::loadPresynapticList( void )
   update( );
 }
 
-void MainWindow::loadPostsynapticList( unsigned int gid )
+void MainWindow::loadPostsynapticList( std::vector<unsigned int> gid )
 {
   auto nsolData = _openGLWidget->dataset( );
 
   _modelListPost->clear( );
 
-  std::set< unsigned int > selection = { gid };
+  std::set< unsigned int > selection;
+  selection.insert(gid.begin(), gid.end());
   const auto synapses = nsolData->circuit( ).synapses( selection ,
                                                        nsol::Circuit::PRESYNAPTICCONNECTIONS );
 
@@ -1001,85 +1003,36 @@ void MainWindow::openBlueConfigThroughDialog( void )
 
 void MainWindow::exportDataDialog( void )
 {
-  const QString xml = QFileDialog::getSaveFileName(
-    this , tr( "Save scene..." ) , tr( "scene.xml" ) ,
-    tr( "Extensible Markup Language (*.xml)" ) ,
+  const QString json = QFileDialog::getSaveFileName(
+    this , tr( "Save HANOI JSON..." ) , tr( "scene.json" ) ,
+    tr( "JSON (*.json)" ) ,
     nullptr , QFileDialog::DontUseNativeDialog );
 
-  if ( xml.isEmpty( )) return;
-
-  const QString csv = QFileDialog::getSaveFileName(
-    this , tr( "Save synapses..." ) , tr( "synapses.csv" ) ,
-    tr( "Comma Separated Values (*.csv)" ) ,
-    nullptr , QFileDialog::DontUseNativeDialog );
-
-  if ( csv.isEmpty( )) return;
-
-  const QStringList list{ "Aggregate" , "Compact" , "Matrix" };
-
-  const QString option =
-    csv.isEmpty( ) ?
-    "" :
-    QInputDialog::getItem( this , tr( "Select CSV type" ) ,
-                           "CSV type:" , list , 0 , false );
+  if ( json.isEmpty( )) return;
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
   const auto dataset = _openGLWidget->dataset( );
 
-  if ( !xml.isEmpty( ))
+  std::ofstream file;
+  file.open( json.toStdString( ) , std::ofstream::out );
+
+  if ( file.good( ))
   {
-    std::ofstream file;
-    file.open( xml.toStdString( ) , std::ofstream::out );
-
-    if ( file.good( ))
-    {
-      syncopa::toXML( dataset , file );
-    }
-    file.close( );
+    QJsonObject data_ = syncopa::toHanoiJSON(dataset);
+    QJsonDocument doc(data_);
+    std::string str = doc.toJson(QJsonDocument::Indented).toStdString();
+    file.write(str.data(), str.size());
   }
+  file.close( );
 
-  if ( !csv.isEmpty( ))
-  {
-
-    if ( !option.isEmpty( ))
-    {
-      std::ofstream file;
-      file.open( csv.toStdString( ) , std::ofstream::out );
-      if ( file.good( ))
-      {
-        if ( option == "Matrix" )
-        {
-          toMatrixCSV( dataset , file );
-        }
-        else if ( option == "Aggregate" )
-        {
-          toAggregateCSV( dataset , file );
-        }
-        else
-        {
-          toCompactCSV( dataset , file );
-        }
-      }
-      file.close( );
-    }
-  }
   QApplication::restoreOverrideCursor( );
 }
 
 void MainWindow::syncScene( )
 {
-  std::stringstream xml;
   const auto dataset = _openGLWidget->dataset( );
-
-  toXML( dataset , xml );
-  auto xmlResult = QString::fromStdString( xml.str( ));
-
-  std::stringstream csv;
-  toAggregateCSV( dataset , csv );
-  auto csvResult = QString::fromStdString( csv.str( ));
-
-  _web_api.callSceneSyncEvent( xmlResult , csvResult );
+  _web_socket->sendCommand("scene", toHanoiJSON(dataset));
 }
 
 void MainWindow::presynapticNeuronClicked( )
@@ -1095,15 +1048,7 @@ void MainWindow::presynapticNeuronClicked( )
 
   if ( _openGLWidget->mode( ) == syncopa::PATHS )
   {
-    if ( selection.size( ) > 1 )
-    {
-      _modelListPost->clear( );
-    }
-    else
-    {
-      const auto gid = selection.front( );
-      loadPostsynapticList( gid );
-    }
+    loadPostsynapticList( selection );
   }
 
   // Generate cluster
@@ -1181,7 +1126,13 @@ void MainWindow::presynapticNeuronClicked( )
     }
     else
     {
-      _web_api.callPathsModeSelectionEvent( selection.at( 0 ) , QJsonArray( ));
+      QJsonArray array;
+      for ( const auto& item: selection )
+      {
+        array.push_back( QJsonValue( static_cast<int>(item)));
+      }
+
+      _web_api.callPathsModeSelectionEvent( array , QJsonArray( ));
     }
   }
 }
@@ -1203,8 +1154,11 @@ void MainWindow::postsynapticNeuronClicked( )
 
   std::map< QString , std::unordered_set< unsigned int>> selections;
 
-  auto pre = _listPresynaptic->selectionModel( )->selection( )
-    .first( ).indexes( ).first( ).data( ).value< unsigned int >( );
+  std::unordered_set< unsigned int > pre;
+
+  for (auto& index : _listPresynaptic->selectionModel()->selectedIndexes()) {
+      pre.insert(index.data().value<unsigned int>());
+  }
 
   std::unordered_set< unsigned int > post( selection.begin( ) ,
                                            selection.end( ));
@@ -1216,9 +1170,11 @@ void MainWindow::postsynapticNeuronClicked( )
 
   auto other = _openGLWidget->getGidsAll( );
 
-  post.erase( pre );
-  connected.erase( pre );
-  other.erase( pre );
+  for (auto& item : pre) {
+    post.erase( item );
+    connected.erase( item );
+    other.erase( item );
+  }
 
   for ( const auto& item: post )
   {
@@ -1231,7 +1187,7 @@ void MainWindow::postsynapticNeuronClicked( )
     other.erase( item );
   }
 
-  selections[ "Presynaptic" ] = { pre };
+  selections[ "Presynaptic" ] = pre;
   selections[ "Postsynaptic" ] = post;
   selections[ "Connected" ] = connected;
   selections[ "Other" ] = other;
@@ -1268,12 +1224,17 @@ void MainWindow::postsynapticNeuronClicked( )
 
   if ( _web_socket )
   {
-    QJsonArray array;
-    for ( const auto& item: selection )
+    QJsonArray qpre;
+    for ( const auto& item: pre )
     {
-      array.push_back( QJsonValue( static_cast<int>(item)));
+      qpre.push_back( QJsonValue( static_cast<int>(item)));
     }
-    _web_api.callPathsModeSelectionEvent( pre , array );
+    QJsonArray qpost;
+    for ( const auto& item: post )
+    {
+      qpost.push_back( QJsonValue( static_cast<int>(item)));
+    }
+    _web_api.callPathsModeSelectionEvent( qpre, qpost );
   }
 }
 
@@ -1525,18 +1486,15 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
   if ( _listPresynaptic->selectionModel( ))
   {
     const auto selectedPre = _listPresynaptic->selectionModel( )->selectedIndexes( );
-
-    if ( selectedPre.size( ) != 1 )
+    if ( !selectedModeSynapses )
     {
-      _listPresynaptic->clearSelection( );
-    }
-    else if ( !selectedModeSynapses )
-    {
-      const auto item = _modelListPre->itemFromIndex( selectedPre.front( ));
-      const unsigned int idx = item->data(
-        Qt::DisplayRole ).value< unsigned int >( );
+      std::vector<unsigned int> ids;
 
-      loadPostsynapticList( idx );
+      for (auto& index : selectedPre) {
+        const auto item = _modelListPre->itemFromIndex( index);
+        ids.push_back(item->data(Qt::DisplayRole ).value< unsigned int >( ));
+      }
+      loadPostsynapticList( ids );
     }
     else
     {
@@ -1553,9 +1511,7 @@ void MainWindow::modeChanged( bool selectedModeSynapses )
 
   _groupBoxPaths->setEnabled( !selectedModeSynapses );
 
-  _listPresynaptic->setSelectionMode( selectedModeSynapses ?
-                                      QAbstractItemView::ExtendedSelection :
-                                      QAbstractItemView::SingleSelection );
+  _listPresynaptic->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
   updateInfoDock( );
 }
@@ -1678,15 +1634,18 @@ void MainWindow::onConnectionButtonTriggered( bool value )
     {
       action->setIcon( QIcon( ":/icons/disconnect.svg" ));
 
-      _web_socket = std::make_shared< wcw::WebClientManager >( port );
-      _web_socket->registerAPI( "syncopa" , &_web_api );
+      _web_socket = std::make_shared< SynCoPaWebSocket >( port, this );
+      _web_api.registerListener(_web_socket.get());
+
+      _web_socket->addConnectionListener(this, [this](QWebSocket*) {
+          syncScene();
+      });
 
       connect( this , &QObject::destroyed , [ this ]( )
       {
         _web_socket = nullptr;
       } );
 
-      _web_socket->start( );
       _ui->actionSyncScene->setEnabled( true );
       _ui->actionNetworkSynchronization->setVisible( true );
       _ui->actionNetworkSynchronization->setChecked( false );
@@ -1913,7 +1872,7 @@ void MainWindow::managePathsSelectionEvent(
     QItemSelectionModel::ClearAndSelect
   );
 
-  loadPostsynapticList( preSelection );
+  loadPostsynapticList( {preSelection} );
 
   QItemSelection post;
   for ( int i = 0; i < rows; i++ )
@@ -1941,6 +1900,18 @@ void MainWindow::managePathsSelectionEvent(
 
   dynamicStop( );
   updateInfoDock( );
+}
+
+SynCoPaWebAPI& MainWindow::getWebApi() {
+  return _web_api;
+}
+
+const SynCoPaWebAPI& MainWindow::getWebApi() const {
+  return _web_api;
+}
+
+const std::shared_ptr<SynCoPaWebSocket>& MainWindow::getWebSocket() const {
+  return _web_socket;
 }
 
 const std::shared_ptr< syncopa::NeuronClusterManager >&

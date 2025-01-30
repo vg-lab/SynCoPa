@@ -8,51 +8,47 @@
 #include <QObject>
 #include <QJsonArray>
 
+#include "SynCoPaWebSocket.h"
+
 class MainWindow;
 
-class SynCoPaWebAPI : public QObject
-{
-Q_OBJECT
+class SynCoPaWebAPI : public QObject {
+    Q_OBJECT
+
 public:
-  explicit SynCoPaWebAPI( MainWindow* window , QObject* parent = nullptr );
+    explicit SynCoPaWebAPI(MainWindow* window, QObject* parent = nullptr);
 
-  virtual ~SynCoPaWebAPI( )
-  { };
+    ~SynCoPaWebAPI() override = default;
 
-  Q_INVOKABLE void selection( const QJsonArray& array );
+    Q_INVOKABLE void selection(const QJsonObject& object);
 
-  Q_INVOKABLE void synapsesModeSelection(
-    const QJsonArray& array );
+    Q_INVOKABLE void synapsesModeSelection(
+        const QJsonArray& array);
 
-  Q_INVOKABLE void pathsModeSelection(
-    const unsigned int pre , const QJsonArray& post );
+    Q_INVOKABLE void pathsModeSelection(const QJsonObject& object);
 
-  Q_INVOKABLE void neuronCluster( const QJsonObject& object );
+    void neuronCluster(const QJsonObject& object);
 
-  bool isSynchronizedMode( );
+    bool isSynchronizedMode();
 
-  void setSynchronizedMode( bool synchronized );
+    void setSynchronizedMode(bool synchronized);
 
-  void callSynapsesModeSelectionEvent( const QJsonArray& array );
+    void callSynapsesModeSelectionEvent(const QJsonArray& array);
 
-  void callPathsModeSelectionEvent( unsigned int pre , const QJsonArray& post );
+    void callPathsModeSelectionEvent(const QJsonArray& pre, const QJsonArray& post);
 
-  void
-  callSceneSyncEvent( const QString& hierarchy , const QString& connections );
+    void registerListener(SynCoPaWebSocket* socket);
 
 signals:
+    void onSynapsesModeSelection(
+        const QJsonArray& array);
 
-  void onSynapsesModeSelection(
-    const QJsonArray& array );
-
-  void onPathsModeSelection(
-    unsigned int pre , const QJsonArray& post );
-
-  void onSceneSync( const QString& hierarchy , const QString& connections );
+    void onPathsModeSelection(
+        const QJsonArray& pre, const QJsonArray& post);
 
 private:
-  MainWindow* _window;
-  bool _synchronized;
+    MainWindow* _window;
+    bool _synchronized;
 };
 
 

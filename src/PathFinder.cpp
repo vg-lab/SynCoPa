@@ -157,7 +157,6 @@ namespace syncopa
   void PathFinder::clear( void )
   {
 
-    _computedPaths.clear( );
     _treePre.clear( );
     _treePost.clear( );
 
@@ -588,194 +587,171 @@ namespace syncopa
   }
 
   utils::EventPolylineInterpolation
-  PathFinder::computeDeepestPathFrom( unsigned int sectionID )
+  PathFinder::computeDeepestPathFrom( unsigned originNeuron, ConnectivityNode* origin )
   {
     utils::EventPolylineInterpolation interpolator;
 
-    auto originPair = node( sectionID );
-    auto origin = originPair.second;
-    auto originNeuron = originPair.first;
-    if ( !origin )
-    {
-      std::cerr << "Error: node for section " << sectionID << " not found."
-                << std::endl;
+    std::vector< ConnectivityNode* > pathSections;
+    pathSections.reserve( origin->childrenMaxDepth( ) + 1 );
+    pathSections.push_back( origin );
 
-      return interpolator;
+    auto firstPath = origin->deepestPath( );
+
+    for ( auto pathSection: firstPath )
+    {
+      pathSections.push_back( pathSection );
     }
 
-    auto found = _computedPaths.find( sectionID );
+    //      std::cout << "Found deepest path with " << pathSections.size( )
+    //                << " out of " << origin->childrenMaxDepth( )
+    //                << std::endl;
 
-    if ( found != _computedPaths.end( ))
-      return found->second;
-    else
+    auto transform = getTransform( originNeuron );
+
+    cnode_ptr last = nullptr;
+    for ( auto currentSection: pathSections )
     {
+      //        std::cout << " " << connectivityNode->section( )->id( )
+      //                  << ":" << interpolator.totalDistance( )
+      //                  << "->" << ( connectivityNode->numberOfChildren( ) )
+      //                  << std::endl;
 
-      std::vector< ConnectivityNode* > pathSections;
-      pathSections.reserve( origin->childrenMaxDepth( ) + 1 );
-      pathSections.push_back( origin );
+      float prevDist = interpolator.totalDistance( );
 
-      auto firstPath = origin->deepestPath( );
-
-      for ( auto pathSection: firstPath )
+      //TODO Check if leaf section and add cut end
+      auto infoSection = _infoSections.find( currentSection->section( ));
+      if ( infoSection != _infoSections.end( ) &&
+           std::get< tsi_leafSection >( infoSection->second ))
       {
-        pathSections.push_back( pathSection );
+        auto fixedSection = std::get< tsi_fixedSection >(
+          infoSection->second );
+
+        interpolator.insert( fixedSection );
+
+        //          std::cout << "Fixed ";
+        //          for( auto node : fixedSection )
+        //            std::cout << node << std::endl;
+      }
+      else
+      {
+        for ( auto node: currentSection->section( )->nodes( ))
+        {
+          auto point = transformPoint( node->point( ) , transform );
+
+          interpolator.insert( point );
+        }
+
+        if ( last && last->numberOfChildren( ) > 1 )
+        {
+          //          auto children = last->children( );
+          //          for( auto child = children.begin( ) + 1; child != children.end( ); ++child )
+          {
+            interpolator.addEventNode( prevDist , last->section( )->id( ));
+          }
+        }
       }
 
-//      std::cout << "Found deepest path with " << pathSections.size( )
-//                << " out of " << origin->childrenMaxDepth( )
-//                << std::endl;
-
-      auto transform = getTransform( originNeuron );
-
-      cnode_ptr last = nullptr;
-      for ( auto currentSection: pathSections )
+      if ( infoSection != _infoSections.end( ))
       {
-        //        std::cout << " " << connectivityNode->section( )->id( )
-        //                  << ":" << interpolator.totalDistance( )
-        //                  << "->" << ( connectivityNode->numberOfChildren( ) )
-        //                  << std::endl;
-
-        float prevDist = interpolator.totalDistance( );
-
-        //TODO Check if leaf section and add cut end
-        auto infoSection = _infoSections.find( currentSection->section( ));
-        if ( infoSection != _infoSections.end( ) &&
-             std::get< tsi_leafSection >( infoSection->second ))
+        const auto& sectionSynapses = std::get< tsi_Synapses >(
+          infoSection->second );
+        for ( auto synapse: sectionSynapses )
         {
-          auto fixedSection = std::get< tsi_fixedSection >(
-            infoSection->second );
-
-          interpolator.insert( fixedSection );
-
-//          std::cout << "Fixed ";
-//          for( auto node : fixedSection )
-//            std::cout << node << std::endl;
-        }
-        else
-        {
-          for ( auto node: currentSection->section( )->nodes( ))
+          auto it = _synapseFixInfo->find( synapse.first );
+          if ( it != _synapseFixInfo->end( ))
           {
-            auto point = transformPoint( node->point( ) , transform );
+            auto presynInfo = std::get< TBSI_PRESYNAPTIC >( it->second );
 
-            interpolator.insert( point );
-          }
-
-          if ( last && last->numberOfChildren( ) > 1 )
-          {
-            //          auto children = last->children( );
-            //          for( auto child = children.begin( ) + 1; child != children.end( ); ++child )
-            {
-              interpolator.addEventNode( prevDist , last->section( )->id( ));
-            }
-          }
-        }
-
-        if ( infoSection != _infoSections.end( ))
-        {
-          const auto& sectionSynapses = std::get< tsi_Synapses >(
-            infoSection->second );
-          for ( auto synapse: sectionSynapses )
-          {
-            auto it = _synapseFixInfo->find( synapse.first );
-            if ( it != _synapseFixInfo->end( ))
-            {
-              auto presynInfo = std::get< TBSI_PRESYNAPTIC >( it->second );
-
-              float synapseDist =
+            float synapseDist =
                 std::get< TBS_SEGMENT_DISTANCE >( presynInfo );
 
 
-              unsigned int segmentIndex = std::get< TBS_SEGMENT_INDEX >(
-                presynInfo );
-              const auto& sectionInterp =
+            unsigned int segmentIndex = std::get< TBS_SEGMENT_INDEX >(
+              presynInfo );
+            const auto& sectionInterp =
                 std::get< tsi_Interpolator >( infoSection->second );
 
-              float sectionDist = sectionInterp.distance( segmentIndex );
+            float sectionDist = sectionInterp.distance( segmentIndex );
 
-              uintptr_t intPointer = reinterpret_cast< uintptr_t >( synapse.first );
+            uintptr_t intPointer = reinterpret_cast< uintptr_t >( synapse.first );
 
-              std::cout << "Adding synapse event " << synapse.first->gid( )
-                        << " segment dist " << synapseDist
-                        << " section dist " << sectionDist
-                        << " current dist " << prevDist
-                        << std::endl;
+            std::cout << "Adding synapse event " << synapse.first->gid( )
+                << " segment dist " << synapseDist
+                << " section dist " << sectionDist
+                << " current dist " << prevDist
+                << std::endl;
 
-              synapseDist += prevDist;
-              synapseDist += sectionDist;
+            synapseDist += prevDist;
+            synapseDist += sectionDist;
 
-              if ( _pathsPost.find( synapse.first ) == _pathsPost.end( ) &&
-                   synapse.first->synapseType( ) !=
-                   nsol::MorphologySynapse::AXOSOMATIC )
+            if ( _pathsPost.find( synapse.first ) == _pathsPost.end( ) &&
+                 synapse.first->synapseType( ) !=
+                 nsol::MorphologySynapse::AXOSOMATIC )
+            {
+              auto postSections = pathToSoma( synapse.first , POSTSYNAPTIC );
+              // TODO cut leaf section (first)
+
+              auto postTransform = getTransform(
+                synapse.first->postSynapticNeuron( ));
+
+              tPosVec points;
+
+              auto fixedSection = _infoSections.find( postSections.front( ));
+              if ( fixedSection == _infoSections.end( ))
               {
-                auto postSections = pathToSoma( synapse.first , POSTSYNAPTIC );
-                // TODO cut leaf section (first)
+                std::cerr << "ERROR: Postsynaptic section "
+                    << postSections.front( )->id( )
+                    << " info not found." << std::endl;
+                continue;
+              }
 
-                auto postTransform = getTransform(
-                  synapse.first->postSynapticNeuron( ));
-
-                tPosVec points;
-
-                auto fixedSection = _infoSections.find( postSections.front( ));
-                if ( fixedSection == _infoSections.end( ))
-                {
-                  std::cerr << "ERROR: Postsynaptic section "
-                            << postSections.front( )->id( )
-                            << " info not found." << std::endl;
-                  continue;
-                }
-
-                auto sectionEndNodes =
+              auto sectionEndNodes =
                   std::get< tsi_fixedSection >( fixedSection->second );
 
-                for ( auto nodeIt = sectionEndNodes.rbegin( );
-                      nodeIt != sectionEndNodes.rend( ); ++nodeIt )
-                  points.emplace_back( *nodeIt );
+              for ( auto nodeIt = sectionEndNodes.rbegin( );
+                    nodeIt != sectionEndNodes.rend( ); ++nodeIt )
+                points.emplace_back( *nodeIt );
 
-                for ( unsigned int i = 1; i < postSections.size( ); ++i )
-//                for( auto sec : postSections )
-                {
-                  auto sec = postSections[ i ];
-
-                  for ( auto nodeit = sec->nodes( ).rbegin( );
-                        nodeit != sec->nodes( ).rend( ); ++nodeit )
-//                    for( auto nodeit = sec->nodes( ).begin( ); nodeit != sec->nodes( ).end( ); ++nodeit )
-                    points.emplace_back(
-                      transformPoint(( *nodeit )->point( ) , postTransform ));
-                }
-
-                _pathsPost.insert( std::make_pair( synapse.first , points ));
-
-                std::cout << "Added post path " << synapse.first
-                          << " with " << points.size( ) << std::endl;
-
-              }
-
-              if ( synapseDist > interpolator.totalDistance( ))
+              for ( unsigned int i = 1; i < postSections.size( ); ++i )
+              //                for( auto sec : postSections )
               {
-                std::cout << "--Fixing synapse dist " << synapseDist
-                          << " to " << interpolator.totalDistance( )
-                          << std::endl;
+                auto sec = postSections[ i ];
 
-                synapseDist = interpolator.totalDistance( );
+                for ( auto nodeit = sec->nodes( ).rbegin( );
+                      nodeit != sec->nodes( ).rend( ); ++nodeit )
+                  //                    for( auto nodeit = sec->nodes( ).begin( ); nodeit != sec->nodes( ).end( ); ++nodeit )
+                  points.emplace_back(
+                    transformPoint(( *nodeit )->point( ) , postTransform ));
               }
-              interpolator.addEventNode( synapseDist , intPointer ,
-                                         utils::TEvent_synapse );
+
+              _pathsPost.insert( std::make_pair( synapse.first , points ));
+
+              std::cout << "Added post path " << synapse.first
+                  << " with " << points.size( ) << std::endl;
+
             }
+
+            if ( synapseDist > interpolator.totalDistance( ))
+            {
+              std::cout << "--Fixing synapse dist " << synapseDist
+                  << " to " << interpolator.totalDistance( )
+                  << std::endl;
+
+              synapseDist = interpolator.totalDistance( );
+            }
+            interpolator.addEventNode( synapseDist , intPointer ,
+                                       utils::TEvent_synapse );
           }
         }
-
-        currentSection->sectionLength(
-          interpolator.totalDistance( ) - prevDist );
-
-        last = currentSection;
       }
 
-      auto it = _computedPaths.insert(
-        std::make_pair( origin->section( )->id( ) ,
-                        interpolator ));
+      currentSection->sectionLength(
+        interpolator.totalDistance( ) - prevDist );
 
-      return it.first->second;
+      last = currentSection;
     }
+
+    return interpolator;
   }
 
   utils::EventPolylineInterpolation

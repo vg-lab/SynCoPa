@@ -54,14 +54,13 @@ common_find_package( Qt5WebChannel REQUIRED )
 common_find_package( GLEW REQUIRED SYSTEM )
 common_find_package( OpenGL REQUIRED )
 common_find_package( Eigen3 REQUIRED SYSTEM)
+common_find_package( Brion REQUIRED )
 common_find_package( neurolots REQUIRED )
 common_find_package( ReTo REQUIRED )
 common_find_package( nsol REQUIRED )
 common_find_package( plab REQUIRED )
-common_find_package( Brion REQUIRED )
 common_find_package( OpenMP )
 common_find_package( scoop REQUIRED )
-common_find_package( wcw REQUIRED )
 
 list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
   plab
@@ -72,7 +71,6 @@ list( APPEND SYNCOPA_DEPENDENT_LIBRARIES
   GLEW
   Eigen3
   Brion
-  wcw
 )
 
 if( QT5CORE_FOUND )

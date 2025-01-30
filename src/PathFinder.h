@@ -95,7 +95,7 @@ namespace syncopa
                            const utils::EventPolylineInterpolation& path );
 
     utils::EventPolylineInterpolation
-    computeDeepestPathFrom( unsigned int sectionID );
+    computeDeepestPathFrom( unsigned originNeuron, ConnectivityNode* origin );
 
     std::vector< vec3 > cutLeafSection( unsigned int sectionID ) const;
 
@@ -148,8 +148,6 @@ namespace syncopa
     std::unordered_map< unsigned int , ConnectivityTree > _treePost;
 
     tSectionsInfoMap _infoSections;
-
-    std::unordered_map< unsigned int , utils::EventPolylineInterpolation > _computedPaths;
 
     std::unordered_map< nsolMSynapse_ptr , utils::PolylineInterpolation > _pathsPre;
     std::unordered_map< nsolMSynapse_ptr , utils::PolylineInterpolation > _pathsPost;

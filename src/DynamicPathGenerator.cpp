@@ -68,14 +68,8 @@ namespace syncopa
 
     for ( const auto child: node->children( ))
     {
-      const auto childId = child->section( )->id( );
-
-      auto& set = data.visitedSections;
-      if ( set.find( childId ) != set.end( )) continue;
-
       PathGeneratorData newData = data;
-      newData.visitedSections.insert( childId );
-      newData.section = general.pathFinder.computeDeepestPathFrom( childId );
+      newData.section = general.pathFinder.computeDeepestPathFrom( id, child );
       walkSection( general , newData );
     }
   }
@@ -120,19 +114,38 @@ namespace syncopa
   {
     PathGeneratorGeneralData general( pathFinder , step , velocity );
 
+    std::cout << "PRES:" << std::endl;
+    for (auto& pres : pathFinder.presynapticTrees()) {
+      std::cout << pres.first << std::endl;
+    }
+    std::cout << "POSTS:" << std::endl;
+    for (auto& pres : pathFinder.presynapticTrees()) {
+      std::cout << pres.first << std::endl;
+    }
+    std::cout << "---" << std::endl;
+
     for ( const auto& item: pathFinder.presynapticTrees( ))
     {
+      std::cout << "PRE: " << item.first << std::endl;
+
       const auto& tree = item.second;
       for ( const auto& rootNode: tree.rootNodes( ))
       {
-        auto path = pathFinder.computeDeepestPathFrom(
-          rootNode->section( )->id( ));
+        std::cout << "- " << rootNode->section()->id() <<  std::endl;
+
+        auto path = pathFinder.computeDeepestPathFrom(item.first, rootNode);
+
+        std::cout << "- DISTANCE: " << path.totalDistance() << std::endl;
 
         PathGeneratorData data( path , false , 0.0 );
         walkSection( general , data );
       }
+
+      std::cout << "Current size: " << general.particles.size() << std::endl;
+
     }
 
+    std::cout << general.particles.size() << std::endl;
     return std::make_pair( general.particles , general.maxTime );
   }
 }
