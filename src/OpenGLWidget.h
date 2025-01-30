@@ -39,7 +39,7 @@
 #include <plab/reto/RetoCamera.h>
 #include <QOpenGLDebugMessage>
 
-class ShaderProgram;
+    class ShaderProgram;
 
 class OpenGLWidget
   : public QOpenGLWidget , public QOpenGLFunctions

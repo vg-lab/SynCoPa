@@ -73,6 +73,7 @@ Ubuntu-Subproject:
 Ubuntu-Subproject-master:
  stage: build
  script:
+  - export GITHUB_MIRROR_URL="git@github.com:vg-lab/SynCoPa"    
   - export CMAKE_EXTRA_ARGS="-DCLONE_SUBPROJECTS=ON"
   - export BUILD_GENERATOR="Ninja"
   - export GITHUB_MIRROR_URL="git@github.com:vg-lab/SynCoPa"  

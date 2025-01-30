@@ -168,6 +168,8 @@ namespace syncopa
   void toMatrixCSV( const nsol::DataSet* dataset , std::ostream& out ,
                     const char columnSeparator = ';' , const char rowSeparator = '\n' );
 
+ QJsonObject toHanoiJSON( const nsol::DataSet* dataset );
+
 }
 
 

@@ -42,6 +42,8 @@ set(SYNCOPA_SOURCES
   ConnectivityTree.cpp
   #DynamicPathManager.cpp
   SynCoPaWebAPI.cpp
+  SynCoPaWebSocket.h
+  SynCoPaWebSocket.cpp
 
   NeuronCluster.cpp
   NeuronClusterManager.cpp
@@ -120,7 +122,6 @@ set(SYNCOPA_LINK_LIBRARIES
   nlrender
   nlgenerator
   scoop
-  wcw
   boost_thread
 )
 
