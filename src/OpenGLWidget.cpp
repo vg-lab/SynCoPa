@@ -27,6 +27,7 @@
 #include "particlelab/ParticleLabShaders.h"
 
 #include "MainWindow.h"
+#include "loader/SnuddaLoader.h"
 
 using namespace syncopa;
 
@@ -205,6 +206,34 @@ void OpenGLWidget::loadBlueConfig( const std::string& blueConfigFilePath ,
     nsol::NeuronMorphologyCachedStats ,
     nsol::Neuron
   >( );
+
+  _domainManager->dataset( _dataset );
+
+  emit progress( tr( "Configuring path finder" ) , 100 );
+  _pathFinder.dataset( _dataset , &_domainManager->synapsesInfo( ));
+
+  _neuronScene = new syncopa::NeuronScene( _dataset );
+
+  connect(
+    _neuronScene , SIGNAL( progress(
+                             const QString & , const unsigned int)) ,
+    this , SIGNAL( progress(
+                     const QString & , const unsigned int))
+  );
+
+  _neuronScene->generateMeshes( );
+
+  emit progress( QString( ) , 100 );
+}
+
+void OpenGLWidget::loadSnudda(const std::string& hdf5Path, const std::string& repoPath) {
+  delete _dataset;
+  _dataset = new nsol::DataSet( );
+
+  emit progress( tr( "Loading snudda project." ) , 0 );
+
+  SnuddaLoader loader(hdf5Path, repoPath);
+  loader.load(*_dataset);
 
   _domainManager->dataset( _dataset );
 

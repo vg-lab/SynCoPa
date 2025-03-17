@@ -49,6 +49,10 @@ namespace Ui {
 
 class MainWindow;
 
+enum class LoadingFileType {
+    BLUE_CONFIG, SNUDDA
+};
+
 /** \class LoadingThread
  * \brief Loads the data into the application using a thread.
  *
@@ -63,17 +67,11 @@ public:
      * \param[in] target Blueconfig target.
      * \param[in] mainW Application main window.
      */
-    explicit LoadingThread(const std::string& blueconfig,
-                           const std::string& target, MainWindow* mainW)
-        : m_blueconfig{blueconfig}
-          , m_target{target}
-          , m_parent{mainW} {}
+    explicit LoadingThread(LoadingFileType type, std::vector<std::string> paths, MainWindow* mainW);
 
-    virtual ~LoadingThread() {}
+    virtual ~LoadingThread() = default;
 
-    std::string errors() const {
-        return m_errors;
-    }
+    std::string errors();
 
 signals:
     void progress(const QString& message, const unsigned int value);
@@ -82,10 +80,10 @@ protected:
     virtual void run();
 
 private:
-    const std::string m_blueconfig; /** blueconfig file path.              */
-    const std::string m_target; /** blueconfig target.                 */
-    MainWindow* m_parent; /** parent application main window.    */
-    std::string m_errors; /** error message or empty if success. */
+    LoadingFileType _type;
+    std::vector<std::string> _paths;
+    MainWindow* _parent; /** parent application main window.    */
+    std::string _errors; /** error message or empty if success. */
 };
 
 class LoadingDialog
@@ -146,7 +144,9 @@ public:
     const std::shared_ptr<syncopa::NeuronClusterManager>&
     getNeuronClusterManager() const;
 
-    void loadData(const std::string& dataset, const std::string& target);
+    void loadBlueConfig(const std::string& dataset, const std::string& target);
+
+    void loadSnudda(const std::string& dataset, const std::string& data);
 
 
     // Web events
@@ -167,6 +167,8 @@ public:
 
 protected slots:
     void openBlueConfigThroughDialog(void);
+
+    void openSnuddaThroughDialog(void);
 
     void exportDataDialog(void);
 

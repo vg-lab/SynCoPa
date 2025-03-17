@@ -29,5 +29,6 @@
     <file>icons/colorpicker.svg</file>
     <file>icons/sync.svg</file>
     <file>icons/sync_off.svg</file>
+    <file>icons/open_snd.png</file>
   </qresource>
 </RCC>

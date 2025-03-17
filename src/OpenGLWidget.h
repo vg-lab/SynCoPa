@@ -60,6 +60,8 @@ public:
   void loadBlueConfig( const std::string& blueConfigFilePath ,
                        const std::string& target );
 
+  void loadSnudda( const std::string& hdf5Path , const std::string& repoPath );
+
   /** \brief Performs data processing after a successful data loading.
    *
    */

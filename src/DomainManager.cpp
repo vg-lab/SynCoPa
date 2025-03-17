@@ -36,6 +36,8 @@ namespace syncopa
     {
       const auto blueConfig = _dataset->blueConfig( );
 
+      if (blueConfig == nullptr) return;
+
       const brain::Circuit brainCircuit( *blueConfig );
       const brion::GIDSet gidSetBrain = brainCircuit.getGIDs(
         _dataset->blueConfigTarget( ));

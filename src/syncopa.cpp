@@ -122,7 +122,7 @@ int main( int argc, char** argv )
   mainWindow.init( );
 
   if( !blueConfig.empty( ) && !target.empty( ))
-    mainWindow.loadData( blueConfig, target );
+    mainWindow.loadBlueConfig( blueConfig, target );
 
   return application.exec();
 }

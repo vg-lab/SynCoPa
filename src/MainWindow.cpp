@@ -119,6 +119,9 @@ MainWindow::MainWindow(
   connect( _ui->actionOpenBlueConfig , SIGNAL( triggered( void )) ,
            this , SLOT( openBlueConfigThroughDialog( void )) );
 
+  connect( _ui->actionOpenSnudda , SIGNAL( triggered( void )) ,
+           this , SLOT( openSnuddaThroughDialog( void )) );
+
   connect( _ui->actionExport , SIGNAL( triggered( void )) ,
            this , SLOT( exportDataDialog( void )) );
 
@@ -886,8 +889,7 @@ void MainWindow::clearInfoDock( void )
   _widgetInfoPost = nullptr;
 }
 
-void MainWindow::loadData( const std::string& dataset ,
-                           const std::string& target )
+void MainWindow::loadBlueConfig( const std::string& dataset, const std::string& target )
 {
   if ( m_thread )
   {
@@ -899,13 +901,53 @@ void MainWindow::loadData( const std::string& dataset ,
         .arg( QString::fromStdString( dataset )
                 .arg( QString::fromStdString( target ))));
     msgBox.exec( );
+    return;
   }
 
   disableInterface( true );
   _ui->statusbar->showMessage(
     tr( "Loading %1" ).arg( QString::fromStdString( dataset )));
 
-  m_thread = std::make_shared< LoadingThread >( dataset , target , this );
+  std::vector<std::string> paths = {dataset, target};
+  m_thread = std::make_shared< LoadingThread >( LoadingFileType::BLUE_CONFIG, paths , this );
+  auto dialog = new LoadingDialog{ this };
+
+  connect( m_thread.get( ) , SIGNAL( finished( )) ,
+           this , SLOT( onDataLoaded( )) , Qt::QueuedConnection );
+  connect( m_thread.get( ) , SIGNAL( destroyed( QObject * )) ,
+           dialog , SLOT( closeDialog( )) );
+  connect( m_thread.get( ) ,
+           SIGNAL( progress(
+                     const QString & , const unsigned int)) ,
+           dialog , SLOT( progress(
+                            const QString & , const unsigned int)) );
+
+  dialog->show( );
+  _openGLWidget->doneCurrent( );
+
+  m_thread->start( );
+}
+
+void MainWindow::loadSnudda(const std::string& dataset, const std::string& data) {
+  if ( m_thread )
+  {
+    QMessageBox msgBox{ this };
+    msgBox.setWindowTitle( tr( "Data loading" ));
+    msgBox.setIcon( QMessageBox::Icon::Information );
+    msgBox.setText(
+      tr( "A dataset is already loading. Cannot load: %1, %2" )
+        .arg( QString::fromStdString( dataset )
+                .arg( QString::fromStdString( data ))));
+    msgBox.exec( );
+    return;
+  }
+
+  disableInterface( true );
+  _ui->statusbar->showMessage(
+    tr( "Loading %1" ).arg( QString::fromStdString( dataset )));
+
+  std::vector<std::string> paths = {dataset, data};
+  m_thread = std::make_shared< LoadingThread >( LoadingFileType::SNUDDA, paths , this );
   auto dialog = new LoadingDialog{ this };
 
   connect( m_thread.get( ) , SIGNAL( finished( )) ,
@@ -997,7 +1039,23 @@ void MainWindow::openBlueConfigThroughDialog( void )
     if ( !ok ) return;
 
     _lastOpenedFileNamePath = QFileInfo( filename ).path( );
-    loadData( filename.toStdString( ) , target.toStdString( ));
+    loadBlueConfig( filename.toStdString( ) , target.toStdString( ));
+  }
+}
+
+void MainWindow::openSnuddaThroughDialog () {
+  const auto path = QFileDialog::getOpenFileName(
+  this, tr("Open Snudda File"), _lastOpenedFileNamePath,
+  tr("hdf5 ( *.hdf5 *.h5);; All files (*)"), nullptr,
+  QFileDialog::DontUseNativeDialog);
+
+  if (!path.isEmpty())
+  {
+    const auto repoDir = QFileDialog::getExistingDirectory(this, tr("Open Snudda data repository location"), QFileInfo(path).absolutePath(), QFileDialog::DontUseNativeDialog);
+    if(!repoDir.isEmpty())
+    {
+      loadSnudda(path.toStdString(), repoDir.toStdString());
+    }
   }
 }
 
@@ -1705,33 +1763,56 @@ void MainWindow::disableInterface( bool value )
     QApplication::restoreOverrideCursor( );
 }
 
+LoadingThread::LoadingThread(LoadingFileType type, std::vector<std::string> paths, MainWindow* mainW)
+  : _type(type),
+    _paths(std::move(paths)),
+    _parent(mainW) {
+
+}
+
+std::string LoadingThread::errors() {
+  return _errors;
+}
+
 void LoadingThread::run( )
 {
   try
   {
-    if ( m_parent )
+    if ( _parent )
     {
       emit progress( tr( "Loading data" ) , 0 );
 
-      connect( m_parent->_openGLWidget ,
+      connect( _parent->_openGLWidget ,
                SIGNAL( progress(
                          const QString & , const unsigned int)) ,
                this , SIGNAL( progress(
                                 const QString & , const unsigned int)) );
 
-      m_parent->_openGLWidget->loadBlueConfig( m_blueconfig , m_target );
+      if (_type == LoadingFileType::BLUE_CONFIG) {
+        if (_paths.size() < 2) {
+          _errors = "BlueConfig requires a path and a target!";
+        } else {
+          _parent->_openGLWidget->loadBlueConfig( _paths[0] , _paths[1] );
+        }
+      } else if (_type == LoadingFileType::SNUDDA) {
+        if (_paths.size() < 2) {
+          _errors = "Snudda requires two paths!";
+        } else {
+          _parent->_openGLWidget->loadSnudda( _paths[0] , _paths[1] );
+        }
+      }
     }
   }
   catch ( const std::exception& e )
   {
-    m_errors = std::string( e.what( ));
-    m_errors +=
+    _errors = std::string( e.what( ));
+    _errors +=
       std::string( "\n" ) + __FILE__ + " " + std::to_string( __LINE__ );
   }
   catch ( ... )
   {
-    m_errors = std::string( "Unspecified exception." );
-    m_errors +=
+    _errors = std::string( "Unspecified exception." );
+    _errors +=
       std::string( "\n" ) + __FILE__ + " " + std::to_string( __LINE__ );
   }
 
