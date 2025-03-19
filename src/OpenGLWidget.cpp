@@ -242,14 +242,11 @@ void OpenGLWidget::loadSnudda(const std::string& hdf5Path, const std::string& re
 
   _neuronScene = new syncopa::NeuronScene( _dataset );
 
-  connect(
-    _neuronScene , SIGNAL( progress(
-                             const QString & , const unsigned int)) ,
-    this , SIGNAL( progress(
-                     const QString & , const unsigned int))
+  connect(_neuronScene , SIGNAL(progress(const QString & , const unsigned int)),
+          this , SIGNAL(progress(const QString & , const unsigned int))
   );
 
-  _neuronScene->generateMeshes( );
+  _neuronScene->generateMeshes();
 
   emit progress( QString( ) , 100 );
 }
