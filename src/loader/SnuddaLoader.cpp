@@ -14,11 +14,11 @@ constexpr int TO_MICROMETERS = 1000000;
 
 namespace syncopa
 {
-    std::unordered_map<uint32_t, nsol::Neuron*> SnuddaLoader::loadNeurons(nsol::DataSet& dataset) const {
+    std::unordered_map<uint32_t, nsol::Neuron*> SnuddaLoader::loadNeurons(nsol::DataSet& dataset) const 
+    {
         auto idsDS = _file->openDataSet("network/neurons/neuron_id");
         auto positionDS = _file->openDataSet("network/neurons/position");
         auto rotationDS = _file->openDataSet("network/neurons/rotation");
-        auto voxelSizeDS = _file->openDataSet("meta/voxel_size");
 
         hsize_t dims;
         idsDS.getSpace().getSimpleExtentDims(&dims);
@@ -26,12 +26,10 @@ namespace syncopa
         std::vector<uint32_t> ids(dims);
         std::vector<std::array<double, 3>> position(dims);
         std::vector<std::array<double, 9>> rotation(dims);
-        double vSize;
 
         idsDS.read(ids.data(), H5::PredType::INTEL_I32);
         positionDS.read(position.data(), H5::PredType::IEEE_F64LE);
         rotationDS.read(rotation.data(), H5::PredType::IEEE_F64LE);
-        voxelSizeDS.read(&vSize, H5::PredType::IEEE_F64LE);
 
         std::unordered_map<uint32_t, nsol::Neuron*> neurons;
 
@@ -41,16 +39,17 @@ namespace syncopa
             Eigen::Matrix4f model;
             for (size_t c = 0; c < 3; ++c) {
                 for (size_t r = 0; r < 3; ++r) {
-                    model(r, c) = static_cast<float>(rotation[i][c + r * 3]);
+                    model(r, c) = static_cast<float>(rotation[i][c + (r * 3)]);
                 }
             }
 
             // neuron coordinates are in meters, convet to micrometers by multiplying by 10^6
             // because swc units are in micrometers.
             // Comment: https://github.com/Hjorthmedh/Snudda/blob/master/snudda/utils/export_sonata.py :142
-            model(0, 3) = pos[0] * TO_MICROMETERS;
-            model(1, 3) = pos[1] * TO_MICROMETERS;
-            model(2, 3) = pos[2] * TO_MICROMETERS;
+            pos *= TO_MICROMETERS;
+            model(0, 3) = pos[0];
+            model(1, 3) = pos[1];
+            model(2, 3) = pos[2];
             model(3, 3) = 1.0f;
 
             nsol::Neuron* neuron = new nsol::Neuron(nullptr, 0, ids[i], model,
@@ -62,7 +61,6 @@ namespace syncopa
         idsDS.close();
         positionDS.close();
         rotationDS.close();
-        voxelSizeDS.close();
 
         return neurons;
     }
@@ -127,7 +125,7 @@ namespace syncopa
 
         std::vector<double> simulation_origo(3, 0);
 
-        voxelSizeDs.read(&voxelSize, H5::PredType::INTEL_I32);
+        voxelSizeDs.read(&voxelSize, H5::PredType::IEEE_F64LE);
         synapsesDs.read(synapses.data(), H5::PredType::INTEL_I32);
         origoDs.read(simulation_origo.data(), H5::PredType::IEEE_F64LE);
 
@@ -141,9 +139,21 @@ namespace syncopa
         {
             // https: // github.com/Hjorthmedh/Snudda/blob/master/snudda/utils/load.py#L621 : 726
             // synapse_coords = synapses[:, 2:5] * self.data["voxel_size"] + self.data["simulation_origo"]
+
+            //  0 : source_cell_id, 1 : dest_cell_id, 2 : voxel_x, 3 : voxel_y, 4 : voxel_z,
+            //  5 : hyper_voxel_id, 6 : channel_model_id,
+            //  7 : source_axon_soma_dist(not SI scaled 1e6, micrometers),
+            //  8 : dest_dend_soma_dist(not SI scalled 1e6, micrometers)
+            //  9 : dest_seg_id, 10 : dest_seg_x(int 0 - 1000, SONATA wants float 0.0 - 1.0)
+            //  11 : conductance(int, not SI scaled 1e12, in pS)
+            //  12 : parameterID
+
+            // Channel model id es el tipo de sinapsis y define si es excitatoria o inhibitoria.
+
             Eigen::Vector3f position(synapse[2], synapse[3], synapse[4]);
             position *= static_cast<float>(voxelSize);
             position += origoVector;
+            position *= TO_MICROMETERS; // sysnapses seems to be in meters too
 
             auto neuron = neurons.find(synapse[0]);
             if (neuron == neurons.end()) return "Couldn't find neuron " + std::to_string(synapse[1]);
