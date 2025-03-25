@@ -928,7 +928,7 @@ void MainWindow::loadBlueConfig( const std::string& dataset, const std::string& 
   m_thread->start( );
 }
 
-void MainWindow::loadSnudda(const std::string& dataset, const std::string& data) {
+void MainWindow::loadSnudda(const std::string& dataset, const std::string& dataPath) {
   if ( m_thread )
   {
     QMessageBox msgBox{ this };
@@ -937,7 +937,7 @@ void MainWindow::loadSnudda(const std::string& dataset, const std::string& data)
     msgBox.setText(
       tr( "A dataset is already loading. Cannot load: %1, %2" )
         .arg( QString::fromStdString( dataset )
-                .arg( QString::fromStdString( data ))));
+                .arg( QString::fromStdString( dataPath ))));
     msgBox.exec( );
     return;
   }
@@ -946,7 +946,7 @@ void MainWindow::loadSnudda(const std::string& dataset, const std::string& data)
   _ui->statusbar->showMessage(
     tr( "Loading %1" ).arg( QString::fromStdString( dataset )));
 
-  std::vector<std::string> paths = {dataset, data};
+  std::vector<std::string> paths = {dataset, dataPath};
   m_thread = std::make_shared< LoadingThread >( LoadingFileType::SNUDDA, paths , this );
   auto dialog = new LoadingDialog{ this };
 
@@ -1782,24 +1782,22 @@ void LoadingThread::run( )
     {
       emit progress( tr( "Loading data" ) , 0 );
 
-      connect( _parent->_openGLWidget ,
-               SIGNAL( progress(
-                         const QString & , const unsigned int)) ,
-               this , SIGNAL( progress(
-                                const QString & , const unsigned int)) );
+      connect(_parent->_openGLWidget, SIGNAL(progress(const QString &, const unsigned int)),
+              this,                   SIGNAL(progress(const QString &, const unsigned int)));
 
-      if (_type == LoadingFileType::BLUE_CONFIG) {
-        if (_paths.size() < 2) {
+      if (_type == LoadingFileType::BLUE_CONFIG)
+      {
+        if (_paths.size() < 2)
           _errors = "BlueConfig requires a path and a target!";
-        } else {
-          _parent->_openGLWidget->loadBlueConfig( _paths[0] , _paths[1] );
-        }
-      } else if (_type == LoadingFileType::SNUDDA) {
-        if (_paths.size() < 2) {
+        else
+          _parent->_openGLWidget->loadBlueConfig(_paths[0], _paths[1]);
+      }
+      else if (_type == LoadingFileType::SNUDDA)
+      {
+        if (_paths.size() < 2)
           _errors = "Snudda requires two paths!";
-        } else {
-          _parent->_openGLWidget->loadSnudda( _paths[0] , _paths[1] );
-        }
+        else
+          _parent->_openGLWidget->loadSnudda(_paths[0], _paths[1]);
       }
     }
   }
