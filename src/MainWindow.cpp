@@ -999,7 +999,9 @@ void MainWindow::presynapticNeuronClicked()
     std::map<QString, std::unordered_set<unsigned int>> selections;
 
     std::unordered_set<unsigned int> pre(selection.begin(), selection.end());
-    auto [connectedPre, connectedPost] = _openGLWidget->getDomainManager()->connectedToSplit(pre);
+    auto pair = _openGLWidget->getDomainManager()->connectedToSplit(pre);
+    auto& connectedPre = pair.first;
+    auto& connectedPost = pair.second;
 
     auto other = _openGLWidget->getGidsAll();
 
@@ -1103,7 +1105,9 @@ void MainWindow::postsynapticNeuronClicked()
     }
 
     std::unordered_set<unsigned int> post(selection.begin(), selection.end());
-    auto [connectedPre, connectedPost] = _openGLWidget->getDomainManager()->connectedToSplit(post);
+    auto pair = _openGLWidget->getDomainManager()->connectedToSplit(pre);
+    auto& connectedPre = pair.first;
+    auto& connectedPost = pair.second;
 
     auto other = _openGLWidget->getGidsAll();
 
