@@ -113,7 +113,7 @@ void OpenGLWidget::initializeGL(void)
     auto* logger = new QOpenGLDebugLogger(this);
     logger->initialize();
 
-    connect(logger, &QOpenGLDebugLogger::messageLogged, [](const QOpenGLDebugMessage& message) {
+    connect(logger, &QOpenGLDebugLogger::messageLogged, [](const QOpenGLDebugMessage&) {
         //if ( message.severity( ) <= QOpenGLDebugMessage::MediumSeverity )
         //qDebug( ) << message;
     });
