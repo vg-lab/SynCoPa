@@ -40,28 +40,30 @@
 
 #include "SynCoPaWebSocket.h"
 
-
 class QProgressBar;
 
-namespace Ui {
+namespace Ui
+{
     class MainWindow;
 }
 
 class MainWindow;
 
-enum class LoadingFileType {
-    BLUE_CONFIG, SNUDDA
+enum class LoadingFileType
+{
+    BLUE_CONFIG,
+    SNUDDA
 };
 
 /** \class LoadingThread
  * \brief Loads the data into the application using a thread.
  *
  */
-class LoadingThread
-        : public QThread {
+class LoadingThread : public QThread
+{
     Q_OBJECT
 
-public:
+  public:
     /** \brief LoadingThread class constructor.
      * \param[in] blueconfig Blueconfig file path.
      * \param[in] target Blueconfig target.
@@ -73,24 +75,24 @@ public:
 
     std::string errors();
 
-signals:
+  signals:
     void progress(const QString& message, const unsigned int value);
 
-protected:
+  protected:
     virtual void run();
 
-private:
+  private:
     LoadingFileType _type;
     std::vector<std::string> _paths;
     MainWindow* _parent; /** parent application main window.    */
     std::string _errors; /** error message or empty if success. */
 };
 
-class LoadingDialog
-        : public QDialog {
+class LoadingDialog : public QDialog
+{
     Q_OBJECT
 
-public:
+  public:
     /** \brief LoadingDialog class constructor.
      * \param[in] p Raw pointer of the widget parent of this one.
      * \param[in] f QDialog flags.
@@ -103,7 +105,7 @@ public:
      */
     virtual ~LoadingDialog() {};
 
-public slots:
+  public slots:
     /** \brief Updates the dialog with the message and progress value
      * \param[in] message Progress message.
      * \param[in] value Progress value in [0,100].
@@ -116,15 +118,15 @@ public slots:
      */
     void closeDialog();
 
-private:
+  private:
     QProgressBar* m_progress; /** progress bar. */
 };
 
-class MainWindow
-        : public QMainWindow {
+class MainWindow : public QMainWindow
+{
     Q_OBJECT
 
-public:
+  public:
     /** \brief MainWindow class constructor.
      * \param[in] parent Raw pointer of the widget parent of this one.
      * \param[in] updateOnIdle True to refresh Gl widget on idle and false
@@ -132,32 +134,20 @@ public:
      * \param[in] fps True to show fps and false otherwise.
      *
      */
-    explicit MainWindow(
-        QWidget* parent = 0,
-        bool updateOnIdle = true,
-        bool fps = false);
+    explicit MainWindow(QWidget* parent = 0, bool updateOnIdle = true, bool fps = false);
 
     virtual ~MainWindow(void);
 
     void init();
 
-    const std::shared_ptr<syncopa::NeuronClusterManager>&
-    getNeuronClusterManager() const;
+    const std::shared_ptr<syncopa::NeuronClusterManager>& getNeuronClusterManager() const;
 
     void loadBlueConfig(const std::string& dataset, const std::string& target);
 
     void loadSnudda(const std::string& dataset, const std::string& data);
 
-
     // Web events
     void manageSelectionEvent(const std::vector<unsigned int>& selection);
-
-    void
-    manageSynapsesSelectionEvent(const std::vector<unsigned int>& selection);
-
-    void managePathsSelectionEvent(
-        unsigned int preSelection,
-        const std::vector<unsigned int>& postSelection);
 
     SynCoPaWebAPI& getWebApi();
 
@@ -165,7 +155,7 @@ public:
 
     const std::shared_ptr<SynCoPaWebSocket>& getWebSocket() const;
 
-protected slots:
+  protected slots:
     void openBlueConfigThroughDialog(void);
 
     void openSnuddaThroughDialog(void);
@@ -234,7 +224,7 @@ protected slots:
 
     void onConnectionThreadTerminated();
 
-protected:
+  protected:
     bool showDialog(QColor& current, const QString& message = "");
 
     void initListDock(void);
@@ -295,11 +285,9 @@ protected:
     QGroupBox* _checkPathsPre;
     QGroupBox* _checkPathsPost;
 
-    std::vector<std::tuple<QPushButton*, QPushButton*, QCheckBox*>>
-    _egoNetworkButtons;
+    std::vector<std::tuple<QPushButton*, QPushButton*, QCheckBox*>> _egoNetworkButtons;
 
-    std::vector<std::tuple<QColor, bool, bool>>
-    _egoNetworkParameters;
+    std::vector<std::tuple<QColor, bool, bool>> _egoNetworkParameters;
 
     PaletteColorWidget* _colorMapWidget;
 

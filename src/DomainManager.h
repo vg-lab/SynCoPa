@@ -13,116 +13,144 @@
 
 #include <QPolygonF>
 
-
 namespace syncopa
 {
-  enum TMode
-  {
-    SYNAPSES = 0 ,
-    PATHS ,
-    UNDEFINED
-  };
+    enum TMode
+    {
+        SYNAPSES = 0,
+        PATHS,
+        UNDEFINED
+    };
 
+    class DomainManager
+    {
+      public:
+        DomainManager();
 
-  class DomainManager
-  {
-  public:
+        ~DomainManager();
 
-    DomainManager( );
+        void dataset(nsol::DataSet* dataset_);
 
-    ~DomainManager( );
+        void loadSynapses(unsigned int presynapticGID, const gidUSet& postsynapticGIDs);
 
-    void dataset( nsol::DataSet* dataset_ );
+        void loadSynapses(const gidUSet& gids, bool append = false);
 
-    void loadSynapses( unsigned int presynapticGID ,
-                       const gidUSet& postsynapticGIDs );
+        void loadConnectedSynapses(const gidUSet& gids, bool append = false);
 
-    void loadSynapses( const gidUSet& gids, bool append = false );
+        void synapseMappingAttrib(TBrainSynapseAttribs attrib);
 
-    void loadConnectedSynapses( const gidUSet& gids, bool append = false );
+        void updateSynapseMapping(void);
 
-    void synapseMappingAttrib( TBrainSynapseAttribs attrib );
+        inline const TSynapseInfo& synapsesInfo(void) const
+        {
+            return _synapseFixInfo;
+        }
 
-    void updateSynapseMapping( void );
+        void setSynapseFilteringState(bool state);
 
-    inline const TSynapseInfo& synapsesInfo( void ) const
-    { return _synapseFixInfo; }
+        void setSynapseFilter(float maxValue, float minValue, bool invertFilter);
 
-    void setSynapseFilteringState( bool state );
+        inline const tsynapseVec& getSynapses(void) const
+        {
+            return _synapses;
+        }
 
-    void
-    setSynapseFilter( float maxValue , float minValue , bool invertFilter );
+        const tsynapseVec& getFilteredSynapses(void) const;
 
-    inline const tsynapseVec& getSynapses( void ) const
-    { return _synapses; }
+        const tFloatVec& getNormValues(void) const;
 
-    const tsynapseVec& getFilteredSynapses( void ) const;
+        tFloatVec getFilteredNormValues(void) const;
 
-    const tFloatVec& getNormValues( void ) const;
+        inline const QPolygonF& getSynapseMappingPlot(void) const
+        {
+            return _histoFunction;
+        }
 
-    tFloatVec getFilteredNormValues( void ) const;
+        /**
+         * Identifies the neurons connected to the neuron corresponding to the given GIDs.
+         *
+         * You can select if you want only presynaptic neurons, postsynaptic neurons or both.
+         *
+         * @param gid A GIDs for which connected neurons will be identified.
+         * @return A set with the GIDs of the connected neurons.
+         */
+        gidUSet connectedTo(unsigned int gid, bool includePre = false, bool includePost = true) const;
 
-    inline const QPolygonF& getSynapseMappingPlot( void ) const
-    { return _histoFunction; }
+        /**
+         * Identifies the neurons connected to the neurons corresponding to the GIDs provided in the input set.
+         *
+         * You can select if you want only presynaptic neurons, postsynaptic neurons or both.
+         *
+         * @param gids A set of GIDs for which connected neurons will be identified.
+         * @return A set with the GIDs of the connected neurons.
+         */
+        gidUSet connectedTo(const gidUSet& gids, bool includePre = false, bool includePost = true) const;
 
-    gidUSet connectedTo( unsigned int gid ) const;
+        /**
+         *
+         * Retrieves the neurons connected to the neurons that match the GIDs inside the given set.
+         *
+         * This function returns two sets: the connected neurons that are presynaptic and the connected
+         * neurons that are postsynaptic.
+         *
+         * If there is more than one neuron inside the given set, a connected neuron can be present
+         * inside both returned sets.
+         *
+         * @param gids A set of GIDs for which connected neurons will be identified.
+         *
+         * @return Two sets with the GIDs of the connected neurons.
+         */
+        std::pair<gidUSet, gidUSet> connectedToSplit(const gidUSet& gids) const;
 
-    std::pair< float , float > rangeBounds( void ) const;
+        std::pair<float, float> rangeBounds(void) const;
 
-  protected:
+      protected:
+        void _filterSynapses(void);
 
-    void _filterSynapses( void );
+        void _loadSynapseInfo(void);
 
-    void _loadSynapseInfo( void );
+        tsynapseVec _loadSynapses(
+            const gidUSet& gids,
+            const std::function<bool(nsolMSynapse_ptr)>& filter = [](nsolMSynapse_ptr) { return true; },
+            bool log = false) const;
 
-    tsynapseVec _loadSynapses(
-      const gidUSet& gids ,
-      const std::function< bool( nsolMSynapse_ptr ) >& filter = [ ]( nsolMSynapse_ptr )
-      { return true; } ,
-      bool log = false ) const;
+        void _loadSynapses(unsigned int presynapticGID, const gidUSet& postsynapticGIDs);
 
-    void _loadSynapses( unsigned int presynapticGID ,
-                        const gidUSet& postsynapticGIDs );
+        void _calculateSynapsesAttribValues(const tsynapseVec& synapses);
 
-    void _calculateSynapsesAttribValues( const tsynapseVec& synapses );
+        void _generateHistogram(const std::vector<float>& values, float minValue, float maxValue);
 
-    void _generateHistogram( const std::vector< float >& values ,
-                             float minValue , float maxValue );
+        nsol::DataSet* _dataset;
 
-    nsol::DataSet* _dataset;
+        tsynapseVec _synapses;
 
-    tsynapseVec _synapses;
+        TSynapseInfo _synapseFixInfo;
 
-    TSynapseInfo _synapseFixInfo;
+        unsigned int _presynapticGID;
 
-    unsigned int _presynapticGID;
+        TBrainSynapseAttribs _currentAttrib;
 
-    TBrainSynapseAttribs _currentAttrib;
+        // Histogram attributes
+        std::unordered_map<unsigned int, unsigned int> _synapseIDToValues;
+        std::vector<float> _currentAttribValues;
+        std::vector<float> _currentAttribNormValues;
+        float _maxValue;
+        float _minValue;
 
-    // Histogram attributes
-    std::unordered_map< unsigned int , unsigned int > _synapseIDToValues;
-    std::vector< float > _currentAttribValues;
-    std::vector< float > _currentAttribNormValues;
-    float _maxValue;
-    float _minValue;
+        unsigned int _binsNumber;
+        std::vector<unsigned int> _synapseAttribHistogram;
+        QPolygonF _histoFunction;
 
-    unsigned int _binsNumber;
-    std::vector< unsigned int > _synapseAttribHistogram;
-    QPolygonF _histoFunction;
+        // Filter attributes
+        bool _filtering;
+        float _filterMinValue;
+        float _filterMaxValue;
+        bool _filterInvert;
 
-    // Filter attributes
-    bool _filtering;
-    float _filterMinValue;
-    float _filterMaxValue;
-    bool _filterInvert;
+        tsynapseVec _filteredSynapses;
+        std::unordered_set<unsigned int> _removedSynapses;
+    };
 
-    tsynapseVec _filteredSynapses;
-    std::unordered_set< unsigned int > _removedSynapses;
-
-  };
-
-
-}
-
+} // namespace syncopa
 
 #endif /* SRC_DOMAINMANAGER_H_ */
