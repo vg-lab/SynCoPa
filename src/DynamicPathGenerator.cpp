@@ -13,24 +13,33 @@ namespace syncopa
         float distance = 0;
         float displacement = general.step * general.velocity;
 
-        // Iterate positions and events.
+        // Iterate positions and events. Events are processed once the
+        // particle has advanced to the next step so postsynaptic paths start
+        // precisely when the presynaptic particle reaches a synapse.
         while (distance < data.section.totalDistance()) {
             auto position = data.section.pointAtDistance(distance);
             general.maxTime = std::max(general.maxTime, data.time);
 
             general.particles.push_back(particle(position, data.postsynaptic, data.time));
 
-            manageEvents(general, data, distance);
-
-            data.time += general.step;
             distance += displacement;
+            data.time += general.step;
+
+            manageEvents(general, data, distance);
         }
     }
 
     void DynamicPathGenerator::manageEvents(PathGeneratorGeneralData& general, const PathGeneratorData& data,
                                             float distance)
     {
-        const auto events = data.section.eventsAt(distance, general.step * general.velocity);
+        const float displacement = general.step * general.velocity;
+
+        // Check events in the current step window. Add a small epsilon to
+        // include events exactly on the boundary of the next step without
+        // processing them twice.
+        const float eps = 1e-4f;
+        const auto events = data.section.eventsAt(distance + displacement + eps, displacement + eps);
+
         for (const auto& event : events) {
             const auto id = std::get<1>(event);
 
