@@ -1554,9 +1554,9 @@ void MainWindow::aboutDialog( )
 {
   QString message =
     QString( "<h2>Syncopa" ) + "<br>" +
-    tr( "Version " ) + syncopa::Version::getString( ).c_str( ) +
-    tr( " rev (%1)<br>" ).arg( syncopa::Version::getRevision( )) + "</h2><br>"
-                                                                   "<a href='https://vg-lab.es/'>https://vg-lab.es/</a>" +
+    tr( "Version %1.%2.%3 " ).arg( SYNCOPA_VERSION_MAJOR ).arg( SYNCOPA_VERSION_MINOR ).arg( SYNCOPA_VERSION_PATCH ) +
+    tr( " rev (%1)<br>" ).arg( SYNCOPA_REV_STRING ) + "</h2><br>"
+                                                                   + "<a href='https://vg-lab.es/'>https://vg-lab.es/</a>" +
     "<h4>" + tr( "Build info:" ) + "</h4>" +
     "<ul><li>Qt " + QT_VERSION_STR +
 

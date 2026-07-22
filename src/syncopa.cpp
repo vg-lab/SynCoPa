@@ -154,10 +154,10 @@ void dumpVersion( void )
 {
   std::cerr << std::endl
             << "SynCoPa - SYNapses and COnnectivity PAths visualizer"
-            << syncopa::Version::getMajor( ) << "."
-            << syncopa::Version::getMinor( ) << "."
-            << syncopa::Version::getPatch( )
-            << " (" << syncopa::Version::getRevision( ) << ")"
+            << SYNCOPA_VERSION_MAJOR << "."
+            << SYNCOPA_VERSION_MINOR << "."
+            << SYNCOPA_VERSION_PATCH
+            << " (" << SYNCOPA_REV_STRING << ")"
             << std::endl << std::endl;
 }
 

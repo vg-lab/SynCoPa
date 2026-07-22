@@ -1,33 +1,41 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-#   SynCoPa
-#   2018 (c) SynCoPa / Universidad Rey Juan Carlos
-#   sergio.galindo@urjc.es
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Define public headers
+set(SYNCOPA_PUBLIC_HEADERS
+  OpenGLWidget.h
+  MainWindow.h
+  PaletteColorWidget.h
+  GradientWidget.h
+  DomainManager.h
 
-add_definitions(-DSYNCOPA_SKIP_GLEW_INCLUDE )
-add_definitions(-DPLAB_SKIP_GLEW_INCLUDE )
+  NeuronScene.h
+  ParticleManager.h
+  PathFinder.h
+  DynamicPathGenerator.h
+  ConnectivityTree.h
+  # DynamicPathManager.h
+  SynCoPaWebAPI.h
 
-set(PROJECT_VERSION_ABI ${${PROJECT_NAME}_VERSION_ABI})
+  NeuronCluster.h
+  NeuronClusterManager.h
+  NeuronMetadata.h
+  NeuronClusterView.h
+  NeuronClusterViewTitle.h
+  NeuronSelectionView.h
+  TripleStateButton.h
 
-set(Name syncopa)
-set(NAME SYNCOPA)
-set(namespace syncopa)
-set(NAMESPACE SYNCOPA)
-set(INCLUDE_NAME syncopa)
-configure_file(${CMAKE_SOURCE_DIR}/CMake/common/cpp/api.h
-  ${PROJECT_BINARY_DIR}/include/syncopa/api.h @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/CMake/common/cpp/version.h
-  ${PROJECT_BINARY_DIR}/include/syncopa/version.h @ONLY)
-configure_file(${CMAKE_SOURCE_DIR}/CMake/common/cpp/version.cpp
-  ${PROJECT_BINARY_DIR}/src/syncopa/version.cpp @ONLY)
+  DataExport.h
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
+  particlelab/ParticleLabShaders.h
+  particlelab/StaticModel.h
+  particlelab/StaticGradientModel.h
+  particlelab/DynamicModel.h
+  particlelab/SynapseParticle.h
+  particlelab/DynamicPathParticle.h
 
+  ext/ctkrangeslider.h
+)
 
+# Define source files
 set(SYNCOPA_SOURCES
-  ${PROJECT_BINARY_DIR}/src/syncopa/version.cpp
   syncopa.cpp
   MainWindow.cpp
   OpenGLWidget.cpp
@@ -40,7 +48,7 @@ set(SYNCOPA_SOURCES
   PathFinder.cpp
   DynamicPathGenerator.cpp
   ConnectivityTree.cpp
-  #DynamicPathManager.cpp
+  # DynamicPathManager.cpp
   SynCoPaWebAPI.cpp
   SynCoPaWebSocket.h
   SynCoPaWebSocket.cpp
@@ -68,75 +76,105 @@ set(SYNCOPA_SOURCES
   resources.qrc
 )
 
-set(SYNCOPA_HEADERS
-  ${PROJECT_BINARY_DIR}/include/syncopa/version.h
-  OpenGLWidget.h
-  MainWindow.h
-  PaletteColorWidget.h
-  GradientWidget.h
-  DomainManager.h
+# # Create the includes strings
+# set(HEADER_INCLUDES "")
+# foreach(header ${SYNCOPA_PUBLIC_HEADERS})
+#   string(APPEND HEADER_INCLUDES "#include <${PROJECT_NAME_LOWER}/${header}>\n")
+# endforeach()
 
-  NeuronScene.h
-  ParticleManager.h
-  PathFinder.h
-  DynamicPathGenerator.h
-  ConnectivityTree.h
-  #DynamicPathManager.h
-  SynCoPaWebAPI.h
+# # Generate the unified header
+# configure_file(
+#   "${PROJECT_SOURCE_DIR}/cmake/unified_header.h.in"
+#   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME_LOWER}.h"
+# )
 
-  NeuronCluster.h
-  NeuronClusterManager.h
-  NeuronMetadata.h
-  NeuronClusterView.h
-  NeuronClusterViewTitle.h
-  NeuronSelectionView.h
-  TripleStateButton.h
+# Get the current Git commit for the version header
+find_package(Git)
+if(Git_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} --no-pager log -n 1 HEAD "--pretty=format:%h"
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    RESULT_VARIABLE git_result
+    ERROR_QUIET
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(git_result EQUAL 0)
+    message(STATUS "Last ${PROJECT_NAME} Git commit: ${GIT_COMMIT_HASH}")
+  endif()
+endif()
 
-  DataExport.h
-
-  particlelab/ParticleLabShaders.h
-  particlelab/StaticModel.h
-  particlelab/StaticGradientModel.h
-  particlelab/DynamicModel.h
-  particlelab/SynapseParticle.h
-  particlelab/DynamicPathParticle.h
-
-  ext/ctkrangeslider.h
+# Generate the version header
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake/version.h.in"
+  "${PROJECT_BINARY_DIR}/${PROJECT_NAME_LOWER}/version.h"
 )
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${PROJECT_BINARY_DIR}/include ${PROJECT_BINARY_DIR}/src)
+# Enable Qt generators
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 
-set(SYNCOPA_LINK_LIBRARIES
-  Qt5::Core
-  Qt5::Widgets
-  Qt5::OpenGL
-  Qt5::WebSockets
-  Qt5::WebChannel
-  ReTo
-  plab
-  nsol
-  Brion
-  Brain
-  nlgeometry
-  nlrender
-  nlgenerator
-  scoop
-  boost_thread
+# Create the target
+add_executable(${PROJECT_NAME})
+
+# set_target_properties(${PROJECT_NAME} PROPERTIES
+#   VERSION ${PROJECT_VERSION}
+#   SOVERSION ${PROJECT_VERSION_MAJOR}
+# )
+
+# Add sources to the target
+target_sources(${PROJECT_NAME}
+  PRIVATE
+    ${SYNCOPA_SOURCES}
+  PRIVATE
+    FILE_SET public_headers
+      TYPE HEADERS
+      BASE_DIRS
+        ${PROJECT_SOURCE_DIR}
+      FILES
+        ${SYNCOPA_PUBLIC_HEADERS}
 )
 
-if ( GMRVLEX_FOUND )
-  LIST(APPEND SYNCOPA_LINK_LIBRARIES gmrvlex )
-endif( )
+# Add generated sources to the target
+target_sources(${PROJECT_NAME}
+  PRIVATE
+    FILE_SET public_headers_generated
+      TYPE HEADERS
+      BASE_DIRS
+        ${PROJECT_BINARY_DIR}
+      FILES
+        # Generated headers
+        # ${PROJECT_BINARY_DIR}/${PROJECT_NAME_LOWER}/${PROJECT_NAME_LOWER}.h
+        # ${PROJECT_BINARY_DIR}/${PROJECT_NAME_LOWER}/${PROJECT_NAME_LOWER}_export.h
+        ${PROJECT_BINARY_DIR}/${PROJECT_NAME_LOWER}/version.h
+)
 
-if ( NOT DEFAULT_CONTEXT_OPENGL_MAJOR )
-  set( DEFAULT_CONTEXT_OPENGL_MAJOR 4 )
-endif( )
-if ( NOT DEFAULT_CONTEXT_OPENGL_MINOR )
-  set( DEFAULT_CONTEXT_OPENGL_MINOR 4 )
-endif( )
+# Add compile definitions 
+target_compile_definitions(${PROJECT_NAME}
+  PUBLIC
+  PRIVATE
+    DEFAULT_CONTEXT_OPENGL_MAJOR=${DEFAULT_CONTEXT_OPENGL_MAJOR}
+    DEFAULT_CONTEXT_OPENGL_MINOR=${DEFAULT_CONTEXT_OPENGL_MINOR}
+    $<$<BOOL:${SYNCOPA_USE_BRION}>:SYNCOPA_USE_BRION>
+)
 
-add_definitions( "-DDEFAULT_CONTEXT_OPENGL_MAJOR=${DEFAULT_CONTEXT_OPENGL_MAJOR}" )
-add_definitions( "-DDEFAULT_CONTEXT_OPENGL_MINOR=${DEFAULT_CONTEXT_OPENGL_MINOR}" )
-
-common_application( syncopa GUI ${COMMON_APP_ARGS})
+# Link libraries
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC
+    Boost::thread
+    Qt5::Core
+    Qt5::Widgets
+    Qt5::OpenGL
+    Qt5::WebSockets
+    neurolots::nlgeometry
+    neurolots::nlrender
+    neurolots::nlgenerator
+    nsol::nsol
+    plab::plab
+    ReTo::ReTo
+    scoop::scoop
+  PRIVATE
+    Brion
+    Brain
+    "$<$<BOOL:${OpenMP_FOUND}>:OpenMP::OpenMP_CXX>"
+)

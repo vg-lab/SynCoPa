@@ -676,6 +676,7 @@ void OpenGLWidget::paintMorphologies( void )
     _nlrenderer->render( std::get< syncopa::MESH >( model ) ,
                          std::get< syncopa::MATRIX >( model ) ,
                          std::get< syncopa::COLOR >( model ) ,
+                         std::get< syncopa::COLOR >( model ) , // colors_ != baseColors
                          false ,
                          std::get< syncopa::SHOW_SOMA >( model ) ,
                          std::get< syncopa::SHOW_MORPHOLOGIES >( model ));

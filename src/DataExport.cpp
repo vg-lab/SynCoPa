@@ -168,28 +168,30 @@ void syncopa::toXML(const nsol::DataSet* dataset, std::ostream& out,
                             }
                         }
 
-                        const auto axon = morphology->axon();
-                        if (axon != nullptr) {
-                            const auto stats = axon->stats();
-                            if (stats != nullptr) {
-                                out << "              <axon>" << std::endl;
-                                out << "                <surface>";
-                                out << stats->getStat(
-                                    nsol::NeuriteStats::SURFACE);
-                                out << "</surface>" << std::endl;
-                                out << "                <volume>";
-                                out << stats->getStat(
-                                    nsol::NeuriteStats::VOLUME);
-                                out << "</volume>" << std::endl;
-                                out << "                <length>";
-                                out << stats->getStat(
-                                    nsol::NeuriteStats::LENGTH);
-                                out << "</length>" << std::endl;
-                                out << "                <bifurcations>";
-                                out << stats->getStat(
-                                    nsol::NeuriteStats::BIFURCATIONS);
-                                out << "</bifurcations>" << std::endl;
-                                out << "              </axon>" << std::endl;
+                        const auto axons = morphology->axons();
+                        if (axons != nullptr) {
+                            for (const auto& axon: *axons) {
+                                const auto stats = axon->stats();
+                                if (stats != nullptr) {
+                                    out << "              <axon>" << std::endl;
+                                    out << "                <surface>";
+                                    out << stats->getStat(
+                                        nsol::NeuriteStats::SURFACE);
+                                    out << "</surface>" << std::endl;
+                                    out << "                <volume>";
+                                    out << stats->getStat(
+                                        nsol::NeuriteStats::VOLUME);
+                                    out << "</volume>" << std::endl;
+                                    out << "                <length>";
+                                    out << stats->getStat(
+                                        nsol::NeuriteStats::LENGTH);
+                                    out << "</length>" << std::endl;
+                                    out << "                <bifurcations>";
+                                    out << stats->getStat(
+                                        nsol::NeuriteStats::BIFURCATIONS);
+                                    out << "</bifurcations>" << std::endl;
+                                    out << "              </axon>" << std::endl;
+                                }
                             }
                         }
 
