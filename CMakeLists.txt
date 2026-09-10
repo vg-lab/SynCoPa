@@ -98,7 +98,7 @@ if(SYNCOPA_OPTIONALS_AS_REQUIRED)
   set(SYNCOPA_OPTS_FIND_ARGS REQUIRED)
 endif()
 
-find_package(OpenMP ${SYNCOPA_OPTS_FIND_ARGS} QUIET)
+find_package(OpenMP ${SYNCOPA_OPTS_FIND_ARGS})
 # find_package(Foo ${SYNCOPA_OPTS_FIND_ARGS} QUIET)
 
 # Definitions
