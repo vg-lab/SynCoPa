@@ -23,6 +23,7 @@ set(SYNCOPA_PUBLIC_HEADERS
   TripleStateButton.h
 
   DataExport.h
+  ExceptionHandler.h
 
   particlelab/ParticleLabShaders.h
   particlelab/StaticModel.h
@@ -61,6 +62,7 @@ set(SYNCOPA_SOURCES
   NeuronSelectionView.cpp
   TripleStateButton.cpp
 
+  ExceptionHandler.cpp
   DataExport.cpp
 
   particlelab/StaticModel.cpp

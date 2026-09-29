@@ -8,6 +8,7 @@
  */
 
 #include "types.h"
+#include "ExceptionHandler.h"
 
 #include <QApplication>
 #include "MainWindow.h"
@@ -26,6 +27,9 @@ int main( int argc, char** argv )
 #ifndef Win32
   setenv("LANG", "C", 1);
 #endif
+
+  Utils::installSignalHandler();
+  Utils::installExceptionHandler();
 
   QApplication application( argc, argv );
 
@@ -166,7 +170,7 @@ void setFormat( void )
   int ctxOpenGLMajor = DEFAULT_CONTEXT_OPENGL_MAJOR;
   int ctxOpenGLMinor = DEFAULT_CONTEXT_OPENGL_MINOR;
   int ctxOpenGLVSync = 1;
-  int ctxOpenGLSamples = 16;
+  int ctxOpenGLSamples = 0; // handled by the application renderer
 
   if ( std::getenv("CONTEXT_OPENGL_MAJOR"))
     ctxOpenGLMajor = std::stoi( std::getenv("CONTEXT_OPENGL_MAJOR"));
@@ -185,16 +189,16 @@ void setFormat( void )
 
   QSurfaceFormat format;
   format.setVersion( ctxOpenGLMajor, ctxOpenGLMinor);
-  format.setProfile( QSurfaceFormat::CoreProfile );
 
-  if ( ctxOpenGLSamples != 0 )
-    format.setSamples( ctxOpenGLSamples );
+  // if ( ctxOpenGLSamples != 0 )
+  //   format.setSamples( ctxOpenGLSamples );
 
   format.setSwapInterval( ctxOpenGLVSync );
 
-  QSurfaceFormat::setDefaultFormat( format );
-  if ( std::getenv("CONTEXT_OPENGL_COMPATIBILITY_PROFILE"))
-    format.setProfile( QSurfaceFormat::CompatibilityProfile );
+  if (std::getenv("CONTEXT_OPENGL_COMPATIBILITY_PROFILE"))
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
   else
-    format.setProfile( QSurfaceFormat::CoreProfile );
+    format.setProfile(QSurfaceFormat::CoreProfile);
+
+  QSurfaceFormat::setDefaultFormat( format );
 }

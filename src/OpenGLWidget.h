@@ -39,7 +39,7 @@
 #include <plab/reto/RetoCamera.h>
 #include <QOpenGLDebugMessage>
 
-    class ShaderProgram;
+class ShaderProgram;
 
 class OpenGLWidget
   : public QOpenGLWidget , public QOpenGLFunctions
@@ -208,6 +208,8 @@ public slots:
   void updatePathsModel(
     std::shared_ptr< syncopa::NeuronClusterManager > manager );
 
+  void printOpenGLMessage(const QOpenGLDebugMessage &msg);
+
 protected:
 
   virtual void initializeGL( );
@@ -235,10 +237,6 @@ protected:
   void paintParticles( );
 
   void paintMorphologies( );
-
-  void initRenderToTexture( );
-
-  void recalculateTextureDimensions( int width_ , int height_ );
 
   QLabel _fpsLabel;
   bool _showFps;
@@ -291,20 +289,6 @@ protected:
 
   std::vector< nsol::MorphologySynapsePtr > _currentSynapses;
 
-  // Render to texture
-  QOpenGLFunctions_4_0_Core* _oglFunctions;
-
-  reto::ShaderProgram* _screenPlaneShader;
-
-  unsigned int _quadVAO;
-  unsigned int _opaqueFrameBuffer;
-  unsigned int _weightFrameBuffer;
-
-  unsigned int _opaqueColorTexture;
-  unsigned int _opaqueDepthTexture;
-  unsigned int _accumulationTexture;
-  unsigned int _revealTexture;
-
   int _currentWidth;
   int _currentHeight;
 
@@ -312,6 +296,8 @@ protected:
 
   bool _mapSynapseValues;
   syncopa::TBrainSynapseAttribs _currentSynapseAttrib;
+
+  QOpenGLFunctions_4_0_Core* _oglFunctions;
 
 };
 

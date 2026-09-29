@@ -16,7 +16,8 @@
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "BUILD_DOCS": "OFF"
+        "BUILD_DOCS": "OFF",
+        "CMAKE_CXX_FLAGS": "$env{CMAKE_CXX_FLAGS} -g"
       }
     },
     {
@@ -35,6 +36,16 @@
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "release-info",
+      "inherits": "base",
+      "displayName": "Release Debug Info",
+      "description": "Release build with debug info",
+      "binaryDir": "${sourceDir}/build/release-info",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     },
     {

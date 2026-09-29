@@ -27,7 +27,7 @@ void NeuronClusterViewTitle::colorSelectionClicked( )
   {
     _metadata.color = result;
     auto titlePalette = QPalette( palette( ));
-    titlePalette.setColor( QPalette::Background , result );
+    titlePalette.setColor( QPalette::Window , result );
     titlePalette.setColor( QPalette::Button , result.darker( ));
     if ( result.darker( ).lightnessF( ) < DARK_THEME_THRESHOLD )
     {
@@ -117,7 +117,7 @@ NeuronClusterViewTitle::NeuronClusterViewTitle(
   setFrameShape( QFrame::StyledPanel );
 
   auto titlePalette = QPalette( palette( ));
-  titlePalette.setColor( QPalette::Background , metadata.color );
+  titlePalette.setColor( QPalette::Window , metadata.color );
   titlePalette.setColor( QPalette::Button , metadata.color.darker( ));
   if ( metadata.color.darker( ).lightnessF( ) < DARK_THEME_THRESHOLD )
   {

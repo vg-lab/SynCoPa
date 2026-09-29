@@ -27,8 +27,9 @@ namespace syncopa
   {
     _attribsFormat.resize( 3 );
     _attribsFormat[ 0 ] = nlgeometry::TAttribType::POSITION;
-    _attribsFormat[ 1 ] = nlgeometry::TAttribType::CENTER;
+    _attribsFormat[ 1 ] = nlgeometry::TAttribType::COLOR;
     _attribsFormat[ 2 ] = nlgeometry::TAttribType::TANGENT;
+    _attribsFormat[ 3 ] = nlgeometry::TAttribType::CENTER;
   }
 
   NeuronScene::~NeuronScene( void )

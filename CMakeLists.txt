@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
+set(CMAKE_CXX_STANDARD 23)
+
 project(SynCoPa
   VERSION 0.4.1
   LANGUAGES CXX
@@ -53,11 +55,21 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Brion)
 
 FetchContent_Declare(
-    neurolots
-    GIT_REPOSITORY https://github.com/vg-lab/neurolots.git
+    ReTo
+    GIT_REPOSITORY https://github.com/vg-lab/ReTo.git
+    GIT_TAG        origin/multisampling
     GIT_SHALLOW ON
     FIND_PACKAGE_ARGS
 )
+FetchContent_MakeAvailable(ReTo)
+
+FetchContent_Declare(
+    neurolots
+    GIT_REPOSITORY https://github.com/vg-lab/neurolots.git
+    GIT_TAG        origin/multisampling
+    GIT_SHALLOW ON
+    FIND_PACKAGE_ARGS
+)    
 FetchContent_MakeAvailable(neurolots)
 
 FetchContent_Declare(
@@ -65,7 +77,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/vg-lab/nsol.git
     GIT_SHALLOW ON
     FIND_PACKAGE_ARGS
-)
+)    
 FetchContent_MakeAvailable(nsol)
 
 FetchContent_Declare(
@@ -73,16 +85,8 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/vg-lab/particlelab.git
     GIT_SHALLOW ON
     FIND_PACKAGE_ARGS
-)
+)    
 FetchContent_MakeAvailable(plab)
-
-FetchContent_Declare(
-    ReTo
-    GIT_REPOSITORY https://github.com/vg-lab/ReTo.git
-    GIT_SHALLOW ON
-    FIND_PACKAGE_ARGS
-)
-FetchContent_MakeAvailable(ReTo)
 
 FetchContent_Declare(
     scoop

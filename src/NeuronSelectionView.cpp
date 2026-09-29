@@ -22,7 +22,7 @@ void NeuronSelectionView::colorSelectionClicked( )
   {
     _metadata.color = result;
     auto titlePalette = QPalette( palette( ));
-    titlePalette.setColor( QPalette::Background , result );
+    titlePalette.setColor( QPalette::Window , result );
     titlePalette.setColor( QPalette::Button , result );
     _colorButton->setPalette( titlePalette );
     emit onRequestBroadcastMetadataModification( );

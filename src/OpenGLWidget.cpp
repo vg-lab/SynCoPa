@@ -61,16 +61,11 @@ OpenGLWidget::OpenGLWidget(
   , _alphaSynapsesMap( 0.55 )
   , _dynamicActive( false )
   , _dynamicMovement( true )
-  , _oglFunctions( nullptr )
-  , _screenPlaneShader( nullptr )
-  , _quadVAO( 0 )
-  , _weightFrameBuffer( 0 )
-  , _accumulationTexture( 0 )
-  , _revealTexture( 0 )
   , _currentWidth( 0 )
   , _currentHeight( 0 )
   , _mapSynapseValues( false )
   , _currentSynapseAttrib( TBSA_SYNAPSE_DELAY )
+  , _oglFunctions{nullptr}
 {
   _camera->camera( )->farPlane( 5000 );
   _animation = new reto::CameraAnimation( );
@@ -106,6 +101,9 @@ void OpenGLWidget::initializeGL( void )
 {
   initializeOpenGLFunctions( );
 
+  _oglFunctions = context( )->versionFunctions< QOpenGLFunctions_4_0_Core >( );
+  _oglFunctions->initializeOpenGLFunctions( );
+
   const GLubyte* vendor = glGetString( GL_VENDOR );
   const GLubyte* rendr = glGetString( GL_RENDERER );
   const GLubyte* version = glGetString( GL_VERSION );
@@ -120,10 +118,9 @@ void OpenGLWidget::initializeGL( void )
 
   connect(
     logger , &QOpenGLDebugLogger::messageLogged ,
-    [ ]( const QOpenGLDebugMessage& message )
+    [this]( const QOpenGLDebugMessage& message )
     {
-      if ( message.severity( ) <= QOpenGLDebugMessage::MediumSeverity )
-        qDebug( ) << message;
+      this->printOpenGLMessage(message);
     }
   );
 
@@ -141,16 +138,17 @@ void OpenGLWidget::initializeGL( void )
 
   QOpenGLWidget::initializeGL( );
 
-  nlrender::Config::init( );
-  _nlrenderer = new nlrender::Renderer( );
-  _nlrenderer->tessCriteria( nlrender::Renderer::LINEAR );
-  _nlrenderer->lod( ) = 4;
-  _nlrenderer->maximumDistance( ) = 10;
-
   _currentWidth = width( );
   _currentHeight = height( );
 
-  initRenderToTexture( );
+  nlrender::Config::init( );
+  _nlrenderer = new nlrender::Renderer( );
+  _nlrenderer->tessCriteria( nlrender::Renderer::LINEAR );
+  _nlrenderer->setTextureSampling(16);
+  _nlrenderer->alpha() = 0.5;
+  _nlrenderer->initTransparencySystem(_currentWidth, _currentHeight);
+  _nlrenderer->lod( ) = 4;
+  _nlrenderer->maximumDistance( ) = 10;
 
   _particleManager.init( _camera );
 }
@@ -519,143 +517,10 @@ void OpenGLWidget::updatePathsModel(
   }
 }
 
-void OpenGLWidget::initRenderToTexture( void )
+void OpenGLWidget::printOpenGLMessage(const QOpenGLDebugMessage &msg)
 {
-  _oglFunctions = context( )->versionFunctions< QOpenGLFunctions_4_0_Core >( );
-  _oglFunctions->initializeOpenGLFunctions( );
-
-  glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
-
-  _screenPlaneShader = new reto::ShaderProgram( );
-  _screenPlaneShader->loadVertexShaderFromText( SHADER_SCREEN_VERTEX );
-  _screenPlaneShader->loadFragmentShaderFromText( SHADER_SCREEN_FRAGMENT );
-  _screenPlaneShader->create( );
-  _screenPlaneShader->link( );
-  _screenPlaneShader->autocatching( true );
-  _screenPlaneShader->use( );
-  _screenPlaneShader->sendUniformi( "accumulation" , 0 );
-  _screenPlaneShader->sendUniformi( "reveal" , 1 );
-  _screenPlaneShader->sendUniformi( "opaque" , 2 );
-
-  // Generate the opaque framebuffer
-
-  _oglFunctions->glGenFramebuffers( 1 , &_opaqueFrameBuffer );
-  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER , _opaqueFrameBuffer );
-
-  glGenTextures( 1 , &_opaqueColorTexture );
-  glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA16F , width( ) , height( ) , 0 ,
-                GL_RGBA , GL_HALF_FLOAT , NULL );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
-  glBindTexture( GL_TEXTURE_2D , 0 );
-
-  glGenTextures( 1 , &_opaqueDepthTexture );
-  glBindTexture( GL_TEXTURE_2D , _opaqueDepthTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT , width( ) , height( ) ,
-                0 , GL_DEPTH_COMPONENT , GL_FLOAT , NULL );
-  glBindTexture( GL_TEXTURE_2D , 0 );
-
-  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
-                                         GL_TEXTURE_2D , _opaqueColorTexture ,
-                                         0 );
-  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT ,
-                                         GL_TEXTURE_2D , _opaqueDepthTexture ,
-                                         0 );
-
-  if ( _oglFunctions->glCheckFramebufferStatus( GL_FRAMEBUFFER ) !=
-       GL_FRAMEBUFFER_COMPLETE )
-    std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
-              << std::endl;
-
-  // Generate the OIR framebuffer
-
-  _oglFunctions->glGenFramebuffers( 1 , &_weightFrameBuffer );
-  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER , _weightFrameBuffer );
-
-  glGenTextures( 1 , &_accumulationTexture );
-  glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA32F , width( ) , height( ) , 0 ,
-                GL_RGBA , GL_FLOAT , nullptr );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
-
-  glGenTextures( 1 , &_revealTexture );
-  glBindTexture( GL_TEXTURE_2D , _revealTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_R8 , width( ) , height( ) , 0 ,
-                GL_RED , GL_FLOAT , nullptr );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MIN_FILTER , GL_LINEAR );
-  glTexParameteri( GL_TEXTURE_2D , GL_TEXTURE_MAG_FILTER , GL_LINEAR );
-
-  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT0 ,
-                                         GL_TEXTURE_2D , _accumulationTexture ,
-                                         0 );
-  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_COLOR_ATTACHMENT1 ,
-                                         GL_TEXTURE_2D , _revealTexture , 0 );
-
-  // We must include the opaque depth texture!
-  _oglFunctions->glFramebufferTexture2D( GL_FRAMEBUFFER , GL_DEPTH_ATTACHMENT ,
-                                         GL_TEXTURE_2D , _opaqueDepthTexture ,
-                                         0 );
-
-  const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 ,
-                                            GL_COLOR_ATTACHMENT1 };
-  _oglFunctions->glDrawBuffers( 2 , transparentDrawBuffers );
-
-  if ( _oglFunctions->glCheckFramebufferStatus( GL_FRAMEBUFFER ) !=
-       GL_FRAMEBUFFER_COMPLETE )
-    std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!"
-              << std::endl;
-
-  _oglFunctions->glBindFramebuffer( GL_FRAMEBUFFER ,
-                                    defaultFramebufferObject( ));
-
-  float quadVertices[] = {
-    // positions
-    -1.0f , -1.0f , 0.0f ,
-    1.0f , -1.0f , 0.0f ,
-    1.0f , 1.0f , 0.0f ,
-
-    1.0f , 1.0f , 0.0f ,
-    -1.0f , 1.0f , 0.0f ,
-    -1.0f , -1.0f , 0.0f
-  };
-
-  // quad VAO
-  unsigned int quadVBO;
-  _oglFunctions->glGenVertexArrays( 1 , &_quadVAO );
-  _oglFunctions->glGenBuffers( 1 , &quadVBO );
-  _oglFunctions->glBindVertexArray( _quadVAO );
-  _oglFunctions->glBindBuffer( GL_ARRAY_BUFFER , quadVBO );
-  _oglFunctions->glBufferData( GL_ARRAY_BUFFER , sizeof( quadVertices ) ,
-                               quadVertices ,
-                               GL_STATIC_DRAW );
-  _oglFunctions->glEnableVertexAttribArray( 0 );
-  _oglFunctions->glVertexAttribPointer( 0 , 3 , GL_FLOAT , GL_FALSE ,
-                                        3 * sizeof( float ) ,
-                                        ( void* ) 0 );
-  _oglFunctions->glBindVertexArray( 0 );
-}
-
-void OpenGLWidget::recalculateTextureDimensions( int width_ , int height_ )
-{
-  glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA16F , width_ , height_ , 0 ,
-                GL_RGBA , GL_HALF_FLOAT , nullptr );
-
-  glBindTexture( GL_TEXTURE_2D , _opaqueDepthTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_DEPTH_COMPONENT , width_ , height_ , 0 ,
-                GL_DEPTH_COMPONENT , GL_FLOAT , 0 );
-
-  glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA32F , width_ , height_ , 0 ,
-                GL_RGBA , GL_FLOAT , nullptr );
-
-  glBindTexture( GL_TEXTURE_2D , _revealTexture );
-  glTexImage2D( GL_TEXTURE_2D , 0 , GL_R8 , width_ , height_ , 0 ,
-                GL_RED , GL_FLOAT , nullptr );
-
-  glBindTexture( GL_TEXTURE_2D , 0 );
+  if (msg.severity() <= QOpenGLDebugMessage::MediumSeverity)
+    qDebug() << msg;
 }
 
 void OpenGLWidget::paintMorphologies( void )
@@ -700,113 +565,61 @@ void OpenGLWidget::paintGL( void )
     _neuronScene->flushMeshesOnCPU( );
   }
 
-  std::chrono::time_point< std::chrono::system_clock > now =
-    std::chrono::system_clock::now( );
-
-  unsigned int elapsedMicroseconds =
-    std::chrono::duration_cast< std::chrono::microseconds >
-      ( now - _lastFrame ).count( );
+  const auto now = std::chrono::system_clock::now( );
+  const unsigned int elapsedMicroseconds =
+      std::chrono::duration_cast<std::chrono::microseconds>(now - _lastFrame).count();
 
   _lastFrame = now;
-
   _deltaTime = elapsedMicroseconds * 0.000001;
-
   _elapsedTimeRenderAcc += elapsedMicroseconds;
-
   _frameCount++;
 
   if ( _paint )
   {
     _camera->anim( _deltaTime );
 
-//    if( _psManager && _psManager->particleSystem( ))
+    if (_elapsedTimeRenderAcc >= _renderPeriodMicroseconds)
     {
-
-      if ( _elapsedTimeRenderAcc >= _renderPeriodMicroseconds )
+      if (_dynamicMovement)
       {
-        if ( _dynamicMovement )
-        {
-          const float delta = _elapsedTimeRenderAcc * 0.000001;
-          _particleManager.getDynamicModel( )->addTime( delta );
-        }
-        _elapsedTimeRenderAcc = 0.0f;
+        const float delta = _elapsedTimeRenderAcc * 0.000001;
+        _particleManager.getDynamicModel()->addTime(delta);
       }
 
-      // DRAW
-
-      glViewport( 0 , 0 , width( ) , height( ));
-
-      if ( _particleManager.isAccumulativeMode( ))
-      {
-        glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glDisable( GL_DEPTH_TEST );
-        glEnable( GL_BLEND );
-        glBlendFunc( GL_SRC_ALPHA , GL_ONE_MINUS_CONSTANT_ALPHA );
-        glBlendEquation( GL_FUNC_ADD );
-        paintMorphologies( );
-        paintParticles( );
-      }
-      else
-      {
-        // First, we draw the opaque elements (the morphologies)
-        // in the default frame buffer object.
-        glEnable( GL_DEPTH_TEST );
-        glDepthFunc( GL_LESS );
-        glDisable( GL_BLEND );
-        glDepthMask( GL_TRUE );
-
-        glBindFramebuffer( GL_FRAMEBUFFER , _opaqueFrameBuffer );
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        paintMorphologies( );
-
-        // Then, we draw the transparent elements (the synapses)
-        // in the weighted frame buffer object.
-        glDepthMask( GL_FALSE );
-        glEnable( GL_BLEND );
-
-        glBindFramebuffer( GL_FRAMEBUFFER , _weightFrameBuffer );
-        // Keep the depth text, avoiding new writes to the depth texture.
-        _oglFunctions->glBlendFunci( 0 , GL_ONE , GL_ONE );
-        _oglFunctions->glBlendFunci( 1 , GL_ZERO , GL_ONE_MINUS_SRC_COLOR );
-        glBlendEquation( GL_FUNC_ADD );
-
-        // Clear textures. We mustn't clear the depth texture.
-        glm::vec4 zeroFillerVec( 0.0f );
-        glm::vec4 oneFillerVec( 1.0f );
-        _oglFunctions->glClearBufferfv( GL_COLOR , 0 , &zeroFillerVec[ 0 ] );
-        _oglFunctions->glClearBufferfv( GL_COLOR , 1 , &oneFillerVec[ 0 ] );
-
-        paintParticles( );
-
-        // Now, we paint the transparent part over the opaque part.
-        // We can use the default frame buffer object directly for this part.
-        glBindFramebuffer( GL_FRAMEBUFFER , defaultFramebufferObject( ));
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glDisable( GL_DEPTH_TEST );
-        glDisable( GL_BLEND );
-
-        _screenPlaneShader->use( );
-        _oglFunctions->glActiveTexture( GL_TEXTURE0 );
-        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _accumulationTexture );
-        _oglFunctions->glActiveTexture( GL_TEXTURE1 );
-        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _revealTexture );
-        _oglFunctions->glActiveTexture( GL_TEXTURE2 );
-        _oglFunctions->glBindTexture( GL_TEXTURE_2D , _opaqueColorTexture );
-
-        _oglFunctions->glBindVertexArray( _quadVAO );
-        glDrawArrays( GL_TRIANGLES , 0 , 6 );
-        update( );
-      }
+      _elapsedTimeRenderAcc = 0.0f;
     }
 
-    glUseProgram( 0 );
-//    glFlush( );
+    // DRAW
+    const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
+    _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
+    glDepthFunc( GL_LESS );
 
+    paintMorphologies();
+
+    _nlrenderer->setUpTransparentTransparencyScene();
+    glDisable( GL_DEPTH_TEST );
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+    glBlendEquation( GL_FUNC_ADD );
+
+    paintParticles();
+
+    // Disabled for now. @TODO
+    // if (_particleManager.isAccumulativeMode())
+    // {
+    // }
+    // else
+    // {
+    // }
+
+    _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
+
+    glUseProgram( 0 );
+    update( );
   }
 
 #define FRAMES_PAINTED_TO_MEASURE_FPS 30
-  if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS )
+  if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS)
   {
     const auto duration =
       std::chrono::duration_cast< std::chrono::milliseconds >( now - _then );
@@ -866,8 +679,6 @@ void OpenGLWidget::resizeGL( int w , int h )
 
   _camera->windowSize( w , h );
   glViewport( 0 , 0 , w , h );
-
-  recalculateTextureDimensions( w , h );
 }
 
 void OpenGLWidget::mousePressEvent( QMouseEvent* event_ )
