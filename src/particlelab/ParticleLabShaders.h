@@ -159,22 +159,24 @@ flat in vec4 color;
 in vec2 uvCoord;
 in float size;
 
-out vec4 fragColor;
+layout( location = 0 ) out vec4 accum;
+layout( location = 1 ) out vec4 revealage;
 
 void main()
 {
     vec2 p = -1.0 + 2.0 * uvCoord;
     float l = sqrt(dot(p, p));
-    if(l>1) discard;
     l = 1.0 - clamp(l, 0.0, 1.0);
+    if(l> 1) discard;
     l *= color.a;
 
-    c = vec4(color.rgb, l);
+    vec4 c = vec4(color.rgb, l);
 
     float weight = clamp(pow(min(1.0, c.a * 10.0) + 0.01, 3.0) * 1e8
     * pow(1.0 - gl_FragCoord.z * 0.9, 3.0), 1e-2, 3e3);
 
-    fragColor = vec4 (c.rgb * c.a, c.a) * weight;
+    accum = vec4 (c.rgb * c.a, c.a) * weight;
+    revealage = vec4(c.a);
 })";
 
 const static std::string PARTICLE_ACC_FRAGMENT_SHADER = R"(#version 430

@@ -64,9 +64,9 @@ namespace syncopa
 
     ParticleManager( const ParticleManager& ) = delete;
 
-    ParticleManager( );
+    ParticleManager();
 
-    void init( std::shared_ptr< plab::ICamera > camera );
+    void init( std::shared_ptr< plab::ICamera > camera);
 
     const std::shared_ptr< StaticModel >& getSynapseModel( ) const;
 

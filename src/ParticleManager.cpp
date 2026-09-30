@@ -13,7 +13,7 @@
 namespace syncopa
 {
 
-  ParticleManager::ParticleManager( )
+  ParticleManager::ParticleManager()
     : _particlesBoundingBox( )
     , _staticProgram( )
     , _staticGradientProgram( )
@@ -30,7 +30,7 @@ namespace syncopa
   {
   }
 
-  void ParticleManager::init( std::shared_ptr< plab::ICamera > camera )
+  void ParticleManager::init( std::shared_ptr< plab::ICamera > camera)
   {
     _staticProgram.loadFromText( STATIC_VERTEX_SHADER ,
                                  PARTICLE_FRAGMENT_SHADER );

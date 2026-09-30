@@ -51,7 +51,7 @@ OpenGLWidget::OpenGLWidget(
   , _currentClearColor( 20 , 20 , 20 , 0 )
   , _nlrenderer( nullptr )
   , _dataset( nullptr )
-  , _particleManager( )
+  , _particleManager()
   , _pathFinder( )
   , _neuronScene( nullptr )
   , _domainManager( nullptr )
@@ -351,7 +351,6 @@ void OpenGLWidget::updateMorphologyModel(
         for ( const auto& item: usedMorphologyNeurons )
           ids.erase( item );
 
-
         auto model = _neuronScene->getRender( ids );
 
         setColor( model ,
@@ -590,19 +589,69 @@ void OpenGLWidget::paintGL( void )
     }
 
     // DRAW
-    const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
-    _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
-    glDepthFunc( GL_LESS );
+    if (_particleManager.isAccumulativeMode())
+    {
+      glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glDisable(GL_DEPTH_TEST);
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+      glBlendEquation(GL_FUNC_ADD);
+      paintMorphologies();
+      paintParticles();
+    }
+    else
+    {
+      const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
+      _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
+      // First, we draw the opaque elements (the morphologies)
+      // in the default frame buffer object.
+      glEnable(GL_DEPTH_TEST);
+      glDepthFunc(GL_LESS);
+      glDisable(GL_BLEND);
+      glDepthMask(GL_TRUE);
 
-    paintMorphologies();
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      paintMorphologies();
 
-    _nlrenderer->setUpTransparentTransparencyScene();
-    glDisable( GL_DEPTH_TEST );
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
-    glBlendEquation( GL_FUNC_ADD );
+      // Then, we draw the transparent elements (the synapses)
+      // in the weighted frame buffer object.
+      _nlrenderer->setUpTransparentTransparencyScene();
+      glDepthMask(GL_FALSE);
+      glEnable(GL_BLEND);
 
-    paintParticles();
+      // Keep the depth text, avoiding new writes to the depth texture.
+      _oglFunctions->glBlendFunci(0, GL_ONE, GL_ONE);
+      _oglFunctions->glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+      glBlendEquation(GL_FUNC_ADD);
+
+      // Clear textures. We mustn't clear the depth texture.
+      glm::vec4 zeroFillerVec(0.0f);
+      glm::vec4 oneFillerVec(1.0f);
+      _oglFunctions->glClearBufferfv(GL_COLOR, 0, &zeroFillerVec[0]);
+      _oglFunctions->glClearBufferfv(GL_COLOR, 1, &oneFillerVec[0]);
+
+      paintParticles();
+
+      // Now, we paint the transparent part over the opaque part.
+      // We can use the default frame buffer object directly for this part.
+      _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
+      update();
+    }
+  }
+    // const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
+    // _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
+    // glDepthFunc( GL_LESS );
+
+    // paintMorphologies();
+
+    // _nlrenderer->setUpTransparentTransparencyScene();
+    // glDisable( GL_DEPTH_TEST );
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+    // glBlendEquation( GL_FUNC_ADD );
+
+    // paintParticles();
 
     // Disabled for now. @TODO
     // if (_particleManager.isAccumulativeMode())
@@ -612,11 +661,11 @@ void OpenGLWidget::paintGL( void )
     // {
     // }
 
-    _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
+  //   _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
 
-    glUseProgram( 0 );
-    update( );
-  }
+  //   glUseProgram( 0 );
+  //   update( );
+  // }
 
 #define FRAMES_PAINTED_TO_MEASURE_FPS 30
   if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS)
