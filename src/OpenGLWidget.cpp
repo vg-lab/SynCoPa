@@ -230,35 +230,33 @@ void OpenGLWidget::createParticleSystem( void )
 
 void OpenGLWidget::setupSynapses( void )
 {
-  if ( !_mapSynapseValues )
-    _particleManager.setSynapses( _domainManager->getSynapses( ));
+  if (!_mapSynapseValues)
+    _particleManager.setSynapses(_domainManager->getSynapses());
   else
   {
     _particleManager.setMappedSynapses(
-      _domainManager->getFilteredSynapses( ) ,
-      _domainManager->getFilteredNormValues( ));
+        _domainManager->getFilteredSynapses(),
+        _domainManager->getFilteredNormValues());
   }
 }
 
 void OpenGLWidget::setupPaths( void )
 {
-  if ( _mode != PATHS )
+  if (_mode != PATHS)
   {
-    _particleManager.clearPaths( );
-    return;
+    _particleManager.clearPaths();
   }
 }
 
-void OpenGLWidget::home( bool animate )
+void OpenGLWidget::home(bool animate)
 {
-  const float FOV = sin( _camera->camera( )->fieldOfView( ));
-  const auto rotation = Eigen::Vector3f{ 0.0f , 0.0f , 0.0f };
+  const float FOV = sin(_camera->camera()->fieldOfView());
+  const auto rotation = Eigen::Vector3f{0.0f, 0.0f, 0.0f};
   const auto bb = _mode == PATHS
-                  ? _particleManager.getParticlesBoundingBox( )
-                  : _particleManager.getSynapseBoundingBox( );
-  const auto position = bb.center( );
-  const auto radius = bb.radius( ) / FOV;
-
+                      ? _particleManager.getParticlesBoundingBox()
+                      : _particleManager.getSynapseBoundingBox();
+  const auto position = bb.center();
+  const auto radius = bb.radius() / FOV;
 
   if ( !animate )
   {
@@ -322,7 +320,6 @@ void OpenGLWidget::updateMorphologyModel(
            || selectionMetadata.partsToShow ==
               syncopa::NeuronMetadataShowPart::SOMA_ONLY )
       {
-
         // SOMA MODELS
         auto ids = selection.second;
         for ( const auto& item: usedSomaNeurons )
@@ -524,8 +521,11 @@ void OpenGLWidget::printOpenGLMessage(const QOpenGLDebugMessage &msg)
 
 void OpenGLWidget::paintMorphologies( void )
 {
-  if ( _mode != syncopa::PATHS ) return;
-  glDisable( GL_CULL_FACE );
+  if (_mode != syncopa::PATHS)  {
+    return;
+  }
+
+  glDisable(GL_CULL_FACE);
   glFrontFace( GL_CCW );
   glPolygonMode( GL_FRONT_AND_BACK , GL_FILL );
   glEnable( GL_DEPTH_TEST );
@@ -535,9 +535,30 @@ void OpenGLWidget::paintMorphologies( void )
   const Eigen::Matrix4f view( _camera->camera( )->viewMatrix( ));
   _nlrenderer->viewMatrix( ) = view;
 
-  for ( const auto& model: _neuronModel )
+  nlgeometry::AttribsFormat format;
+  format.resize( 4 );
+  format[ 0 ] = nlgeometry::TAttribType::POSITION;
+  format[ 1 ] = nlgeometry::TAttribType::COLOR;
+  format[ 2 ] = nlgeometry::TAttribType::TANGENT;
+  format[ 3 ] = nlgeometry::TAttribType::CENTER;
+
+  for (size_t i = 0; i < _neuronModel.size(); ++i )
   {
-    _nlrenderer->render( std::get< syncopa::MESH >( model ) ,
+    const auto &model = _neuronModel.at(i);
+
+    // TODO: check better, something is clearing GPU data.
+    auto meshes = std::get< syncopa::MESH >( model );
+    for(auto &mesh: meshes)
+    {
+      if(mesh->verticesSize() == 0)
+      {
+        mesh->uploadGPU( format , nlgeometry::Facet::PATCHES );
+        mesh->clearCPUData( );
+        mesh->clearVerticesMap();
+      }
+    }
+
+    _nlrenderer->render( meshes,
                          std::get< syncopa::MATRIX >( model ) ,
                          std::get< syncopa::COLOR >( model ) ,
                          std::get< syncopa::COLOR >( model ) , // colors_ != baseColors
@@ -588,22 +609,29 @@ void OpenGLWidget::paintGL( void )
       _elapsedTimeRenderAcc = 0.0f;
     }
 
+    const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
+    _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
+
     // DRAW
     if (_particleManager.isAccumulativeMode())
     {
-      glBindFramebuffer(GL_FRAMEBUFFER, defaultFramebufferObject());
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glEnable(GL_DEPTH_TEST);
+      glDepthFunc(GL_LESS);
+      glDisable(GL_BLEND);
+      glDepthMask(GL_TRUE);
+
+      paintMorphologies();
       glDisable(GL_DEPTH_TEST);
       glEnable(GL_BLEND);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
       glBlendEquation(GL_FUNC_ADD);
-      paintMorphologies();
       paintParticles();
+      _nlrenderer->setUpTransparentTransparencyScene();
+      _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
+      update();
     }
     else
     {
-      const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
-      _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
       // First, we draw the opaque elements (the morphologies)
       // in the default frame buffer object.
       glEnable(GL_DEPTH_TEST);
@@ -639,33 +667,6 @@ void OpenGLWidget::paintGL( void )
       update();
     }
   }
-    // const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
-    // _nlrenderer->setUpOpaqueTransparencyScene(bColor, _currentWidth, _currentHeight);
-    // glDepthFunc( GL_LESS );
-
-    // paintMorphologies();
-
-    // _nlrenderer->setUpTransparentTransparencyScene();
-    // glDisable( GL_DEPTH_TEST );
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
-    // glBlendEquation( GL_FUNC_ADD );
-
-    // paintParticles();
-
-    // Disabled for now. @TODO
-    // if (_particleManager.isAccumulativeMode())
-    // {
-    // }
-    // else
-    // {
-    // }
-
-  //   _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
-
-  //   glUseProgram( 0 );
-  //   update( );
-  // }
 
 #define FRAMES_PAINTED_TO_MEASURE_FPS 30
   if ( _frameCount == FRAMES_PAINTED_TO_MEASURE_FPS)

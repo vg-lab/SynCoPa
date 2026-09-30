@@ -25,7 +25,7 @@ namespace syncopa
     : _dataset( dataset )
     , _meshesOnCPU( MAX_MESH_ON_CPU_QUEUE_SIZE )
   {
-    _attribsFormat.resize( 3 );
+    _attribsFormat.resize( 4 );
     _attribsFormat[ 0 ] = nlgeometry::TAttribType::POSITION;
     _attribsFormat[ 1 ] = nlgeometry::TAttribType::COLOR;
     _attribsFormat[ 2 ] = nlgeometry::TAttribType::TANGENT;
@@ -86,7 +86,7 @@ namespace syncopa
 #pragma omp parallel for shared(count)
     for ( int i = 0; i < static_cast<int>(vecMorpho.size( )); ++i )
     {
-      auto morphology = vecMorpho[ i ];
+      const auto &morphology = vecMorpho[ i ];
 
       auto simplifier = nsol::Simplifier::Instance( );
       simplifier->adaptSoma( morphology );
