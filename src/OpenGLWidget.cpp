@@ -30,6 +30,11 @@
 
 using namespace syncopa;
 
+unsigned int OpenGLWidget::SAMPLES = 16;
+float OpenGLWidget::ALPHA = 0.5;
+float OpenGLWidget::LOD = 2;
+
+
 constexpr float CAMERA_ANIMATION_DURATION = 0.75; /** camera animation duration in seconds. */
 
 OpenGLWidget::OpenGLWidget(
@@ -144,11 +149,11 @@ void OpenGLWidget::initializeGL( void )
   nlrender::Config::init( );
   _nlrenderer = new nlrender::Renderer( );
   _nlrenderer->tessCriteria( nlrender::Renderer::LINEAR );
-  _nlrenderer->setTextureSampling(16);
-  _nlrenderer->alpha() = 0.5;
+  _nlrenderer->setTextureSampling(SAMPLES);
+  _nlrenderer->alpha() = ALPHA;
+  _nlrenderer->lod() = LOD;
   _nlrenderer->initTransparencySystem(_currentWidth, _currentHeight);
-  _nlrenderer->lod( ) = 4;
-  _nlrenderer->maximumDistance( ) = 10;
+  _nlrenderer->maximumDistance( ) = 100;
 
   _particleManager.init( _camera );
 }
@@ -579,6 +584,10 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
+  _nlrenderer->setTextureSampling(SAMPLES);
+  _nlrenderer->alpha() = ALPHA; // TODO: alpha value in particle system missing !!!
+  _nlrenderer->lod() = LOD;
+
   // First, let's flush the loaded meshes.
   if ( _neuronScene != nullptr )
   {

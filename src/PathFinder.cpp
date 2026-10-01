@@ -232,6 +232,8 @@ namespace syncopa
     auto currentGid = type == PRESYNAPTIC ? syn->preSynapticNeuron( )
                                           : syn->postSynapticNeuron( );
     auto transform = getTransform( currentGid );
+    if(transform == mat4::Ones()) return;
+
     auto sectionNodes = pathToSoma( syn , type );
     for ( auto section: sectionNodes )
     {
@@ -299,7 +301,10 @@ namespace syncopa
     nsol::NeuronsMap& neurons = _dataset->neurons( );
     auto neuron = neurons.find( gid );
     if ( neuron == neurons.end( ))
+    {
+      // TODO: handle not present neurons... right now paths get discarded.
       return mat4::Ones( );
+    }
 
     return neuron->second->transform( );
   }
@@ -434,6 +439,7 @@ namespace syncopa
 
       auto neuronGid = synapse->preSynapticNeuron( );
       auto transform = getTransform( neuronGid );
+      if(transform == mat4::Ones()) return;
       auto section = synapse->preSynapticSection( );
       const auto& fixInfo = std::get< TBSI_PRESYNAPTIC >( synInfo->second );
 
@@ -460,6 +466,7 @@ namespace syncopa
 
       auto neuronGid = synapse->postSynapticNeuron( );
       auto transform = getTransform( neuronGid );
+      if(transform == mat4::Ones()) return;
       auto section = synapse->postSynapticSection( );
       const auto& fixInfo = std::get< TBSI_POSTSYNAPTIC >( synInfo->second );
 
@@ -607,6 +614,7 @@ namespace syncopa
     //                << std::endl;
 
     auto transform = getTransform( originNeuron );
+    if(transform == mat4::Ones()) return interpolator;
 
     cnode_ptr last = nullptr;
     for ( auto currentSection: pathSections )
@@ -693,6 +701,7 @@ namespace syncopa
 
               auto postTransform = getTransform(
                 synapse.first->postSynapticNeuron( ));
+              if(transform == mat4::Ones()) return interpolator;
 
               tPosVec points;
 
@@ -717,11 +726,8 @@ namespace syncopa
               {
                 auto sec = postSections[ i ];
 
-                for ( auto nodeit = sec->nodes( ).rbegin( );
-                      nodeit != sec->nodes( ).rend( ); ++nodeit )
-                  //                    for( auto nodeit = sec->nodes( ).begin( ); nodeit != sec->nodes( ).end( ); ++nodeit )
-                  points.emplace_back(
-                    transformPoint(( *nodeit )->point( ) , postTransform ));
+                for ( auto nodeit = sec->nodes( ).rbegin( ); nodeit != sec->nodes( ).rend( ); ++nodeit )
+                  points.emplace_back(transformPoint(( *nodeit )->point( ) , postTransform ));
               }
 
               _pathsPost.insert( std::make_pair( synapse.first , points ));

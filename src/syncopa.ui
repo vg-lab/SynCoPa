@@ -24,7 +24,7 @@
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -81,6 +81,9 @@
    <addaction name="separator"/>
    <addaction name="actionNetworkConnection"/>
    <addaction name="actionNetworkSynchronization"/>
+   <addaction name="actionSend"/>
+   <addaction name="separator"/>
+   <addaction name="actionSettings"/>
    <addaction name="separator"/>
   </widget>
   <action name="actionQuit">
@@ -178,9 +181,6 @@
    <property name="checked">
     <bool>false</bool>
    </property>
-   <property name="visible">
-    <bool>false</bool>
-   </property>
    <property name="icon">
     <iconset resource="resources.qrc">
      <normaloff>:/icons/sync_off.svg</normaloff>:/icons/sync_off.svg</iconset>
@@ -188,10 +188,37 @@
    <property name="text">
     <string>Enable network synchronization events</string>
    </property>
+   <property name="visible">
+    <bool>false</bool>
+   </property>
   </action>
   <action name="actionSyncScene">
    <property name="text">
     <string>Sync the scene throughout the network</string>
+   </property>
+  </action>
+  <action name="actionSettings">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/settings.svg</normaloff>:/icons/settings.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Visualization settings...</string>
+   </property>
+  </action>
+  <action name="actionSend">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/send.svg</normaloff>:/icons/send.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Send</string>
+   </property>
+   <property name="toolTip">
+    <string>Send current selection.</string>
    </property>
   </action>
  </widget>

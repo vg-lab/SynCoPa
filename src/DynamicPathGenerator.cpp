@@ -118,10 +118,6 @@ namespace syncopa
     for (auto& pres : pathFinder.presynapticTrees()) {
       std::cout << pres.first << std::endl;
     }
-    std::cout << "POSTS:" << std::endl;
-    for (auto& pres : pathFinder.presynapticTrees()) {
-      std::cout << pres.first << std::endl;
-    }
     std::cout << "---" << std::endl;
 
     for ( const auto& item: pathFinder.presynapticTrees( ))

@@ -232,6 +232,8 @@ protected slots:
 
     void onConnectionThreadTerminated();
 
+    void onConfigurationClicked();
+
 protected:
     bool showDialog(QColor& current, const QString& message = "");
 

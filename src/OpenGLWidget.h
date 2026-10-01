@@ -48,6 +48,9 @@ class OpenGLWidget
 Q_OBJECT;
 
 public:
+  static unsigned int SAMPLES;
+  static float ALPHA;
+  static float LOD; 
 
   OpenGLWidget( QWidget* parent = nullptr ,
                 Qt::WindowFlags windowFlags = Qt::WindowFlags( )

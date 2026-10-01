@@ -21,6 +21,7 @@ set(SYNCOPA_PUBLIC_HEADERS
   NeuronClusterViewTitle.h
   NeuronSelectionView.h
   TripleStateButton.h
+  ConfigurationDialog.h
 
   DataExport.h
   ExceptionHandler.h
@@ -61,6 +62,7 @@ set(SYNCOPA_SOURCES
   NeuronClusterViewTitle.cpp
   NeuronSelectionView.cpp
   TripleStateButton.cpp
+  ConfigurationDialog.cpp
 
   ExceptionHandler.cpp
   DataExport.cpp
@@ -75,6 +77,7 @@ set(SYNCOPA_SOURCES
 
   CMakeSetup.rc
   syncopa.ui
+  ConfigurationDialog.ui
   resources.qrc
 )
 

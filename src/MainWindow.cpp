@@ -10,6 +10,7 @@
 #include "MainWindow.h"
 #include "NeuronClusterView.h"
 #include "DataExport.h"
+#include "ConfigurationDialog.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -130,6 +131,8 @@ MainWindow::MainWindow(
 
   connect( _ui->actionNetworkSynchronization , SIGNAL( triggered( bool )) ,
            this , SLOT( onConnectionSynchronizationTriggered( bool )) );
+
+  connect( _ui->actionSettings, SIGNAL(triggered()), this, SLOT(onConfigurationClicked()));
 
   _openGLWidget = new OpenGLWidget( nullptr , Qt::WindowFlags( ));
   setCentralWidget( _openGLWidget );
@@ -1683,6 +1686,12 @@ void MainWindow::onConnectionThreadTerminated( )
   _ui->actionNetworkConnection->blockSignals( false );
   _ui->actionSyncScene->setEnabled( false );
   _ui->actionNetworkSynchronization->setVisible( false );
+}
+
+void MainWindow::onConfigurationClicked()
+{
+  ConfigurationDialog dialog(this);
+  dialog.exec();
 }
 
 void MainWindow::disableInterface( bool value )
