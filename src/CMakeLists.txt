@@ -22,6 +22,7 @@ set(SYNCOPA_PUBLIC_HEADERS
   NeuronSelectionView.h
   TripleStateButton.h
   ConfigurationDialog.h
+  ScreenShotDialog.h
 
   DataExport.h
   ExceptionHandler.h
@@ -63,6 +64,7 @@ set(SYNCOPA_SOURCES
   NeuronSelectionView.cpp
   TripleStateButton.cpp
   ConfigurationDialog.cpp
+  ScreenShotDialog.cpp
 
   ExceptionHandler.cpp
   DataExport.cpp

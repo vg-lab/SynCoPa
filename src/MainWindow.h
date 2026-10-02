@@ -234,6 +234,10 @@ protected slots:
 
     void onConfigurationClicked();
 
+    void onScreenshotClicked();
+
+    void onSendSelectionClicked();
+
 protected:
     bool showDialog(QColor& current, const QString& message = "");
 

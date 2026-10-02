@@ -8,6 +8,7 @@
     <file>icons/logoURJC.png</file>
     <file>icons/logoVGLab.png</file>
     <file>icons/folder-bc.svg</file>
+    <file>icons/folder.svg</file>
     <file>icons/connect.svg</file>
     <file>icons/disconnect.svg</file>        
     <file>icons/eye_open.svg</file>
@@ -31,5 +32,6 @@
     <file>icons/sync_off.svg</file>
     <file>icons/settings.svg</file>
     <file>icons/send.svg</file>
+    <file>icons/screenshot.svg</file>
   </qresource>
 </RCC>

@@ -11,6 +11,7 @@
 #include "NeuronClusterView.h"
 #include "DataExport.h"
 #include "ConfigurationDialog.h"
+#include "ScreenShotDialog.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -133,6 +134,8 @@ MainWindow::MainWindow(
            this , SLOT( onConnectionSynchronizationTriggered( bool )) );
 
   connect( _ui->actionSettings, SIGNAL(triggered()), this, SLOT(onConfigurationClicked()));
+
+  connect( _ui->actionScreenshot, SIGNAL(triggered()), this, SLOT(onScreenshotClicked()));
 
   _openGLWidget = new OpenGLWidget( nullptr , Qt::WindowFlags( ));
   setCentralWidget( _openGLWidget );
@@ -1692,6 +1695,22 @@ void MainWindow::onConfigurationClicked()
 {
   ConfigurationDialog dialog(this);
   dialog.exec();
+}
+
+void MainWindow::onScreenshotClicked()
+{
+  ScreenShotDialog dialog(size(), this);
+  if (QDialog::Accepted == dialog.exec())
+  {
+    QApplication::setOverrideCursor( Qt::WaitCursor );
+    _openGLWidget->takeScreenshot(dialog.imageSize(), dialog.filename());
+    QApplication::restoreOverrideCursor();
+  }
+}
+
+void MainWindow::onSendSelectionClicked()
+{
+  // TODO
 }
 
 void MainWindow::disableInterface( bool value )

@@ -12,6 +12,7 @@
 #include <QMouseEvent>
 #include <QColorDialog>
 #include <QShortcut>
+#include <QMessageBox>
 #include <QDebug>
 
 #include <string>
@@ -638,8 +639,6 @@ void OpenGLWidget::paintGL( void )
       glBlendEquation(GL_FUNC_ADD);
       paintParticles();
       _nlrenderer->setUpTransparentTransparencyScene();
-      _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
-      update();
     }
     else
     {
@@ -671,12 +670,12 @@ void OpenGLWidget::paintGL( void )
       _oglFunctions->glClearBufferfv(GL_COLOR, 1, &oneFillerVec[0]);
 
       paintParticles();
-
-      // Now, we paint the transparent part over the opaque part.
-      // We can use the default frame buffer object directly for this part.
-      _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
-      update();
     }
+
+    // Now, we paint the transparent part over the opaque part.
+    // We can use the default frame buffer object directly for this part.
+    _nlrenderer->composeTransparencyScene(defaultFramebufferObject());
+    update();
   }
 
 #define FRAMES_PAINTED_TO_MEASURE_FPS 30
@@ -1278,4 +1277,106 @@ DomainManager* OpenGLWidget::getDomainManager( ) const
 const gidUSet& OpenGLWidget::getGidsAll( ) const
 {
   return _gidsAll;
+}
+
+void OpenGLWidget::takeScreenshot(const QSize &imageSize, const QString &filename)
+{
+  makeCurrent();
+
+  _camera->windowSize(imageSize.width(), imageSize.height());
+  glViewport(0, 0, imageSize.width(), imageSize.height());
+
+  const auto bColor = Eigen::Vector3f(_currentClearColor.redF(), _currentClearColor.greenF(), _currentClearColor.blueF());
+  Eigen::Matrix4f projection(_camera->camera()->projectionMatrix());
+  _nlrenderer->projectionMatrix() = projection;
+  Eigen::Matrix4f view(_camera->camera()->viewMatrix());
+  _nlrenderer->viewMatrix() = view;
+
+  _nlrenderer->setUpOpaqueTransparencyScene(bColor, imageSize.width(), imageSize.height());
+
+  if (_particleManager.isAccumulativeMode())
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+
+    paintMorphologies();
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
+    glBlendEquation(GL_FUNC_ADD);
+    paintParticles();
+    _nlrenderer->setUpTransparentTransparencyScene();
+  }
+  else
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    paintMorphologies();
+
+    _nlrenderer->setUpTransparentTransparencyScene();
+    glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND);
+
+    // Keep the depth text, avoiding new writes to the depth texture.
+    _oglFunctions->glBlendFunci(0, GL_ONE, GL_ONE);
+    _oglFunctions->glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+    glBlendEquation(GL_FUNC_ADD);
+
+    // Clear textures. We mustn't clear the depth texture.
+    glm::vec4 zeroFillerVec(0.0f);
+    glm::vec4 oneFillerVec(1.0f);
+    _oglFunctions->glClearBufferfv(GL_COLOR, 0, &zeroFillerVec[0]);
+    _oglFunctions->glClearBufferfv(GL_COLOR, 1, &oneFillerVec[0]);
+
+    paintParticles();
+  }
+
+  auto texConfig = reto::TextureConfig();
+  texConfig.internalFormat = GL_RGBA32F;
+  texConfig.format = GL_RGB;
+  texConfig.type = GL_FLOAT;
+  texConfig.wrapS = GL_CLAMP_TO_EDGE;
+  texConfig.wrapT = GL_CLAMP_TO_EDGE;
+  texConfig.samples = 0; // Plain texture
+
+  auto finalTexture = new reto::Texture2D(texConfig, imageSize.width(), imageSize.height());
+
+  GLuint fbo;
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, finalTexture->handler(), 0);
+
+  _nlrenderer->composeTransparencyScene(fbo);
+
+  const auto imageDataSize = imageSize.width() * imageSize.height() * 4;
+  unsigned char *buffer = new unsigned char[imageDataSize];
+  if (!buffer)
+  {
+    QMessageBox::information(this, "Save screenshot", "Unable to save image, memory allocation failed.");
+    return;
+  }
+
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glReadBuffer(GL_BACK);
+  glReadPixels(0, 0, imageSize.width(), imageSize.height(), GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+
+  finalTexture->unbind();
+
+  QImage image(buffer, imageSize.width(), imageSize.height(), QImage::Format_RGBA8888);
+  image = image.mirrored();
+  image.save(filename);
+
+  delete finalTexture;
+  delete[] buffer;
+
+  // restore original size
+  _camera->windowSize(width(), height());
+  glViewport(0, 0, width(), height());
+  _nlrenderer->setUpOpaqueTransparencyScene(bColor, width(), height());
 }

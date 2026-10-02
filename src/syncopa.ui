@@ -78,6 +78,7 @@
    <addaction name="actionOpenBlueConfig"/>
    <addaction name="separator"/>
    <addaction name="actionBackgroundColor"/>
+   <addaction name="actionScreenshot"/>
    <addaction name="separator"/>
    <addaction name="actionNetworkConnection"/>
    <addaction name="actionNetworkSynchronization"/>
@@ -210,6 +211,9 @@
    </property>
   </action>
   <action name="actionSend">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset resource="resources.qrc">
      <normaloff>:/icons/send.svg</normaloff>:/icons/send.svg</iconset>
@@ -219,6 +223,18 @@
    </property>
    <property name="toolTip">
     <string>Send current selection.</string>
+   </property>
+  </action>
+  <action name="actionScreenshot">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/icons/screenshot.svg</normaloff>:/icons/screenshot.svg</iconset>
+   </property>
+   <property name="text">
+    <string>Screenshot</string>
+   </property>
+   <property name="toolTip">
+    <string>Take a screenshot of the 3D view...</string>
    </property>
   </action>
  </widget>

@@ -88,6 +88,8 @@ public:
 
   const syncopa::gidUSet& getGidsAll( ) const;
 
+  void takeScreenshot(const QSize &size, const QString &filename);
+
 signals:
 
   void progress( const QString& , const unsigned int );
