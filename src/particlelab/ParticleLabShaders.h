@@ -161,6 +161,7 @@ in float size;
 
 layout( location = 0 ) out vec4 accum;
 layout( location = 1 ) out vec4 revealage;
+uniform float alpha;
 
 void main()
 {
@@ -175,8 +176,8 @@ void main()
     float weight = clamp(pow(min(1.0, c.a * 10.0) + 0.01, 3.0) * 1e8
     * pow(1.0 - gl_FragCoord.z * 0.9, 3.0), 1e-2, 3e3);
 
-    accum = vec4 (c.rgb * c.a, c.a) * weight;
-    revealage = vec4(c.a);
+    accum = vec4 (c.rgb * c.a, c.a) * weight * alpha;
+    revealage = vec4(c.a * alpha);
 })";
 
 const static std::string PARTICLE_ACC_FRAGMENT_SHADER = R"(#version 430
@@ -184,6 +185,7 @@ flat in vec4 color;
 in vec2 uvCoord;
 
 out vec4 fragColor;
+uniform float alpha;
 
 void main()
 {
@@ -192,7 +194,7 @@ void main()
     l = 1.0 - clamp(l, 0.0, 1.0);
     l *= color.a;
 
-    fragColor = vec4(color.rgb, l);
+    fragColor = vec4(color.rgb, l) * alpha;
 }
 )";
 

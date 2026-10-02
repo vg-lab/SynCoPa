@@ -34,24 +34,23 @@ ConfigurationDialog::ConfigurationDialog(QWidget* parent, Qt::WindowFlags f)
     GLint maxSamples;
     glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &maxSamples);
     unsigned int power = 0;
-    while(maxSamples > 1)
+    QStringList samplesItems;
+    while(maxSamples > 0)
     {
+        samplesItems << QString("%1 sample%2").arg(1 << power).arg(power == 0 ? "":"s");
         ++power;
         maxSamples /= 2;
     }
 
-    this->msSlider->setMaximum(power);
-    this->msSlider->setMinimum(0);
-    this->msSpinbox->setMaximum(1 << power);
-    this->msSpinbox->setMinimum(1);
+    this->sampleCombo->insertItems(0, samplesItems);
     this->alphaSlider->setMaximum(90);
     this->alphaSlider->setMinimum(10);
     this->alphaSpinbox->setMaximum(90);
     this->alphaSpinbox->setMinimum(10);
-    this->lodSlider->setMaximum(1000);
+    this->lodSlider->setMaximum(100);
     this->lodSlider->setMinimum(10);
-    this->lodSpinbox->setMaximum(100);
-    this->lodSpinbox->setMinimum(10);
+    this->lodSpinbox->setMaximum(10);
+    this->lodSpinbox->setMinimum(1);
 
     auto samples = OpenGLWidget::SAMPLES;
     power = 0;
@@ -60,16 +59,13 @@ ConfigurationDialog::ConfigurationDialog(QWidget* parent, Qt::WindowFlags f)
         ++power;
         samples /= 2;
     }
+    this->sampleCombo->setCurrentIndex(power);
 
-    msSlider->setValue(power);
     const auto alpha = OpenGLWidget::ALPHA * 100;
     const auto lod = OpenGLWidget::LOD;
-
     this->alphaSlider->setValue(alpha);
     this->alphaSpinbox->setValue(alpha);
-    this->msSlider->setValue(power);
-    this->msSpinbox->setValue(1 << power);
-    this->lodSlider->setValue(lod*10);
+    this->lodSlider->setValue(lod * 10);
     this->lodSpinbox->setValue(lod);
 
     m_initialSamples = OpenGLWidget::SAMPLES;
@@ -84,7 +80,7 @@ void ConfigurationDialog::showEvent(QShowEvent* e)
 {
     QDialog::showEvent(e);
 
-    alphaSpinbox->setMinimumWidth(msSpinbox->width());
+    alphaSpinbox->setMinimumWidth(lodSpinbox->width());
 
     setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);
     setMinimumSize(600,0);
@@ -100,8 +96,8 @@ void ConfigurationDialog::showEvent(QShowEvent* e)
 void ConfigurationDialog::samplesValueChanged(int newValue)
 {
     const auto samplesNum = 1 << newValue;
-    msSpinbox->setValue(samplesNum);
-
+    qDebug() << "samples" << samplesNum;
+    
     OpenGLWidget::SAMPLES = samplesNum;
 }
 
@@ -127,7 +123,7 @@ void ConfigurationDialog::lodValueChanged(int newValue)
 void ConfigurationDialog::connectSignals()
 {
     connect(this->alphaSlider, SIGNAL(valueChanged(int)), this, SLOT(alphaValueChanged(int)));
-    connect(this->msSlider, SIGNAL(valueChanged(int)), this, SLOT(samplesValueChanged(int)));
+    connect(this->sampleCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(samplesValueChanged(int)));
     connect(this->lodSlider, SIGNAL(valueChanged(int)), this, SLOT(lodValueChanged(int)));
 }
 

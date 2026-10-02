@@ -58,6 +58,8 @@ namespace syncopa
     // OTHER
     bool _gradientMode;
 
+    float m_alpha;
+
     void recalculateParticlesBoundingBox( );
 
   public:
@@ -80,6 +82,11 @@ namespace syncopa
     bool isAccumulativeMode( ) const;
 
     void setAccumulativeMode( bool accumulativeMode );
+
+    void setAlpha(const float alpha);
+
+    float alpha() const
+    { return m_alpha; }
 
     const nlgeometry::AxisAlignedBoundingBox& getSynapseBoundingBox( ) const;
 
@@ -104,7 +111,6 @@ namespace syncopa
     void clearDynamic( );
 
     void draw( bool drawPaths , bool drawDynamic ) const;
-
   };
 
 }

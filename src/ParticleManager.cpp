@@ -27,6 +27,7 @@ namespace syncopa
     , _pathModel( nullptr )
     , _pathBB( )
     , _gradientMode( false )
+    , m_alpha{1.f}
   {
   }
 
@@ -35,26 +36,32 @@ namespace syncopa
     _staticProgram.loadFromText( STATIC_VERTEX_SHADER ,
                                  PARTICLE_FRAGMENT_SHADER );
     _staticProgram.compileAndLink( );
+    _staticProgram.autocatching( );
 
     _staticGradientProgram.loadFromText( STATIC_GRADIENT_VERTEX_SHADER ,
                                          PARTICLE_FRAGMENT_SHADER );
     _staticGradientProgram.compileAndLink( );
+    _staticGradientProgram.autocatching();
 
     _dynamicProgram.loadFromText( DYNAMIC_VERTEX_SHADER ,
                                   PARTICLE_FRAGMENT_SHADER );
     _dynamicProgram.compileAndLink( );
+    _dynamicProgram.autocatching();
 
     _staticAccProgram.loadFromText( STATIC_VERTEX_SHADER ,
                                     PARTICLE_ACC_FRAGMENT_SHADER );
     _staticAccProgram.compileAndLink( );
+    _staticAccProgram.autocatching();
 
     _staticAccGradientProgram.loadFromText( STATIC_GRADIENT_VERTEX_SHADER ,
                                             PARTICLE_ACC_FRAGMENT_SHADER );
     _staticAccGradientProgram.compileAndLink( );
+    _staticAccGradientProgram.autocatching();
 
     _dynamicAccProgram.loadFromText( DYNAMIC_VERTEX_SHADER ,
                                      PARTICLE_ACC_FRAGMENT_SHADER );
     _dynamicAccProgram.compileAndLink( );
+    _dynamicAccProgram.autocatching();
 
     _staticRenderer = std::make_shared< plab::SimpleRenderer >(
       _staticProgram.program( ));
@@ -102,6 +109,7 @@ namespace syncopa
 
     _dynamicCluster->setModel( _dynamicModel );
     _dynamicCluster->setRenderer( _dynamicRenderer );
+    setAlpha(0.5); // forces update uniform alpha
   }
 
   const std::shared_ptr< StaticModel >&
@@ -171,6 +179,27 @@ namespace syncopa
       _dynamicCluster->setRenderer( _dynamicRenderer );
       _synapseCluster->setRenderer(
         _gradientMode ? _staticGradientRenderer : _staticRenderer );
+    }
+  }
+
+  void ParticleManager::setAlpha(const float alpha)
+  {
+    if(alpha != m_alpha)
+    {
+      m_alpha = alpha;
+
+      _staticProgram.use();
+      _staticProgram.sendUniformf( "alpha", m_alpha );
+      _staticGradientProgram.use();
+      _staticGradientProgram.sendUniformf( "alpha", m_alpha );
+      _dynamicProgram.use();
+      _dynamicProgram.sendUniformf( "alpha", m_alpha );
+      _staticAccProgram.use();
+      _staticAccProgram.sendUniformf( "alpha", m_alpha );
+      _staticAccGradientProgram.use();
+      _staticAccGradientProgram.sendUniformf( "alpha", m_alpha );
+      _dynamicAccProgram.use();
+      _dynamicAccProgram.sendUniformf( "alpha", m_alpha );
     }
   }
 

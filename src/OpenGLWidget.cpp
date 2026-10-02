@@ -31,7 +31,7 @@
 using namespace syncopa;
 
 unsigned int OpenGLWidget::SAMPLES = 16;
-float OpenGLWidget::ALPHA = 0.5;
+float OpenGLWidget::ALPHA = 0.8;
 float OpenGLWidget::LOD = 2;
 
 
@@ -584,9 +584,11 @@ void OpenGLWidget::paintParticles( void )
 
 void OpenGLWidget::paintGL( void )
 {
+  makeCurrent();
   _nlrenderer->setTextureSampling(SAMPLES);
-  _nlrenderer->alpha() = ALPHA; // TODO: alpha value in particle system missing !!!
+  _nlrenderer->alpha() = ALPHA; 
   _nlrenderer->lod() = LOD;
+  _particleManager.setAlpha(ALPHA);
 
   // First, let's flush the loaded meshes.
   if ( _neuronScene != nullptr )
