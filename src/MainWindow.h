@@ -298,6 +298,7 @@ protected:
     QGroupBox* _checkSynapsesPost;
     QGroupBox* _checkPathsPre;
     QGroupBox* _checkPathsPost;
+    QCheckBox* _checkMapSynapses;
 
     std::vector<std::tuple<QPushButton*, QPushButton*, QCheckBox*>>
     _egoNetworkButtons;

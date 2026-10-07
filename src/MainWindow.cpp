@@ -86,6 +86,7 @@ MainWindow::MainWindow(
   , _checkSynapsesPost( nullptr )
   , _checkPathsPre( nullptr )
   , _checkPathsPost( nullptr )
+  , _checkMapSynapses(nullptr)
   , _colorMapWidget( nullptr )
   , _sliderAlphaSynapsesPre( nullptr )
   , _sliderAlphaSynapsesPost( nullptr )
@@ -449,7 +450,7 @@ void MainWindow::initColorDock( void )
   _spinBoxSizeSynapsesMap = new QDoubleSpinBox( );
   _spinBoxSizePathsPost->setValue( 3.0f );
 
-  auto checkMapSynapses = new QCheckBox( tr( "Map attribute to color" ));
+  _checkMapSynapses = new QCheckBox( tr( "Map attribute to color" ));
   _comboSynapseMapAttrib = new QComboBox( );
 
   QStringList optionList = { "Delay" ,
@@ -492,7 +493,7 @@ void MainWindow::initColorDock( void )
   synLayout->addWidget( line , row , col , 1 , 4 );
 
   ++row;
-  synLayout->addWidget( checkMapSynapses , row , 0 , 1 , 2 );
+  synLayout->addWidget( _checkMapSynapses , row , 0 , 1 , 2 );
   synLayout->addWidget( _comboSynapseMapAttrib , row , 2 , 1 , 2 );
 
   ++row;
@@ -616,8 +617,8 @@ void MainWindow::initColorDock( void )
   connect( _spinBoxSizeSynapsesMap , SIGNAL( valueChanged( double )) ,
            this , SLOT( sizeSpinBoxChanged( double )) );
 
-  checkMapSynapses->setChecked( true );
-  connect( checkMapSynapses , SIGNAL( stateChanged( int )) ,
+  _checkMapSynapses->setChecked( true );
+  connect( _checkMapSynapses , SIGNAL( stateChanged( int )) ,
            this , SLOT( setSynapseMappingState( int )) );
 
   connect( _comboSynapseMapAttrib , SIGNAL( currentIndexChanged( int )) ,
@@ -625,7 +626,7 @@ void MainWindow::initColorDock( void )
 
   _radioAlphaModeNormal->setChecked( true );
 
-  checkMapSynapses->setChecked( false );
+  _checkMapSynapses->setChecked( false );
 
   auto action = _dockColor->toggleViewAction( );
   action->setIcon( QIcon( ":/icons/colorpicker.svg" ));
@@ -1315,7 +1316,11 @@ void MainWindow::clear( void )
 
   _listPresynaptic->blockSignals( true );
   _listPostsynaptic->blockSignals( true );
-
+  _comboSynapseMapAttrib->setCurrentIndex(0);
+  setSynapseMappingAttribute(0);
+  _checkMapSynapses->setChecked(false);
+  _colorMapWidget->reset();
+  
   _listPresynaptic->selectionModel( )->clearSelection( );
   if ( _modelListPost )
     _modelListPost->clear( );

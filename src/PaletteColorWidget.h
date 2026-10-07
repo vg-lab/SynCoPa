@@ -41,6 +41,10 @@ public:
 
   void init( bool dialog = true );
 
+  /** \brief Resets the widge to its initial stage. 
+   */
+  void reset();
+
   tQColorVec getColors( void ) const;
   const QGradientStops& getGradientStops( void ) const;
 

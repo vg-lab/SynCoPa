@@ -169,7 +169,17 @@ void PaletteColorWidget::init( bool dialog )
   paletteTypeChanged(0);
 }
 
-tQColorVec PaletteColorWidget::getColors( void ) const
+void PaletteColorWidget::reset()
+{
+  _checkInvertPalette->setChecked(false);
+  _checkFilterActive->setChecked(false);
+  _rangeFilterSlider->setValues( MIN_SLIDER, MAX_SLIDER );
+  _rangeFilterSlider->setPositions( MIN_SLIDER, MAX_SLIDER );
+  _rangeFilterSlider->setEnabled( false );
+  paletteTypeChanged(0);
+}
+
+tQColorVec PaletteColorWidget::getColors(void) const
 {
   return _currentColors;
 }
