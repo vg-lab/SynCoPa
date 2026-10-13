@@ -58,6 +58,13 @@ namespace syncopa
 
     const tsynapseVec& getFilteredSynapses( void ) const;
 
+    struct SynapseNeuronPair {
+        uint32_t presynapticGID;
+        uint32_t postsynapticGID;
+    };    
+
+    std::vector<SynapseNeuronPair> getFilteredSynapseNeuronPairs() const;
+
     const tFloatVec& getNormValues( void ) const;
 
     tFloatVec getFilteredNormValues( void ) const;

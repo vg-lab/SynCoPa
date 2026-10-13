@@ -12,6 +12,7 @@
 #include "DataExport.h"
 #include "ConfigurationDialog.h"
 #include "ScreenShotDialog.h"
+#include "DomainManager.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -33,6 +34,7 @@
 #endif
 
 #include <QJsonObject>
+#include <QJsonArray>
 #include <thread>
 
 #define INITIAL_EGO_NETWORK_DISTANCES 5
@@ -137,6 +139,8 @@ MainWindow::MainWindow(
   connect( _ui->actionSettings, SIGNAL(triggered()), this, SLOT(onConfigurationClicked()));
 
   connect( _ui->actionScreenshot, SIGNAL(triggered()), this, SLOT(onScreenshotClicked()));
+
+  connect( _ui->actionSend, SIGNAL(triggered()), this, SLOT(onSendSelectionClicked()));
 
   _openGLWidget = new OpenGLWidget( nullptr , Qt::WindowFlags( ));
   setCentralWidget( _openGLWidget );
@@ -748,6 +752,7 @@ void MainWindow::updateInfoDock( void )
   clearInfoDock( );
 
   const auto& synapses = _openGLWidget->currentSynapses( );
+  _ui->actionSend->setEnabled(_web_socket != nullptr && !synapses.empty());
 
   std::unordered_map< unsigned int , unsigned int > presentSynapsesPre;
   std::unordered_map< unsigned int , unsigned int > presentSynapsesPost;
@@ -1158,7 +1163,6 @@ void MainWindow::postsynapticNeuronClicked( )
   updateInfoDock( );
 
   // Generate cluster
-
   std::map< QString , std::unordered_set< unsigned int>> selections;
 
   std::unordered_set< unsigned int > pre;
@@ -1715,7 +1719,40 @@ void MainWindow::onScreenshotClicked()
 
 void MainWindow::onSendSelectionClicked()
 {
-  // TODO
+  // TODO: look at postsynapticNeuronClicked() and presynapticNeuronClicked()
+  // for previous work. we don't need that now but in the future we'll need to unify 
+  // it. For now... KISS.
+  auto domainManager = _openGLWidget->getDomainManager();
+
+  std::set<uint32_t> pre, post;
+  for(const auto &synapse: domainManager->getFilteredSynapseNeuronPairs())
+  {
+    pre.insert(synapse.presynapticGID);
+    post.insert(synapse.postsynapticGID);
+  }
+
+  if(pre.empty() && post.empty()) return;
+
+  QJsonArray preList;
+  for(const auto &value: pre)
+  {
+    preList.push_back(QJsonValue(static_cast<int>(value)));
+  }
+
+  QJsonArray postList;
+  for(const auto &value: post)
+  {
+    postList.push_back(QJsonValue(static_cast<int>(value)));
+  }
+
+  QJsonObject command;
+  command.insert("pre", preList);
+  command.insert("post", postList);
+
+  QJsonDocument doc(command);
+  qDebug() << doc.toJson();
+
+  _web_socket->sendCommand("synapse_selection", doc.object());
 }
 
 void MainWindow::disableInterface( bool value )
