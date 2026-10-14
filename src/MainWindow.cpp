@@ -1731,6 +1731,20 @@ void MainWindow::onSendSelectionClicked()
     post.insert(synapse.postsynapticGID);
   }
 
+    // QJsonArray synapses;
+    // for (const auto& [pre, post] : domainManager->getFilteredSynapseNeuronPairs()) {
+    //     QJsonObject synapse;
+    //     synapse["presynaptic_gid"] = pre;
+    //     synapse["postsynaptic_gid"] = post;
+    //     synapses.append(synapse);
+    // }  
+
+    // QJsonObject root;
+    // root["type"] = "synapse_list";
+    // root["data"] = synapses;  // top-level array, not nested in a "selection" key
+    
+    // _web_api.sendSynapseList(root);    
+
   if(pre.empty() && post.empty()) return;
 
   QJsonArray preList;
