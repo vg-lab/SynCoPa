@@ -1698,6 +1698,7 @@ void MainWindow::onConnectionThreadTerminated( )
   _ui->actionNetworkConnection->blockSignals( false );
   _ui->actionSyncScene->setEnabled( false );
   _ui->actionNetworkSynchronization->setVisible( false );
+  _ui->actionSend->setEnabled(false);
 }
 
 void MainWindow::onConfigurationClicked()
@@ -1724,11 +1725,16 @@ void MainWindow::onSendSelectionClicked()
   // it. For now... KISS.
   auto domainManager = _openGLWidget->getDomainManager();
 
-  std::set<uint32_t> pre, post;
-  for(const auto &synapse: domainManager->getFilteredSynapseNeuronPairs())
+  std::map<uint32_t, std::map<uint32_t, int>> synapsesWeight;
+  for(const auto &[pre, post]: domainManager->getFilteredSynapseNeuronPairs())
   {
-    pre.insert(synapse.presynapticGID);
-    post.insert(synapse.postsynapticGID);
+    if(synapsesWeight.count(pre) == 0)
+      synapsesWeight.insert({pre, std::map<uint32_t, int>()});
+
+    if(synapsesWeight[pre].count(post) == 0)
+      synapsesWeight[pre].insert({post, 0});
+
+    ++synapsesWeight[pre][post];
   }
 
     // QJsonArray synapses;
@@ -1745,27 +1751,25 @@ void MainWindow::onSendSelectionClicked()
     
     // _web_api.sendSynapseList(root);    
 
-  if(pre.empty() && post.empty()) return;
-
-  QJsonArray preList;
-  for(const auto &value: pre)
+  QJsonArray synapses;
+  for(const auto &[pre, postMap]: synapsesWeight)
   {
-    preList.push_back(QJsonValue(static_cast<int>(value)));
-  }
+    for(const auto &[post, weight]: postMap)
+    {
+      QJsonObject synapse;
+      synapse["presynaptic_gid"] = QJsonValue(static_cast<int>(pre));
+      synapse["postsynaptic_gid"] = QJsonValue(static_cast<int>(post));
+      synapse["weight"] = QJsonValue(static_cast<int>(weight));
 
-  QJsonArray postList;
-  for(const auto &value: post)
-  {
-    postList.push_back(QJsonValue(static_cast<int>(value)));
+      synapses.push_back(synapse);
+    }
   }
 
   QJsonObject command;
-  command.insert("pre", preList);
-  command.insert("post", postList);
+  command.insert("synapses", synapses);
 
   QJsonDocument doc(command);
-  qDebug() << doc.toJson();
-
+  // qDebug() << doc.toJson(QJsonDocument::Indented);
   _web_socket->sendCommand("synapse_selection", doc.object());
 }
 

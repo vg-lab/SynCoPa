@@ -96,8 +96,6 @@ void ConfigurationDialog::showEvent(QShowEvent* e)
 void ConfigurationDialog::samplesValueChanged(int newValue)
 {
     const auto samplesNum = 1 << newValue;
-    qDebug() << "samples" << samplesNum;
-    
     OpenGLWidget::SAMPLES = samplesNum;
 }
 

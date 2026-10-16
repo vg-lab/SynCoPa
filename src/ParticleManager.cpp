@@ -205,7 +205,6 @@ namespace syncopa
 
   void ParticleManager::setSynapses( const tsynapseVec& synapses )
   {
-    qDebug() << "synapses" << synapses.size();
     std::vector< SynapseParticle > particles;
 
     float minLimit = std::numeric_limits< float >::min( );
